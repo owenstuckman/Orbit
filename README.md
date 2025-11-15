@@ -7,3 +7,5 @@ Current plan, use documenso + stripe to handle all of the payouts and pdfs. Migh
 https://www.npmjs.com/package/@documenso/pdf-sign
 
 https://github.com/documenso/documenso
+
+Considered OpenSeal, and a bunch of other options too.
