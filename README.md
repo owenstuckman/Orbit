@@ -18,3 +18,5 @@ Stored in onedrive inside of my obsidian vault. All tagged as #gamified.
 All md documents are stored in there, once built out more will put it inside of here as a wiki.
 
 Will be built into a GH wiki once fleshed out on my personal, just much easier to live edit in obsidian with all the features and everything I like inside of it while I am still solo.
+
+Holy shapely values 
