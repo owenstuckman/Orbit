@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
+  import { get } from 'svelte/store';
   import { 
     auth, 
     user, 
@@ -21,7 +22,8 @@
     Menu,
     X,
     Bell,
-    ChevronDown
+    ChevronDown,
+    AlertTriangle
   } from 'lucide-svelte';
 
   let sidebarOpen = true;
@@ -29,7 +31,7 @@
   let notificationsOpen = false;
   let loading = true;
   let loadError = '';
-  let loadAttempted = false;
+  let errorDetails = '';
 
   // Navigation items based on role
   $: navItems = [
@@ -77,51 +79,74 @@
     }
   ].filter(item => item.show);
 
-  onMount(async () => {
-    // Initialize auth if not already done
-    let authState = await new Promise<{ initialized: boolean; session: unknown | null }>((resolve) => {
-      const unsub = auth.subscribe(state => {
-        if (state.initialized) {
-          unsub();
-          resolve(state);
-        }
-      });
-    });
-
-    // If no session, redirect to login
-    if (!authState.session) {
-      goto('/auth/login');
-      return;
-    }
-
-    // Only attempt to load user data once
-    if (!loadAttempted) {
-      loadAttempted = true;
-      try {
-        const loadedUser = await user.load();
-        if (loadedUser) {
-          await organization.load();
-        } else {
-          // User authenticated but no user record exists
-          loadError = 'User profile not found. Please contact support or re-register.';
-        }
-      } catch (err) {
-        console.error('Failed to load user data:', err);
-        loadError = 'Failed to load user data. Please try logging in again.';
-      }
-    }
-
-    loading = false;
-
-    // Listen for auth state changes (logout, etc.)
-    const unsubscribe = auth.subscribe((state) => {
-      if (state.initialized && !state.session) {
-        goto('/auth/login');
-      }
-    });
-
-    return unsubscribe;
+  onMount(() => {
+    initializeApp();
   });
+
+  async function initializeApp() {
+    loading = true;
+    loadError = '';
+    errorDetails = '';
+
+    try {
+      // Step 1: Get current auth state (don't subscribe, just read once)
+      const authState = get(auth);
+      console.log('[Layout] Auth state:', { initialized: authState.initialized, hasSession: !!authState.session });
+
+      // If auth not initialized yet, wait a bit and check again
+      if (!authState.initialized) {
+        console.log('[Layout] Waiting for auth initialization...');
+        await new Promise(resolve => setTimeout(resolve, 500));
+        const newAuthState = get(auth);
+        if (!newAuthState.initialized) {
+          // Still not initialized, wait more
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+
+      // Re-check auth state
+      const currentAuth = get(auth);
+      
+      if (!currentAuth.session) {
+        console.log('[Layout] No session, redirecting to login');
+        goto('/auth/login');
+        return;
+      }
+
+      // Step 2: Load user data
+      console.log('[Layout] Loading user data...');
+      const loadedUser = await user.load();
+      console.log('[Layout] User loaded:', loadedUser);
+
+      if (!loadedUser) {
+        // User is authenticated but has no profile - redirect to complete registration
+        console.log('[Layout] No user profile, redirecting to complete registration');
+        goto('/auth/complete-registration');
+        return;
+      }
+
+      // Step 3: Load organization
+      console.log('[Layout] Loading organization...');
+      const loadedOrg = await organization.load();
+      console.log('[Layout] Organization loaded:', loadedOrg);
+
+      if (!loadedOrg) {
+        loadError = 'Organization not found';
+        errorDetails = 'Could not load your organization data. Please contact support.';
+        loading = false;
+        return;
+      }
+
+      console.log('[Layout] Initialization complete');
+      loading = false;
+
+    } catch (err) {
+      console.error('[Layout] Initialization error:', err);
+      loadError = 'Failed to load application';
+      errorDetails = err instanceof Error ? err.message : 'An unexpected error occurred';
+      loading = false;
+    }
+  }
 
   async function handleSignOut() {
     await auth.signOut();
@@ -156,33 +181,45 @@
     <div class="flex flex-col items-center gap-4">
       <div class="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
       <p class="text-slate-600 font-medium">Loading...</p>
+      <p class="text-xs text-slate-400">Initializing application</p>
     </div>
   </div>
 {:else if loadError}
   <div class="min-h-screen flex items-center justify-center bg-slate-50 p-4">
-    <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-8 max-w-md text-center">
-      <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-        <X class="text-red-600" size={32} />
-      </div>
-      <h2 class="text-xl font-semibold text-slate-900 mb-2">Unable to Load</h2>
-      <p class="text-slate-600 mb-6">{loadError}</p>
-      <div class="flex flex-col gap-3">
-        <button
-          on:click={() => window.location.reload()}
-          class="px-6 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors"
-        >
-          Try Again
-        </button>
-        <button
-          on:click={handleSignOut}
-          class="px-6 py-2 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors"
-        >
-          Sign Out
-        </button>
+    <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-8 max-w-md w-full">
+      <div class="text-center">
+        <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <AlertTriangle class="text-red-600" size={32} />
+        </div>
+        <h2 class="text-xl font-semibold text-slate-900 mb-2">{loadError}</h2>
+        <p class="text-slate-600 mb-4">{errorDetails}</p>
+        
+        <!-- Debug info -->
+        <details class="text-left mb-6 bg-slate-50 rounded-lg p-3">
+          <summary class="text-xs text-slate-500 cursor-pointer">Debug Information</summary>
+          <pre class="text-xs text-slate-600 mt-2 overflow-auto max-h-32">User loaded: {$user ? 'Yes' : 'No'}
+Org loaded: {$organization ? 'Yes' : 'No'}
+Error: {errorDetails}</pre>
+        </details>
+
+        <div class="flex flex-col gap-3">
+          <button
+            on:click={initializeApp}
+            class="px-6 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+          >
+            Try Again
+          </button>
+          <button
+            on:click={handleSignOut}
+            class="px-6 py-2 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors"
+          >
+            Sign Out & Re-register
+          </button>
+        </div>
       </div>
     </div>
   </div>
-{:else if $isAuthenticated && $user}
+{:else if $user}
   <div class="min-h-screen bg-slate-50">
     <!-- Sidebar -->
     <aside 
