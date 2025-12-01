@@ -36,7 +36,7 @@ Otherwise, the concept for this is it could act as wide as a full business wide 
 - QC: Shapley value marginals with geometric decay
 - Sales: Commission with decay based on PM pickup time
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 orbit-frontend/
@@ -64,7 +64,7 @@ orbit-frontend/
 └── static/               # Static assets
 ```
 
-## 🛠 Tech Stack
+## Tech Stack
 
 - **Frontend**: SvelteKit, TypeScript, Tailwind CSS
 - **Backend**: Supabase (PostgreSQL, Auth, Storage, Edge Functions, Realtime)
@@ -86,7 +86,7 @@ orbit-frontend/
    cp .env.example .env
    ```
    
-   Add your Supabase credentials:
+   Add Supabase credentials:
    ```
    VITE_SUPABASE_URL=https://your-project.supabase.co
    VITE_SUPABASE_ANON_KEY=your-anon-key
@@ -97,36 +97,6 @@ orbit-frontend/
    npm run dev
    ```
 
-### Deploy Edge Functions (Should be deployed via web)
-
-```bash
-supabase functions deploy calculate-payout
-supabase functions deploy qc-ai-review
-supabase functions deploy generate-contract
-```
-
-
-## Payout Formulas
-
-See Wiki for more documentation and detailed explanations of the original though process
-
-### Employee Salary
-```
-salary = base_salary * r + task_value * (1 - r)
-```
-Where `r` is the employee's chosen stability ratio (0.5 - 0.9)
-
-### QC Shapley Values
-```
-d_1 = β * p_0 * V           (first pass marginal)
-d_k = d_1 * γ^(k-1)         (geometric decay)
-QC_payout = Σ d_k for k=1..K
-```
-
-### PM Profit Sharing
-```
-payout = (budget - spent) * X - overdraft * (1.5 * X) + bonus
-```
 
 ## Roadmap
 
