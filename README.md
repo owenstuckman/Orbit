@@ -2,7 +2,7 @@
 
 A gamified project management and digital workplace platform that incentivizes quality work through sophisticated payout systems. Profit-sharing is considered at all levels, and incentivization of employees is a priority
 
->"When a person is not doing his job, there can only be two reasons for it. The person either can't do it or won't do it; he >is either not capable or not motivated"  
+>"When a person is not doing his job, there can only be two reasons for it. The person either can't do it or won't do it; he is either not capable or not motivated"  
 > ~ Andy Grove "High Output Management"
 
 This above quote is in what large part motivated this project and is what really interests me about the modern workforce. 
@@ -12,7 +12,7 @@ This above quote is in what large part motivated this project and is what really
 
 The other principal idea of this project is to quantify everything from an individual employee level. Sure, things like project management tools do this to an extent, but where is the standard? The ideas behind QC and payouts are largely derived due to this gap. 
 
-Otherwise, the concept for this is it could act as wide as a full business wide management solution, or just as a way for a small group of friends to make a project and easily outsource. 
+Otherwise, the concept for this is it could act as wide as a full business wide management solution, or just as a way for a small group of friends to make a project, manage the project, ensure the project is of quality, and easily outsource the project if wanted/needed.
 
 ## Features
 
