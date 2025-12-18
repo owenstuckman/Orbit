@@ -3,12 +3,12 @@
 A gamified project management and digital workplace platform that incentivizes quality work through sophisticated payout systems. Profit-sharing is considered at all levels, and incentivization of employees is a priority
 
 >"When a person is not doing his job, there can only be two reasons for it. The person either can't do it or won't do it; he is either not capable or not motivated"  
-> ~ Andy Grove "High Output Management"
+> -- <cite> Andy Grove "High Output Management"</cite<
 
 This above quote is in what large part motivated this project and is what really interests me about the modern workforce. 
 
 >"Measurement against a standard makes you think through WHY the results were what they were."
-> ~ Andy Grove "High Output Management"
+> -- <cite> Andy Grove "High Output Management" </cite>
 
 The other principal idea of this project is to quantify everything from an individual employee level. Sure, things like project management tools do this to an extent, but where is the standard? The ideas behind QC and payouts are largely derived due to this gap. 
 
