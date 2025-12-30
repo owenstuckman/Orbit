@@ -20,6 +20,7 @@
   let summary = { total: 0, pending: 0, byType: {} as Record<string, number> };
   let selectedPeriod: 'week' | 'month' | 'year' = 'month';
   let filterType: string | null = null;
+  const periodOptions: Array<'week' | 'month' | 'year'> = ['week', 'month', 'year'];
 
   $: filteredPayouts = filterType 
     ? payouts.filter(p => p.payout_type === filterType)
@@ -101,7 +102,7 @@
     <div class="flex items-center gap-3">
       <!-- Period selector -->
       <div class="flex bg-slate-100 rounded-lg p-1">
-        {#each ['week', 'month', 'year'] as period}
+        {#each periodOptions as period}
           <button
             class="px-4 py-2 text-sm font-medium rounded-md transition-colors
               {selectedPeriod === period ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}"

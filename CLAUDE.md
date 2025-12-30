@@ -133,6 +133,14 @@ Auto-generated contracts using PDF templates with e-signature workflow (documens
 - Limited-time "events" with buffed task rewards
 - Training gates for level/role progression
 
+## Machine Learning Model
+
+The QC review ML model is **complete** and tuning is finalized. The model is maintained in a separate repository/environment outside this codebase.
+
+**Current Status**: Use sample/mock data for development and testing. The production ML model will be integrated via API calls when deployed.
+
+**Integration Pattern**: QC AI reviews call out to the external ML service for confidence scoring (`p0`). The Shapley value calculations in this codebase consume those scores.
+
 ## Real-time Features
 
 Use `subscribeToTable()` helper from `$lib/services/supabase.ts` for WebSocket-based live updates on tasks, projects, and payouts.
@@ -164,6 +172,6 @@ Use types from `$lib/types` - they mirror the database schema and include joined
 - [ ] Web version (Svelte) - in progress
 - [ ] Mobile app (Capacitor)
 - [ ] Slack/Teams integrations
-- [ ] Advanced ML model for QC
+- [x] Advanced ML model for QC - complete (external repo)
 - [ ] Team analytics dashboard
 - [ ] Custom contract templates

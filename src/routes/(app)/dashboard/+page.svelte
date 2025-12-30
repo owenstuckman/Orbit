@@ -97,9 +97,9 @@
 
         case 'qc':
           // Load QC queue - would need API method
-          qcStats.reviewsCompleted = $user.metadata?.reviews_completed || 0;
-          qcStats.avgConfidence = ($user.metadata?.avg_confidence || 0) * 100;
-          qcStats.issuesFound = $user.metadata?.issues_found || 0;
+          qcStats.reviewsCompleted = Number($user.metadata?.reviews_completed) || 0;
+          qcStats.avgConfidence = (Number($user.metadata?.avg_confidence) || 0) * 100;
+          qcStats.issuesFound = Number($user.metadata?.issues_found) || 0;
           break;
 
         case 'sales':

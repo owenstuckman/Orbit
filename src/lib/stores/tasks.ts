@@ -39,12 +39,16 @@ function createTasksStore() {
 
       try {
         const filters: Record<string, unknown> = {};
-        
+        const eqFilters: Record<string, unknown> = {};
+
         if (filter?.projectId) {
-          filters.eq = { ...filters.eq, project_id: filter.projectId };
+          eqFilters.project_id = filter.projectId;
         }
         if (filter?.assigneeId) {
-          filters.eq = { ...filters.eq, assignee_id: filter.assigneeId };
+          eqFilters.assignee_id = filter.assigneeId;
+        }
+        if (Object.keys(eqFilters).length > 0) {
+          filters.eq = eqFilters;
         }
         if (filter?.status && filter.status.length > 0) {
           filters.in = { status: filter.status };

@@ -49,6 +49,10 @@
   });
 
   async function loadProject() {
+    if (!projectId) {
+      error = 'Project ID is missing';
+      return;
+    }
     loading = true;
     error = '';
     try {

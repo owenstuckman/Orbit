@@ -36,6 +36,10 @@
   });
 
   async function loadContract() {
+    if (!contractId) {
+      error = 'Contract ID is missing';
+      return;
+    }
     loading = true;
     error = '';
     try {

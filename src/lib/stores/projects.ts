@@ -30,15 +30,19 @@ function createProjectsStore() {
 
       try {
         const queryFilters: Record<string, unknown> = {};
-        
+        const eqFilters: Record<string, unknown> = {};
+
         if (filters?.status && filters.status.length > 0) {
           queryFilters.in = { status: filters.status };
         }
         if (filters?.pmId) {
-          queryFilters.eq = { ...queryFilters.eq, pm_id: filters.pmId };
+          eqFilters.pm_id = filters.pmId;
         }
         if (filters?.salesId) {
-          queryFilters.eq = { ...queryFilters.eq, sales_id: filters.salesId };
+          eqFilters.sales_id = filters.salesId;
+        }
+        if (Object.keys(eqFilters).length > 0) {
+          queryFilters.eq = eqFilters;
         }
 
         const projects = await projectsApi.list(queryFilters);

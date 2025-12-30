@@ -54,6 +54,10 @@
   });
 
   async function loadTask() {
+    if (!taskId) {
+      error = 'Task ID is missing';
+      return;
+    }
     loading = true;
     error = '';
     try {

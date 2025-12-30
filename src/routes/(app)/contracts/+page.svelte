@@ -241,6 +241,7 @@
           </thead>
           <tbody class="divide-y divide-slate-100">
             {#each filteredContracts as contract}
+              {@const badge = getStatusBadge(contract.status)}
               <tr class="hover:bg-slate-50 transition-colors">
                 <td class="px-6 py-4">
                   <div>
@@ -255,7 +256,6 @@
                   </div>
                 </td>
                 <td class="px-6 py-4">
-                  {@const badge = getStatusBadge(contract.status)}
                   <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium {badge.bg} {badge.text}">
                     <svelte:component this={badge.icon} size={12} />
                     {contract.status.replace('_', ' ')}
