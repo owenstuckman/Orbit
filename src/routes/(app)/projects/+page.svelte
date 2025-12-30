@@ -20,6 +20,25 @@
   let showCreateModal = false;
   let viewMode: 'all' | 'pending' | 'active' = 'all';
 
+  // Create project form state
+  let newProject = {
+    name: '',
+    description: '',
+    total_value: 10000,
+    deadline: '',
+    client_name: ''
+  };
+
+  function resetNewProject() {
+    newProject = {
+      name: '',
+      description: '',
+      total_value: 10000,
+      deadline: '',
+      client_name: ''
+    };
+  }
+
   $: filteredProjects = (() => {
     switch (viewMode) {
       case 'pending':
@@ -312,30 +331,145 @@
   {/if}
 </div>
 
-<!-- Create Project Modal (placeholder) -->
+<!-- Create Project Modal -->
 {#if showCreateModal}
-  <div class="fixed inset-0 z-50 flex items-center justify-center">
-    <button 
-      class="absolute inset-0 bg-black/50" 
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <button
+      class="absolute inset-0 bg-black/50"
       on:click={() => showCreateModal = false}
       aria-label="Close modal"
     />
-    <div class="relative bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 p-6">
-      <h2 class="text-xl font-bold text-slate-900 mb-4">Create New Project</h2>
-      <p class="text-slate-600">Project creation form would go here...</p>
-      <div class="mt-6 flex justify-end gap-3">
+    <div class="relative bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-xl font-bold text-slate-900">Create New Project</h2>
         <button
-          class="px-4 py-2 text-slate-600 hover:text-slate-900"
           on:click={() => showCreateModal = false}
+          class="text-slate-400 hover:text-slate-600"
         >
-          Cancel
-        </button>
-        <button
-          class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-        >
-          Create Project
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
         </button>
       </div>
+
+      <form
+        class="space-y-4"
+        on:submit|preventDefault={async () => {
+          if (!$user) return;
+          const created = await projects.create({
+            org_id: $user.org_id,
+            name: newProject.name,
+            description: newProject.description,
+            total_value: newProject.total_value,
+            deadline: newProject.deadline || null,
+            sales_id: $user.id,
+            status: 'pending_pm'
+          });
+          if (created) {
+            showCreateModal = false;
+            resetNewProject();
+          }
+        }}
+      >
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1" for="project-name">
+            Project Name *
+          </label>
+          <input
+            id="project-name"
+            type="text"
+            bind:value={newProject.name}
+            placeholder="Enter project name"
+            class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            required
+          />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1" for="project-desc">
+            Description
+          </label>
+          <textarea
+            id="project-desc"
+            bind:value={newProject.description}
+            rows="3"
+            placeholder="Brief project description..."
+            class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none"
+          ></textarea>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1" for="project-client">
+            Client Name
+          </label>
+          <input
+            id="project-client"
+            type="text"
+            bind:value={newProject.client_name}
+            placeholder="Client or company name"
+            class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+          />
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1" for="project-budget">
+              Budget ($) *
+            </label>
+            <input
+              id="project-budget"
+              type="number"
+              bind:value={newProject.total_value}
+              min="100"
+              step="100"
+              class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              required
+            />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1" for="project-deadline">
+              Deadline
+            </label>
+            <input
+              id="project-deadline"
+              type="date"
+              bind:value={newProject.deadline}
+              class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            />
+          </div>
+        </div>
+
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div class="flex gap-2">
+            <svg class="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <div class="text-sm text-blue-700">
+              <p class="font-medium">What happens next?</p>
+              <p class="mt-1">Once created, the project will be available for Project Managers to pick up. PM pickup bonuses decay over time to encourage quick assignment.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-3 pt-4">
+          <button
+            type="button"
+            on:click={() => showCreateModal = false}
+            class="px-4 py-2 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={!newProject.name || !newProject.total_value}
+            class="px-6 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+          >
+            <Plus size={16} />
+            Create Project
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 {/if}

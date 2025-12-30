@@ -3,79 +3,107 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { get } from 'svelte/store';
-  import { 
-    auth, 
-    user, 
-    organization, 
-    isAuthenticated, 
-    capabilities 
+  import {
+    auth,
+    user,
+    organization,
+    isAuthenticated,
+    capabilities
   } from '$lib/stores/auth';
-  import { 
-    LayoutDashboard, 
-    CheckSquare, 
-    FolderKanban, 
-    Shield, 
-    FileText, 
-    DollarSign, 
-    Settings, 
+  import NotificationDropdown from '$lib/components/common/NotificationDropdown.svelte';
+  import Toast from '$lib/components/common/Toast.svelte';
+  import {
+    LayoutDashboard,
+    CheckSquare,
+    FolderKanban,
+    Shield,
+    FileText,
+    DollarSign,
+    Settings,
     LogOut,
     Menu,
     X,
-    Bell,
     ChevronDown,
-    AlertTriangle
+    AlertTriangle,
+    Trophy,
+    BarChart3,
+    Users,
+    User
   } from 'lucide-svelte';
 
   let sidebarOpen = true;
   let userMenuOpen = false;
-  let notificationsOpen = false;
   let loading = true;
   let loadError = '';
   let errorDetails = '';
 
   // Navigation items based on role
   $: navItems = [
-    { 
-      href: '/dashboard', 
-      label: 'Dashboard', 
-      icon: LayoutDashboard, 
-      show: true 
+    {
+      href: '/dashboard',
+      label: 'Dashboard',
+      icon: LayoutDashboard,
+      show: true
     },
-    { 
-      href: '/tasks', 
-      label: 'Tasks', 
-      icon: CheckSquare, 
-      show: $capabilities.canViewTasks || $capabilities.canAcceptTasks 
+    {
+      href: '/tasks',
+      label: 'Tasks',
+      icon: CheckSquare,
+      show: $capabilities.canViewTasks || $capabilities.canAcceptTasks
     },
-    { 
-      href: '/projects', 
-      label: 'Projects', 
-      icon: FolderKanban, 
-      show: $capabilities.canManageProjects || $capabilities.canCreateProjects 
+    {
+      href: '/projects',
+      label: 'Projects',
+      icon: FolderKanban,
+      show: $capabilities.canManageProjects || $capabilities.canCreateProjects
     },
-    { 
-      href: '/qc', 
-      label: 'Quality Control', 
-      icon: Shield, 
-      show: $capabilities.canReviewQC 
+    {
+      href: '/qc',
+      label: 'Quality Control',
+      icon: Shield,
+      show: $capabilities.canReviewQC
     },
-    { 
-      href: '/contracts', 
-      label: 'Contracts', 
-      icon: FileText, 
-      show: $capabilities.canSignContracts 
+    {
+      href: '/contracts',
+      label: 'Contracts',
+      icon: FileText,
+      show: $capabilities.canSignContracts
     },
-    { 
-      href: '/payouts', 
-      label: 'Payouts', 
-      icon: DollarSign, 
-      show: true 
+    {
+      href: '/payouts',
+      label: 'Payouts',
+      icon: DollarSign,
+      show: true
     },
-    { 
-      href: '/settings', 
-      label: 'Settings', 
-      icon: Settings, 
-      show: true 
+    {
+      href: '/achievements',
+      label: 'Achievements',
+      icon: Trophy,
+      show: true
+    },
+    {
+      href: '/analytics',
+      label: 'Analytics',
+      icon: BarChart3,
+      show: $user?.role === 'admin' || $user?.role === 'pm'
+    },
+    {
+      href: '/admin',
+      label: 'Admin',
+      icon: Users,
+      show: $user?.role === 'admin'
+    },
+    {
+      href: '/profile',
+      label: 'Profile',
+      icon: User,
+      show: true
+    },
+    {
+      href: '/settings',
+      label: 'Settings',
+      icon: Settings,
+      show: true
     }
   ].filter(item => item.show);
 
@@ -324,28 +352,7 @@ Error: {errorDetails}</pre>
           <!-- Right side actions -->
           <div class="flex items-center gap-2">
             <!-- Notifications -->
-            <div class="relative">
-              <button
-                class="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg relative"
-                on:click={() => notificationsOpen = !notificationsOpen}
-              >
-                <Bell size={20} />
-                <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-              </button>
-              
-              {#if notificationsOpen}
-                <div class="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-slate-200 py-2">
-                  <div class="px-4 py-2 border-b border-slate-100">
-                    <h3 class="font-semibold text-slate-900">Notifications</h3>
-                  </div>
-                  <div class="max-h-64 overflow-y-auto">
-                    <p class="px-4 py-8 text-center text-slate-500 text-sm">
-                      No new notifications
-                    </p>
-                  </div>
-                </div>
-              {/if}
-            </div>
+            <NotificationDropdown />
 
             <!-- User menu -->
             <div class="relative">
@@ -391,12 +398,14 @@ Error: {errorDetails}</pre>
   </div>
 {/if}
 
+<!-- Toast notifications -->
+<Toast />
+
 <!-- Click outside handlers -->
-<svelte:window 
-  on:click={(e) => {
-    if (userMenuOpen || notificationsOpen) {
+<svelte:window
+  on:click={() => {
+    if (userMenuOpen) {
       userMenuOpen = false;
-      notificationsOpen = false;
     }
   }}
 />

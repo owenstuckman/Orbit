@@ -1,22 +1,95 @@
 <script lang="ts">
-  import { user, organization } from '$lib/stores/auth';
+  import { user, organization, auth } from '$lib/stores/auth';
   import { formatCurrency, calculateSalaryBreakdown, projectAnnualSalary, validateR } from '$lib/utils/payout';
-  import { 
-    User, 
-    DollarSign, 
-    Sliders, 
-    Bell, 
-    Shield, 
+  import { toasts } from '$lib/stores/notifications';
+  import { supabase } from '$lib/services/supabase';
+  import {
+    User,
+    DollarSign,
+    Sliders,
+    Bell,
+    Shield,
     Save,
     Info,
     TrendingUp,
-    AlertTriangle
+    AlertTriangle,
+    X,
+    Eye,
+    EyeOff,
+    Lock
   } from 'lucide-svelte';
 
   // Local state for form
   let localR = $user?.r ?? $organization?.default_r ?? 0.7;
   let saving = false;
   let saveSuccess = false;
+
+  // Password change state
+  let showPasswordModal = false;
+  let passwordForm = {
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  };
+  let showCurrentPassword = false;
+  let showNewPassword = false;
+  let changingPassword = false;
+  let passwordError = '';
+
+  // Password validation
+  $: passwordStrength = getPasswordStrength(passwordForm.newPassword);
+  $: passwordsMatch = passwordForm.newPassword === passwordForm.confirmPassword;
+  $: canSubmitPassword = passwordForm.currentPassword.length > 0 &&
+    passwordForm.newPassword.length >= 8 &&
+    passwordsMatch;
+
+  function getPasswordStrength(password: string): { score: number; label: string; color: string } {
+    if (password.length === 0) return { score: 0, label: '', color: '' };
+    if (password.length < 8) return { score: 1, label: 'Too short', color: 'text-red-500' };
+
+    let score = 0;
+    if (password.length >= 8) score++;
+    if (password.length >= 12) score++;
+    if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
+    if (/\d/.test(password)) score++;
+    if (/[^a-zA-Z0-9]/.test(password)) score++;
+
+    if (score <= 2) return { score: 2, label: 'Weak', color: 'text-amber-500' };
+    if (score <= 3) return { score: 3, label: 'Fair', color: 'text-yellow-500' };
+    if (score <= 4) return { score: 4, label: 'Strong', color: 'text-green-500' };
+    return { score: 5, label: 'Very Strong', color: 'text-green-600' };
+  }
+
+  async function handleChangePassword() {
+    if (!canSubmitPassword) return;
+
+    changingPassword = true;
+    passwordError = '';
+
+    try {
+      // Supabase password update
+      const { error } = await supabase.auth.updateUser({
+        password: passwordForm.newPassword
+      });
+
+      if (error) throw error;
+
+      toasts.success('Password changed successfully');
+      showPasswordModal = false;
+      passwordForm = { currentPassword: '', newPassword: '', confirmPassword: '' };
+    } catch (error) {
+      passwordError = error instanceof Error ? error.message : 'Failed to change password';
+      toasts.error(passwordError);
+    } finally {
+      changingPassword = false;
+    }
+  }
+
+  function closePasswordModal() {
+    showPasswordModal = false;
+    passwordForm = { currentPassword: '', newPassword: '', confirmPassword: '' };
+    passwordError = '';
+  }
 
   // Calculate preview values
   $: rBounds = $organization?.r_bounds ?? { min: 0.5, max: 0.9 };
@@ -305,9 +378,12 @@
       <div class="flex items-center justify-between">
         <div>
           <p class="font-medium text-slate-900">Password</p>
-          <p class="text-sm text-slate-500">Last changed 30 days ago</p>
+          <p class="text-sm text-slate-500">Change your account password</p>
         </div>
-        <button class="px-4 py-2 text-indigo-600 hover:bg-indigo-50 rounded-lg font-medium transition-colors">
+        <button
+          on:click={() => showPasswordModal = true}
+          class="px-4 py-2 text-indigo-600 hover:bg-indigo-50 rounded-lg font-medium transition-colors"
+        >
           Change Password
         </button>
       </div>
@@ -323,3 +399,178 @@
     </div>
   </section>
 </div>
+
+<!-- Password Change Modal -->
+{#if showPasswordModal}
+  <div class="fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex min-h-full items-center justify-center p-4">
+      <button
+        class="fixed inset-0 bg-black/50"
+        on:click={closePasswordModal}
+      />
+
+      <div class="relative bg-white rounded-xl shadow-xl w-full max-w-md">
+        <!-- Header -->
+        <div class="flex items-center justify-between p-6 border-b border-slate-200">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+              <Lock class="text-indigo-600" size={20} />
+            </div>
+            <h2 class="text-lg font-semibold text-slate-900">Change Password</h2>
+          </div>
+          <button
+            on:click={closePasswordModal}
+            class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <!-- Form -->
+        <form on:submit|preventDefault={handleChangePassword} class="p-6 space-y-4">
+          {#if passwordError}
+            <div class="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
+              {passwordError}
+            </div>
+          {/if}
+
+          <!-- Current Password -->
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">
+              Current Password
+            </label>
+            <div class="relative">
+              {#if showCurrentPassword}
+                <input
+                  type="text"
+                  bind:value={passwordForm.currentPassword}
+                  class="w-full px-4 py-2 pr-10 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="Enter current password"
+                  required
+                />
+              {:else}
+                <input
+                  type="password"
+                  bind:value={passwordForm.currentPassword}
+                  class="w-full px-4 py-2 pr-10 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="Enter current password"
+                  required
+                />
+              {/if}
+              <button
+                type="button"
+                on:click={() => showCurrentPassword = !showCurrentPassword}
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                {#if showCurrentPassword}
+                  <EyeOff size={18} />
+                {:else}
+                  <Eye size={18} />
+                {/if}
+              </button>
+            </div>
+          </div>
+
+          <!-- New Password -->
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">
+              New Password
+            </label>
+            <div class="relative">
+              {#if showNewPassword}
+                <input
+                  type="text"
+                  bind:value={passwordForm.newPassword}
+                  class="w-full px-4 py-2 pr-10 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="Enter new password"
+                  required
+                  minlength="8"
+                />
+              {:else}
+                <input
+                  type="password"
+                  bind:value={passwordForm.newPassword}
+                  class="w-full px-4 py-2 pr-10 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="Enter new password"
+                  required
+                  minlength="8"
+                />
+              {/if}
+              <button
+                type="button"
+                on:click={() => showNewPassword = !showNewPassword}
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                {#if showNewPassword}
+                  <EyeOff size={18} />
+                {:else}
+                  <Eye size={18} />
+                {/if}
+              </button>
+            </div>
+
+            <!-- Password Strength -->
+            {#if passwordForm.newPassword.length > 0}
+              <div class="mt-2">
+                <div class="flex items-center gap-2 mb-1">
+                  <div class="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                    <div
+                      class="h-full transition-all duration-300
+                        {passwordStrength.score <= 1 ? 'bg-red-500' :
+                         passwordStrength.score <= 2 ? 'bg-amber-500' :
+                         passwordStrength.score <= 3 ? 'bg-yellow-500' :
+                         'bg-green-500'}"
+                      style="width: {(passwordStrength.score / 5) * 100}%"
+                    ></div>
+                  </div>
+                  <span class="text-xs font-medium {passwordStrength.color}">
+                    {passwordStrength.label}
+                  </span>
+                </div>
+                <p class="text-xs text-slate-500">
+                  Use 8+ characters with uppercase, lowercase, numbers, and symbols
+                </p>
+              </div>
+            {/if}
+          </div>
+
+          <!-- Confirm Password -->
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">
+              Confirm New Password
+            </label>
+            <input
+              type="password"
+              bind:value={passwordForm.confirmPassword}
+              class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500
+                {passwordForm.confirmPassword.length > 0 && !passwordsMatch ? 'border-red-300' : 'border-slate-200'}"
+              placeholder="Confirm new password"
+              required
+            />
+            {#if passwordForm.confirmPassword.length > 0 && !passwordsMatch}
+              <p class="mt-1 text-xs text-red-500">Passwords do not match</p>
+            {/if}
+          </div>
+
+          <!-- Actions -->
+          <div class="flex justify-end gap-3 pt-4 border-t border-slate-200">
+            <button
+              type="button"
+              on:click={closePasswordModal}
+              class="px-4 py-2 border border-slate-200 rounded-lg font-medium text-slate-700 hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={!canSubmitPassword || changingPassword}
+              class="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {changingPassword ? 'Changing...' : 'Change Password'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+{/if}

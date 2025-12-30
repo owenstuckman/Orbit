@@ -6,6 +6,8 @@
   import { projects } from '$lib/stores/projects';
   import { subscribeToTable } from '$lib/services/supabase';
   import { TaskCard, TaskCreateModal, TaskFilters } from '$lib/components/tasks';
+  import ExportButton from '$lib/components/common/ExportButton.svelte';
+  import { exportTasks, type TaskExport } from '$lib/services/export';
   import {
     Plus,
     Filter,
@@ -238,6 +240,22 @@
       tasks.loadByAssignee($user?.id || '');
     }
   }
+
+  function handleExport(format: 'csv' | 'pdf' | 'json') {
+    const allTasks = visibleColumns.flatMap(c => filteredTasks(c.status));
+    const exportData: TaskExport[] = allTasks.map(t => ({
+      id: t.id,
+      title: t.title,
+      status: t.status,
+      priority: t.urgency_multiplier > 1 ? 'High' : 'Normal',
+      assignee: t.assignee?.full_name || 'Unassigned',
+      project: t.project?.name || 'No Project',
+      base_value: t.dollar_value,
+      created_at: t.created_at,
+      completed_at: t.completed_at || undefined
+    }));
+    exportTasks(exportData, format as 'csv' | 'pdf');
+  }
 </script>
 
 <div class="space-y-6">
@@ -364,6 +382,9 @@
           <List size={18} />
         </button>
       </div>
+
+      <!-- Export button -->
+      <ExportButton onExport={handleExport} disabled={$tasks.items.length === 0} size="sm" />
 
       <!-- Create button for PM -->
       {#if $capabilities.canCreateTasks}
