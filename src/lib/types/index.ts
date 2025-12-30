@@ -271,3 +271,94 @@ export interface SalesDashboardStats {
   pendingProjects: number;
   commissionEarned: number;
 }
+
+// ============================================================================
+// Granular Access Control Types
+// ============================================================================
+
+export type PermissionLevel = 'none' | 'view' | 'work' | 'manage' | 'admin';
+
+export interface ProjectAccess {
+  id: string;
+  project_id: string;
+  user_id: string;
+  permission_level: PermissionLevel;
+  granted_by: string;
+  granted_at: string;
+  expires_at?: string | null;
+  // Joined fields
+  project?: Project;
+  user?: User;
+}
+
+export interface TaskAccess {
+  id: string;
+  task_id: string;
+  user_id: string;
+  permission_level: PermissionLevel;
+  granted_by: string;
+  granted_at: string;
+  expires_at?: string | null;
+  // Joined fields
+  task?: Task;
+  user?: User;
+}
+
+export interface TeamMember {
+  id: string;
+  project_id: string;
+  user_id: string;
+  role: 'member' | 'lead' | 'reviewer';
+  added_at: string;
+  added_by: string;
+  // Joined fields
+  user?: User;
+  project?: Project;
+}
+
+// Permission check result
+export interface PermissionCheck {
+  allowed: boolean;
+  level: PermissionLevel;
+  reason?: string;
+}
+
+// Analytics types
+export interface AnalyticsData {
+  period: 'week' | 'month' | 'quarter' | 'year';
+  taskMetrics: TaskMetrics;
+  payoutMetrics: PayoutMetrics;
+  userMetrics: UserMetrics;
+  trends: TrendData[];
+}
+
+export interface TaskMetrics {
+  total: number;
+  completed: number;
+  inProgress: number;
+  pending: number;
+  completionRate: number;
+  avgCompletionTime: number;
+  byStatus: Record<TaskStatus, number>;
+}
+
+export interface PayoutMetrics {
+  totalPaid: number;
+  pendingPayouts: number;
+  avgPayout: number;
+  byType: Record<string, number>;
+}
+
+export interface UserMetrics {
+  totalActive: number;
+  topPerformers: User[];
+  avgTasksPerUser: number;
+  avgEarningsPerUser: number;
+}
+
+export interface TrendData {
+  date: string;
+  tasks: number;
+  payouts: number;
+  users: number;
+}

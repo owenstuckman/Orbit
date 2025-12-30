@@ -21,6 +21,9 @@
 
   // Local state for form
   let localR = $user?.r ?? $organization?.default_r ?? 0.7;
+
+  // Slider works with percentage values (50-90) while localR is decimal (0.5-0.9)
+  $: sliderValue = Math.round(localR * 100);
   let saving = false;
   let saveSuccess = false;
 
@@ -241,7 +244,7 @@
             min={rBounds.min * 100}
             max={rBounds.max * 100}
             step="5"
-            bind:value={localR}
+            value={sliderValue}
             on:input={(e) => localR = parseInt(e.currentTarget.value) / 100}
             class="w-full h-3 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
           />

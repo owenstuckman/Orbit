@@ -359,3 +359,187 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
 
 -- Enable realtime for user_badges
 ALTER PUBLICATION supabase_realtime ADD TABLE public.user_badges;
+
+-- ============================================================================
+-- GRANULAR ACCESS CONTROL: Project and Task level permissions
+-- ============================================================================
+
+-- Permission levels: none, view, work, manage, admin
+CREATE TYPE permission_level AS ENUM ('none', 'view', 'work', 'manage', 'admin');
+
+-- Project Access Table: Explicit permissions for users on projects
+CREATE TABLE IF NOT EXISTS public.project_access (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  project_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  permission_level permission_level NOT NULL DEFAULT 'view',
+  granted_by uuid NOT NULL,
+  granted_at timestamp with time zone DEFAULT now(),
+  expires_at timestamp with time zone,
+  CONSTRAINT project_access_pkey PRIMARY KEY (id),
+  CONSTRAINT project_access_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE,
+  CONSTRAINT project_access_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE,
+  CONSTRAINT project_access_granted_by_fkey FOREIGN KEY (granted_by) REFERENCES public.users(id) ON DELETE SET NULL,
+  CONSTRAINT project_access_unique UNIQUE (project_id, user_id)
+);
+
+-- Indexes for project access
+CREATE INDEX IF NOT EXISTS idx_project_access_project ON public.project_access (project_id);
+CREATE INDEX IF NOT EXISTS idx_project_access_user ON public.project_access (user_id);
+CREATE INDEX IF NOT EXISTS idx_project_access_expires ON public.project_access (expires_at) WHERE expires_at IS NOT NULL;
+
+-- Enable RLS for project_access
+ALTER TABLE public.project_access ENABLE ROW LEVEL SECURITY;
+
+-- Users can view project access where they have manage/admin permission or are admin
+CREATE POLICY "Users can view project access"
+  ON public.project_access FOR SELECT
+  TO authenticated
+  USING (
+    -- Admin can see all
+    EXISTS (SELECT 1 FROM public.users WHERE auth_id = auth.uid() AND role = 'admin')
+    OR
+    -- PM of the project can see
+    EXISTS (
+      SELECT 1 FROM public.projects p
+      JOIN public.users u ON u.auth_id = auth.uid()
+      WHERE p.id = project_id AND p.pm_id = u.id
+    )
+    OR
+    -- User with manage access can see
+    EXISTS (
+      SELECT 1 FROM public.project_access pa
+      JOIN public.users u ON u.auth_id = auth.uid()
+      WHERE pa.project_id = project_access.project_id
+        AND pa.user_id = u.id
+        AND pa.permission_level IN ('manage', 'admin')
+    )
+  );
+
+-- Only admins and PMs can grant project access
+CREATE POLICY "Admins and PMs can manage project access"
+  ON public.project_access FOR ALL
+  TO authenticated
+  USING (
+    EXISTS (SELECT 1 FROM public.users WHERE auth_id = auth.uid() AND role = 'admin')
+    OR
+    EXISTS (
+      SELECT 1 FROM public.projects p
+      JOIN public.users u ON u.auth_id = auth.uid()
+      WHERE p.id = project_id AND p.pm_id = u.id
+    )
+  );
+
+-- Task Access Table: Explicit permissions for users on tasks
+CREATE TABLE IF NOT EXISTS public.task_access (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  task_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  permission_level permission_level NOT NULL DEFAULT 'view',
+  granted_by uuid NOT NULL,
+  granted_at timestamp with time zone DEFAULT now(),
+  expires_at timestamp with time zone,
+  CONSTRAINT task_access_pkey PRIMARY KEY (id),
+  CONSTRAINT task_access_task_id_fkey FOREIGN KEY (task_id) REFERENCES public.tasks(id) ON DELETE CASCADE,
+  CONSTRAINT task_access_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE,
+  CONSTRAINT task_access_granted_by_fkey FOREIGN KEY (granted_by) REFERENCES public.users(id) ON DELETE SET NULL,
+  CONSTRAINT task_access_unique UNIQUE (task_id, user_id)
+);
+
+-- Indexes for task access
+CREATE INDEX IF NOT EXISTS idx_task_access_task ON public.task_access (task_id);
+CREATE INDEX IF NOT EXISTS idx_task_access_user ON public.task_access (user_id);
+CREATE INDEX IF NOT EXISTS idx_task_access_expires ON public.task_access (expires_at) WHERE expires_at IS NOT NULL;
+
+-- Enable RLS for task_access
+ALTER TABLE public.task_access ENABLE ROW LEVEL SECURITY;
+
+-- Users can view task access where they have manage permission on the project
+CREATE POLICY "Users can view task access"
+  ON public.task_access FOR SELECT
+  TO authenticated
+  USING (
+    -- Admin can see all
+    EXISTS (SELECT 1 FROM public.users WHERE auth_id = auth.uid() AND role = 'admin')
+    OR
+    -- PM of the task's project can see
+    EXISTS (
+      SELECT 1 FROM public.tasks t
+      JOIN public.projects p ON p.id = t.project_id
+      JOIN public.users u ON u.auth_id = auth.uid()
+      WHERE t.id = task_id AND p.pm_id = u.id
+    )
+  );
+
+-- Only admins and PMs can grant task access
+CREATE POLICY "Admins and PMs can manage task access"
+  ON public.task_access FOR ALL
+  TO authenticated
+  USING (
+    EXISTS (SELECT 1 FROM public.users WHERE auth_id = auth.uid() AND role = 'admin')
+    OR
+    EXISTS (
+      SELECT 1 FROM public.tasks t
+      JOIN public.projects p ON p.id = t.project_id
+      JOIN public.users u ON u.auth_id = auth.uid()
+      WHERE t.id = task_id AND p.pm_id = u.id
+    )
+  );
+
+-- Team Members Table: Project team assignments with roles
+CREATE TABLE IF NOT EXISTS public.team_members (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  project_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  role text NOT NULL DEFAULT 'member' CHECK (role IN ('member', 'lead', 'reviewer')),
+  added_by uuid NOT NULL,
+  added_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT team_members_pkey PRIMARY KEY (id),
+  CONSTRAINT team_members_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE,
+  CONSTRAINT team_members_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE,
+  CONSTRAINT team_members_added_by_fkey FOREIGN KEY (added_by) REFERENCES public.users(id) ON DELETE SET NULL,
+  CONSTRAINT team_members_unique UNIQUE (project_id, user_id)
+);
+
+-- Indexes for team members
+CREATE INDEX IF NOT EXISTS idx_team_members_project ON public.team_members (project_id);
+CREATE INDEX IF NOT EXISTS idx_team_members_user ON public.team_members (user_id);
+CREATE INDEX IF NOT EXISTS idx_team_members_role ON public.team_members (project_id, role);
+
+-- Enable RLS for team_members
+ALTER TABLE public.team_members ENABLE ROW LEVEL SECURITY;
+
+-- Users can view team members of projects they have access to
+CREATE POLICY "Users can view team members"
+  ON public.team_members FOR SELECT
+  TO authenticated
+  USING (
+    -- Admin can see all
+    EXISTS (SELECT 1 FROM public.users WHERE auth_id = auth.uid() AND role = 'admin')
+    OR
+    -- Same org can see
+    EXISTS (
+      SELECT 1 FROM public.projects p
+      JOIN public.users u ON u.auth_id = auth.uid()
+      WHERE p.id = project_id AND p.org_id = u.org_id
+    )
+  );
+
+-- PMs and admins can manage team members
+CREATE POLICY "PMs and admins can manage team members"
+  ON public.team_members FOR ALL
+  TO authenticated
+  USING (
+    EXISTS (SELECT 1 FROM public.users WHERE auth_id = auth.uid() AND role = 'admin')
+    OR
+    EXISTS (
+      SELECT 1 FROM public.projects p
+      JOIN public.users u ON u.auth_id = auth.uid()
+      WHERE p.id = project_id AND p.pm_id = u.id
+    )
+  );
+
+-- Enable realtime for access tables
+ALTER PUBLICATION supabase_realtime ADD TABLE public.project_access;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.task_access;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.team_members;
