@@ -1,6 +1,56 @@
 // Core database types matching Supabase schema
 
 export type UserRole = 'admin' | 'sales' | 'pm' | 'qc' | 'employee' | 'contractor';
+
+// ============================================================================
+// Artifact Types for Task Submissions
+// ============================================================================
+
+export type ArtifactType = 'file' | 'github_pr' | 'url';
+
+export interface BaseArtifact {
+  id: string;
+  type: ArtifactType;
+  added_at: string;
+  notes?: string;
+}
+
+export interface FileArtifact extends BaseArtifact {
+  type: 'file';
+  file_path: string;
+  file_name: string;
+  file_size: number;
+  mime_type: string;
+}
+
+export interface GitHubPRArtifact extends BaseArtifact {
+  type: 'github_pr';
+  url: string;
+  owner: string;
+  repo: string;
+  pr_number: number;
+  metadata?: {
+    title: string;
+    state: 'open' | 'closed' | 'merged';
+    author: string;
+  };
+}
+
+export interface URLArtifact extends BaseArtifact {
+  type: 'url';
+  url: string;
+  title?: string;
+}
+
+export type Artifact = FileArtifact | GitHubPRArtifact | URLArtifact;
+
+export interface TaskSubmissionData {
+  notes?: string;
+  submitted_at?: string;
+  artifacts: Artifact[];
+  draft_saved_at?: string;
+  is_draft: boolean;
+}
 export type TaskStatus = 'open' | 'assigned' | 'in_progress' | 'completed' | 'under_review' | 'approved' | 'rejected' | 'paid';
 export type ProjectStatus = 'draft' | 'pending_pm' | 'active' | 'completed' | 'cancelled';
 export type QCReviewType = 'ai' | 'peer' | 'independent';

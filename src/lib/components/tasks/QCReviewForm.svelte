@@ -4,7 +4,8 @@
   import { qcApi } from '$lib/services/api';
   import { storage } from '$lib/services/supabase';
   import { user } from '$lib/stores/auth';
-  import type { Task, QCReview } from '$lib/types';
+  import { ArtifactList } from '$lib/components/submissions';
+  import type { Task, QCReview, TaskSubmissionData } from '$lib/types';
 
   export let task: Task;
 
@@ -85,7 +86,10 @@
 
   // Check if task has submissions
   $: hasSubmission = task.submission_data || (task.submission_files && task.submission_files.length > 0);
-  $: submissionNotes = task.submission_data?.notes as string || '';
+  $: submissionData = task.submission_data as TaskSubmissionData | null;
+  $: submissionNotes = submissionData?.notes || '';
+  $: submissionArtifacts = submissionData?.artifacts || [];
+  $: hasArtifacts = submissionArtifacts.length > 0;
 
   // Previous reviews
   $: previousReviews = task.qc_reviews || [];
@@ -134,8 +138,14 @@
             </div>
           {/if}
 
-          <!-- Files -->
-          {#if task.submission_files && task.submission_files.length > 0}
+          <!-- Artifacts (new format) -->
+          {#if hasArtifacts}
+            <div>
+              <p class="text-xs font-medium text-slate-500 mb-2">Artifacts</p>
+              <ArtifactList artifacts={submissionArtifacts} grouped={true} />
+            </div>
+          <!-- Legacy file display (fallback) -->
+          {:else if task.submission_files && task.submission_files.length > 0}
             <div>
               <p class="text-xs font-medium text-slate-500 mb-2">Attached Files</p>
               <div class="space-y-2">

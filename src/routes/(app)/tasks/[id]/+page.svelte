@@ -4,11 +4,17 @@
   import { onMount, onDestroy } from 'svelte';
   import { user, capabilities } from '$lib/stores/auth';
   import { currentTask, tasks } from '$lib/stores/tasks';
+  import { artifactStore, artifactCount } from '$lib/stores/artifacts';
   import { tasksApi } from '$lib/services/api';
   import { toasts } from '$lib/stores/notifications';
   import { formatCurrency } from '$lib/utils/payout';
   import TaskEditModal from '$lib/components/tasks/TaskEditModal.svelte';
-  import type { TaskStatus } from '$lib/types';
+  import {
+    ArtifactList,
+    ArtifactAddModal,
+    SubmissionDraftBanner
+  } from '$lib/components/submissions';
+  import type { TaskStatus, TaskSubmissionData } from '$lib/types';
   import {
     ArrowLeft,
     Clock,
@@ -29,7 +35,8 @@
     Star,
     Flag,
     Folder,
-    Shield
+    Shield,
+    Plus
   } from 'lucide-svelte';
 
   $: taskId = $page.params.id;
@@ -38,10 +45,7 @@
   let submitting = false;
   let showEditModal = false;
   let showSubmitModal = false;
-
-  // Submission form
-  let submissionNotes = '';
-  let submissionFiles: string[] = [];
+  let showAddArtifactModal = false;
 
   // Status colors and labels
   const statusConfig: Record<TaskStatus, { color: string; bg: string; label: string }> = {
@@ -61,6 +65,7 @@
 
   onDestroy(() => {
     currentTask.clear();
+    artifactStore.clear();
   });
 
   async function loadTask() {
@@ -68,6 +73,11 @@
     loading = true;
     await currentTask.load(taskId);
     loading = false;
+
+    // Initialize artifact store if task is loaded and user can submit
+    if ($currentTask.task && $currentTask.task.assignee_id === $user?.id) {
+      artifactStore.initialize(taskId, $currentTask.task.submission_data);
+    }
   }
 
   // Can submit work (only if assigned to user and in progress)
@@ -131,16 +141,20 @@
 
     submitting = true;
     try {
-      const submitted = await tasks.submit($currentTask.task.id, {
-        notes: submissionNotes,
-        submitted_at: new Date().toISOString()
-      }, submissionFiles);
+      // Get submission data from artifact store
+      const submissionData = artifactStore.getSubmissionData();
+      const filePaths = artifactStore.getFilePaths();
+
+      const submitted = await tasks.submit(
+        $currentTask.task.id,
+        submissionData as unknown as Record<string, unknown>,
+        filePaths
+      );
 
       if (submitted) {
         toasts.success('Work submitted for review!');
         showSubmitModal = false;
-        submissionNotes = '';
-        submissionFiles = [];
+        artifactStore.clear();
         await loadTask();
       } else {
         toasts.error('Failed to submit work');
@@ -148,6 +162,41 @@
     } finally {
       submitting = false;
     }
+  }
+
+  // Artifact handlers
+  async function handleFileUpload(e: CustomEvent<File>) {
+    if (!$user?.org_id || !$user?.id) return;
+
+    try {
+      await artifactStore.uploadFile(e.detail, $user.org_id, $user.id);
+      toasts.success('File uploaded');
+    } catch (err) {
+      toasts.error(err instanceof Error ? err.message : 'Upload failed');
+    }
+  }
+
+  function handleAddGitHubPR(e: CustomEvent<string>) {
+    const artifact = artifactStore.addGitHubPR(e.detail);
+    if (artifact) {
+      toasts.success('GitHub PR added');
+    } else {
+      toasts.error('Invalid GitHub PR URL');
+    }
+  }
+
+  function handleAddURL(e: CustomEvent<{ url: string; title?: string }>) {
+    const artifact = artifactStore.addURL(e.detail.url, e.detail.title);
+    if (artifact) {
+      toasts.success('URL added');
+    } else {
+      toasts.error('Invalid URL');
+    }
+  }
+
+  function handleRemoveArtifact(e: CustomEvent<string>) {
+    artifactStore.removeArtifact(e.detail);
+    toasts.success('Artifact removed');
   }
 
   function handleTaskUpdated() {
@@ -274,6 +323,56 @@
           {/if}
         </div>
 
+        <!-- Artifact Management (for assigned/in_progress tasks) -->
+        {#if canSubmit}
+          <div class="bg-white rounded-xl border border-slate-200 p-6">
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="text-lg font-semibold text-slate-900 flex items-center gap-2">
+                <Upload class="text-indigo-500" size={20} />
+                Submission Artifacts
+              </h2>
+              <button
+                type="button"
+                on:click={() => showAddArtifactModal = true}
+                class="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 transition-colors"
+              >
+                <Plus size={16} />
+                Add Artifact
+              </button>
+            </div>
+
+            <SubmissionDraftBanner
+              artifactCount={$artifactCount}
+              saving={$artifactStore.saving}
+              lastSaved={$artifactStore.lastSaved}
+              error={$artifactStore.error}
+            />
+
+            <div class="mt-4">
+              <div class="mb-4">
+                <label class="block text-sm font-medium text-slate-700 mb-2" for="notes">
+                  Submission Notes
+                </label>
+                <textarea
+                  id="notes"
+                  value={$artifactStore.notes}
+                  on:input={(e) => artifactStore.setNotes(e.currentTarget.value)}
+                  rows="3"
+                  class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="Describe what you've completed, any challenges encountered, and notes for the reviewer..."
+                ></textarea>
+              </div>
+
+              <ArtifactList
+                artifacts={$artifactStore.artifacts}
+                editable={true}
+                grouped={true}
+                on:remove={handleRemoveArtifact}
+              />
+            </div>
+          </div>
+        {/if}
+
         <!-- Submission Data (if completed) -->
         {#if task.submission_data && ['completed', 'under_review', 'approved', 'paid'].includes(task.status)}
           <div class="bg-white rounded-xl border border-slate-200 p-6">
@@ -291,14 +390,21 @@
               </div>
             {/if}
 
-            {#if task.submission_files && task.submission_files.length > 0}
+            <!-- Display artifacts if using new format -->
+            {#if task.submission_data.artifacts && Array.isArray(task.submission_data.artifacts) && task.submission_data.artifacts.length > 0}
+              <div>
+                <h3 class="text-sm font-medium text-slate-700 mb-2">Artifacts</h3>
+                <ArtifactList artifacts={task.submission_data.artifacts} grouped={true} />
+              </div>
+            <!-- Fallback to legacy file display -->
+            {:else if task.submission_files && task.submission_files.length > 0}
               <div>
                 <h3 class="text-sm font-medium text-slate-700 mb-2">Attached Files</h3>
                 <div class="space-y-2">
                   {#each task.submission_files as file}
                     <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
                       <FileText class="text-slate-400" size={18} />
-                      <span class="text-slate-600">{file}</span>
+                      <span class="text-slate-600">{file.split('/').pop()}</span>
                     </div>
                   {/each}
                 </div>
@@ -516,53 +622,37 @@
     </div>
   </div>
 
-  <!-- Submit Work Modal -->
+  <!-- Submit Work Confirmation Modal -->
   {#if showSubmitModal}
     <div class="fixed inset-0 z-50 overflow-y-auto">
       <div class="flex min-h-full items-center justify-center p-4">
         <button
           class="fixed inset-0 bg-black/50"
           on:click={() => showSubmitModal = false}
+          tabindex="-1"
         />
 
-        <div class="relative bg-white rounded-xl shadow-xl w-full max-w-lg">
+        <div class="relative bg-white rounded-xl shadow-xl w-full max-w-md">
           <div class="p-6 border-b border-slate-200">
             <h2 class="text-lg font-semibold text-slate-900 flex items-center gap-2">
               <Send class="text-purple-500" size={20} />
-              Submit Work
+              Submit Work for Review
             </h2>
-            <p class="text-sm text-slate-500 mt-1">
-              Submit your completed work for QC review
-            </p>
           </div>
 
-          <form on:submit|preventDefault={handleSubmitWork} class="p-6 space-y-4">
-            <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1" for="submission-notes">
-                Submission Notes
-              </label>
-              <textarea
-                id="submission-notes"
-                bind:value={submissionNotes}
-                rows="4"
-                class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="Describe what you've completed, any challenges encountered, and notes for the reviewer..."
-              ></textarea>
-            </div>
-
-            <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1" for="file-upload">
-                Attachments (optional)
-              </label>
-              <div class="border-2 border-dashed border-slate-200 rounded-lg p-6 text-center hover:border-indigo-400 transition-colors">
-                <Upload class="mx-auto text-slate-400 mb-2" size={24} />
-                <p class="text-sm text-slate-500">
-                  Drag files here or click to upload
-                </p>
-                <p class="text-xs text-slate-400 mt-1">
-                  File upload not implemented yet
-                </p>
+          <div class="p-6 space-y-4">
+            <!-- Summary -->
+            <div class="bg-slate-50 rounded-lg p-4">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-sm text-slate-600">Artifacts</span>
+                <span class="text-sm font-medium text-slate-900">{$artifactCount}</span>
               </div>
+              {#if $artifactStore.notes}
+                <div class="flex items-start justify-between">
+                  <span class="text-sm text-slate-600">Notes</span>
+                  <span class="text-sm font-medium text-green-600">Included</span>
+                </div>
+              {/if}
             </div>
 
             <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
@@ -572,37 +662,47 @@
                 <ul class="mt-1 space-y-1 text-amber-700">
                   <li>Ensure your work is complete and tested</li>
                   <li>Double-check for any errors or issues</li>
-                  <li>Include relevant notes for the reviewer</li>
+                  <li>This will send your work for QC review</li>
                 </ul>
               </div>
             </div>
+          </div>
 
-            <div class="flex justify-end gap-3 pt-4 border-t border-slate-200">
-              <button
-                type="button"
-                on:click={() => showSubmitModal = false}
-                class="px-4 py-2 text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={submitting}
-                class="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors"
-              >
-                {#if submitting}
-                  <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                {:else}
-                  <Send size={18} />
-                {/if}
-                Submit for Review
-              </button>
-            </div>
-          </form>
+          <div class="flex justify-end gap-3 p-4 border-t border-slate-200 bg-slate-50 rounded-b-xl">
+            <button
+              type="button"
+              on:click={() => showSubmitModal = false}
+              class="px-4 py-2 text-slate-600 hover:text-slate-800 hover:bg-slate-200 rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              on:click={handleSubmitWork}
+              disabled={submitting}
+              class="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors"
+            >
+              {#if submitting}
+                <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              {:else}
+                <Send size={18} />
+              {/if}
+              Submit for Review
+            </button>
+          </div>
         </div>
       </div>
     </div>
   {/if}
+
+  <!-- Add Artifact Modal -->
+  <ArtifactAddModal
+    bind:show={showAddArtifactModal}
+    uploading={$artifactStore.uploading}
+    on:uploadFile={handleFileUpload}
+    on:addGitHubPR={handleAddGitHubPR}
+    on:addURL={handleAddURL}
+  />
 
   <!-- Edit Modal -->
   {#if showEditModal}
