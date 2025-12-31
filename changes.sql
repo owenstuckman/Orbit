@@ -1,545 +1,488 @@
+-- ============================================================================
+-- Orbit Database Changes
+-- Run this after the base schema.sql to apply all feature additions
+-- ============================================================================
 
 -- ============================================================================
--- NOTIFICATIONS: Real-time notification system
+-- 1. USER INVITATIONS
 -- ============================================================================
 
-CREATE TABLE IF NOT EXISTS public.notifications (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL,
-  type text NOT NULL,
-  title text NOT NULL,
-  message text NOT NULL,
-  data jsonb DEFAULT '{}',
-  read boolean DEFAULT false,
-  created_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT notifications_pkey PRIMARY KEY (id),
-  CONSTRAINT notifications_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE
+DO $$ BEGIN
+    CREATE TYPE invitation_status AS ENUM ('pending', 'accepted', 'expired', 'cancelled');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+CREATE TABLE IF NOT EXISTS user_invitations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    org_id UUID REFERENCES organizations(id) ON DELETE CASCADE NOT NULL,
+    email TEXT NOT NULL,
+    role user_role NOT NULL DEFAULT 'employee',
+    invited_by UUID REFERENCES users(id) NOT NULL,
+    token TEXT NOT NULL UNIQUE,
+    status invitation_status DEFAULT 'pending',
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    accepted_at TIMESTAMPTZ
 );
 
--- Index for faster notification queries
-CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON public.notifications (user_id, read, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_notifications_created ON public.notifications (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_invitations_token ON user_invitations(token);
+CREATE INDEX IF NOT EXISTS idx_invitations_org ON user_invitations(org_id);
 
--- Enable RLS
-ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
-
--- Users can view their own notifications
-CREATE POLICY "Users can view own notifications"
-  ON public.notifications FOR SELECT
-  TO authenticated
-  USING (user_id IN (SELECT id FROM public.users WHERE auth_id = auth.uid()));
-
--- Users can update their own notifications (mark as read)
-CREATE POLICY "Users can update own notifications"
-  ON public.notifications FOR UPDATE
-  TO authenticated
-  USING (user_id IN (SELECT id FROM public.users WHERE auth_id = auth.uid()));
-
--- System can insert notifications for any user
-CREATE POLICY "System can insert notifications"
-  ON public.notifications FOR INSERT
-  TO authenticated
-  WITH CHECK (true);
+ALTER TABLE user_invitations ENABLE ROW LEVEL SECURITY;
 
 -- ============================================================================
--- USER BADGES: Gamification badges earned by users
+-- 2. MULTI-ORGANIZATION MEMBERSHIPS
 -- ============================================================================
 
-CREATE TABLE IF NOT EXISTS public.user_badges (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL,
-  badge_id text NOT NULL,
-  earned_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT user_badges_pkey PRIMARY KEY (id),
-  CONSTRAINT user_badges_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE,
-  CONSTRAINT user_badges_unique UNIQUE (user_id, badge_id)
+CREATE TABLE IF NOT EXISTS user_org_memberships (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+    org_id UUID REFERENCES organizations(id) ON DELETE CASCADE NOT NULL,
+    role user_role NOT NULL DEFAULT 'employee',
+    is_primary BOOLEAN DEFAULT false,
+    joined_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(user_id, org_id)
 );
 
--- Index for faster badge queries
-CREATE INDEX IF NOT EXISTS idx_user_badges_user ON public.user_badges (user_id, earned_at DESC);
+CREATE INDEX IF NOT EXISTS idx_memberships_user ON user_org_memberships(user_id);
+CREATE INDEX IF NOT EXISTS idx_memberships_org ON user_org_memberships(org_id);
 
--- Enable RLS
-ALTER TABLE public.user_badges ENABLE ROW LEVEL SECURITY;
-
--- Users can view their own badges
-CREATE POLICY "Users can view own badges"
-  ON public.user_badges FOR SELECT
-  TO authenticated
-  USING (user_id IN (SELECT id FROM public.users WHERE auth_id = auth.uid()));
-
--- Users can view badges of org members (for leaderboard)
-CREATE POLICY "Users can view org member badges"
-  ON public.user_badges FOR SELECT
-  TO authenticated
-  USING (
-    user_id IN (
-      SELECT id FROM public.users
-      WHERE org_id IN (SELECT org_id FROM public.users WHERE auth_id = auth.uid())
-    )
-  );
-
--- System can insert badges
-CREATE POLICY "System can insert badges"
-  ON public.user_badges FOR INSERT
-  TO authenticated
-  WITH CHECK (true);
+ALTER TABLE user_org_memberships ENABLE ROW LEVEL SECURITY;
 
 -- ============================================================================
--- AUDIT LOG: Track all important actions in the system
+-- 3. TASK ENHANCEMENTS: TAGS, ORDERING, EXTERNAL WORK
 -- ============================================================================
 
-CREATE TABLE IF NOT EXISTS public.audit_log (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  org_id uuid,
-  user_id uuid,
-  action text NOT NULL,
-  entity_type text NOT NULL,
-  entity_id uuid,
-  old_data jsonb,
-  new_data jsonb,
-  ip_address text,
-  user_agent text,
-  created_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT audit_log_pkey PRIMARY KEY (id),
-  CONSTRAINT audit_log_org_id_fkey FOREIGN KEY (org_id) REFERENCES public.organizations(id) ON DELETE SET NULL,
-  CONSTRAINT audit_log_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE SET NULL
+-- Add tags, ordering, and external work fields
+ALTER TABLE tasks
+    ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT '{}',
+    ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS is_external BOOLEAN DEFAULT false,
+    ADD COLUMN IF NOT EXISTS external_contractor_name TEXT,
+    ADD COLUMN IF NOT EXISTS external_contractor_email TEXT,
+    ADD COLUMN IF NOT EXISTS external_submission_token TEXT UNIQUE,
+    ADD COLUMN IF NOT EXISTS contract_id UUID REFERENCES contracts(id);
+
+-- Indexes for efficient queries
+CREATE INDEX IF NOT EXISTS idx_tasks_tags ON tasks USING GIN(tags);
+CREATE INDEX IF NOT EXISTS idx_tasks_sort_order ON tasks(project_id, status, sort_order);
+CREATE INDEX IF NOT EXISTS idx_tasks_external_token ON tasks(external_submission_token) WHERE external_submission_token IS NOT NULL;
+
+-- ============================================================================
+-- 4. GUEST PROJECTS (Anonymous users can create projects before signing in)
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS guest_projects (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    session_id TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    description TEXT,
+    tasks JSONB DEFAULT '[]',
+    settings JSONB DEFAULT '{}',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    expires_at TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '7 days')
 );
 
--- Index for faster audit log queries
-CREATE INDEX IF NOT EXISTS idx_audit_log_org ON public.audit_log (org_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_audit_log_user ON public.audit_log (user_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_audit_log_entity ON public.audit_log (entity_type, entity_id);
-CREATE INDEX IF NOT EXISTS idx_audit_log_action ON public.audit_log (action, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_guest_projects_session ON guest_projects(session_id);
+CREATE INDEX IF NOT EXISTS idx_guest_projects_expires ON guest_projects(expires_at);
 
--- Enable RLS
-ALTER TABLE public.audit_log ENABLE ROW LEVEL SECURITY;
+-- Allow anonymous access to guest projects
+ALTER TABLE guest_projects ENABLE ROW LEVEL SECURITY;
 
--- Only admins can view audit logs
-CREATE POLICY "Admins can view audit logs"
-  ON public.audit_log FOR SELECT
-  TO authenticated
-  USING (
-    org_id IN (
-      SELECT org_id FROM public.users
-      WHERE auth_id = auth.uid() AND role = 'admin'
-    )
-  );
-
--- System can insert audit logs
-CREATE POLICY "System can insert audit logs"
-  ON public.audit_log FOR INSERT
-  TO authenticated
-  WITH CHECK (true);
+CREATE POLICY "Anyone can manage guest projects by session" ON guest_projects
+    FOR ALL TO anon, authenticated
+    USING (true)
+    WITH CHECK (true);
 
 -- ============================================================================
--- USER INVITATIONS: Track pending user invitations
+-- 5. GRANULAR ACCESS CONTROL
 -- ============================================================================
 
-CREATE TABLE IF NOT EXISTS public.user_invitations (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  org_id uuid NOT NULL,
-  email text NOT NULL,
-  role text NOT NULL DEFAULT 'employee',
-  invited_by uuid NOT NULL,
-  token text NOT NULL,
-  status text NOT NULL DEFAULT 'pending',
-  expires_at timestamp with time zone NOT NULL,
-  accepted_at timestamp with time zone,
-  created_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT user_invitations_pkey PRIMARY KEY (id),
-  CONSTRAINT user_invitations_org_id_fkey FOREIGN KEY (org_id) REFERENCES public.organizations(id) ON DELETE CASCADE,
-  CONSTRAINT user_invitations_invited_by_fkey FOREIGN KEY (invited_by) REFERENCES public.users(id) ON DELETE SET NULL,
-  CONSTRAINT user_invitations_email_org_unique UNIQUE (email, org_id)
+DO $$ BEGIN
+    CREATE TYPE permission_level AS ENUM ('none', 'view', 'work', 'manage', 'admin');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+CREATE TABLE IF NOT EXISTS project_access (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id UUID REFERENCES projects(id) ON DELETE CASCADE NOT NULL,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+    permission_level permission_level NOT NULL DEFAULT 'view',
+    granted_by UUID REFERENCES users(id) NOT NULL,
+    granted_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(project_id, user_id)
 );
 
--- Index for faster invitation lookups
-CREATE INDEX IF NOT EXISTS idx_user_invitations_org ON public.user_invitations (org_id, status);
-CREATE INDEX IF NOT EXISTS idx_user_invitations_token ON public.user_invitations (token);
-CREATE INDEX IF NOT EXISTS idx_user_invitations_email ON public.user_invitations (email);
-
--- Enable RLS
-ALTER TABLE public.user_invitations ENABLE ROW LEVEL SECURITY;
-
--- Admins can view and manage invitations for their org
-CREATE POLICY "Admins can view org invitations"
-  ON public.user_invitations FOR SELECT
-  TO authenticated
-  USING (
-    org_id IN (
-      SELECT org_id FROM public.users
-      WHERE auth_id = auth.uid() AND role = 'admin'
-    )
-  );
-
-CREATE POLICY "Admins can insert org invitations"
-  ON public.user_invitations FOR INSERT
-  TO authenticated
-  WITH CHECK (
-    org_id IN (
-      SELECT org_id FROM public.users
-      WHERE auth_id = auth.uid() AND role = 'admin'
-    )
-  );
-
-CREATE POLICY "Admins can update org invitations"
-  ON public.user_invitations FOR UPDATE
-  TO authenticated
-  USING (
-    org_id IN (
-      SELECT org_id FROM public.users
-      WHERE auth_id = auth.uid() AND role = 'admin'
-    )
-  );
-
-CREATE POLICY "Admins can delete org invitations"
-  ON public.user_invitations FOR DELETE
-  TO authenticated
-  USING (
-    org_id IN (
-      SELECT org_id FROM public.users
-      WHERE auth_id = auth.uid() AND role = 'admin'
-    )
-  );
+CREATE TABLE IF NOT EXISTS team_members (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id UUID REFERENCES projects(id) ON DELETE CASCADE NOT NULL,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+    role TEXT NOT NULL DEFAULT 'member',
+    added_at TIMESTAMPTZ DEFAULT NOW(),
+    added_by UUID REFERENCES users(id) NOT NULL,
+    UNIQUE(project_id, user_id)
+);
 
 -- ============================================================================
--- TRIGGER FUNCTIONS: Auto-create notifications and audit logs
+-- 6. RPC FUNCTIONS
 -- ============================================================================
 
--- Function to create notification on task assignment
-CREATE OR REPLACE FUNCTION notify_task_assigned()
-RETURNS TRIGGER AS $$
-BEGIN
-  IF NEW.assignee_id IS NOT NULL AND (OLD.assignee_id IS NULL OR OLD.assignee_id != NEW.assignee_id) THEN
-    INSERT INTO public.notifications (user_id, type, title, message, data)
-    VALUES (
-      NEW.assignee_id,
-      'task_assigned',
-      'New Task Assigned',
-      'You have been assigned a new task: ' || NEW.title,
-      jsonb_build_object('task_id', NEW.id, 'task_title', NEW.title)
-    );
-  END IF;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+-- Drop existing functions first
+DROP FUNCTION IF EXISTS register_user_and_org(UUID, TEXT, TEXT, TEXT);
+DROP FUNCTION IF EXISTS accept_organization_invite(UUID, TEXT, TEXT, TEXT);
+DROP FUNCTION IF EXISTS assign_task_externally(UUID, TEXT, TEXT, BOOLEAN);
+DROP FUNCTION IF EXISTS submit_external_work(TEXT, JSONB);
+DROP FUNCTION IF EXISTS get_task_by_submission_token(TEXT);
+DROP FUNCTION IF EXISTS switch_organization(UUID);
+DROP FUNCTION IF EXISTS accept_task(UUID, UUID);
+DROP FUNCTION IF EXISTS reorder_tasks(UUID, UUID[], TEXT);
+DROP FUNCTION IF EXISTS import_guest_project(TEXT, UUID, UUID);
 
-DROP TRIGGER IF EXISTS trigger_notify_task_assigned ON public.tasks;
-CREATE TRIGGER trigger_notify_task_assigned
-  AFTER INSERT OR UPDATE ON public.tasks
-  FOR EACH ROW
-  EXECUTE FUNCTION notify_task_assigned();
-
--- Function to create notification on QC review
-CREATE OR REPLACE FUNCTION notify_qc_review()
-RETURNS TRIGGER AS $$
-DECLARE
-  task_record RECORD;
-BEGIN
-  SELECT * INTO task_record FROM public.tasks WHERE id = NEW.task_id;
-
-  IF NEW.outcome = 'approved' THEN
-    INSERT INTO public.notifications (user_id, type, title, message, data)
-    VALUES (
-      task_record.assignee_id,
-      'qc_approved',
-      'Task Approved',
-      'Your task "' || task_record.title || '" has been approved!',
-      jsonb_build_object('task_id', NEW.task_id, 'review_id', NEW.id)
-    );
-  ELSIF NEW.outcome = 'rejected' THEN
-    INSERT INTO public.notifications (user_id, type, title, message, data)
-    VALUES (
-      task_record.assignee_id,
-      'qc_rejected',
-      'Task Needs Revision',
-      'Your task "' || task_record.title || '" requires revisions.',
-      jsonb_build_object('task_id', NEW.task_id, 'review_id', NEW.id, 'feedback', NEW.feedback)
-    );
-  END IF;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trigger_notify_qc_review ON public.qc_reviews;
-CREATE TRIGGER trigger_notify_qc_review
-  AFTER INSERT ON public.qc_reviews
-  FOR EACH ROW
-  EXECUTE FUNCTION notify_qc_review();
-
--- Function to log audit entries for important actions
-CREATE OR REPLACE FUNCTION log_audit_entry()
-RETURNS TRIGGER AS $$
-DECLARE
-  current_user_id uuid;
-  current_org_id uuid;
-BEGIN
-  -- Get current user info
-  SELECT id, org_id INTO current_user_id, current_org_id
-  FROM public.users
-  WHERE auth_id = auth.uid();
-
-  IF TG_OP = 'INSERT' THEN
-    INSERT INTO public.audit_log (org_id, user_id, action, entity_type, entity_id, new_data)
-    VALUES (current_org_id, current_user_id, 'create', TG_TABLE_NAME, NEW.id, to_jsonb(NEW));
-  ELSIF TG_OP = 'UPDATE' THEN
-    INSERT INTO public.audit_log (org_id, user_id, action, entity_type, entity_id, old_data, new_data)
-    VALUES (current_org_id, current_user_id, 'update', TG_TABLE_NAME, NEW.id, to_jsonb(OLD), to_jsonb(NEW));
-  ELSIF TG_OP = 'DELETE' THEN
-    INSERT INTO public.audit_log (org_id, user_id, action, entity_type, entity_id, old_data)
-    VALUES (current_org_id, current_user_id, 'delete', TG_TABLE_NAME, OLD.id, to_jsonb(OLD));
-  END IF;
-
-  RETURN COALESCE(NEW, OLD);
-END;
-$$ LANGUAGE plpgsql;
-
--- Apply audit logging to important tables
-DROP TRIGGER IF EXISTS audit_users ON public.users;
-CREATE TRIGGER audit_users
-  AFTER INSERT OR UPDATE OR DELETE ON public.users
-  FOR EACH ROW EXECUTE FUNCTION log_audit_entry();
-
-DROP TRIGGER IF EXISTS audit_projects ON public.projects;
-CREATE TRIGGER audit_projects
-  AFTER INSERT OR UPDATE OR DELETE ON public.projects
-  FOR EACH ROW EXECUTE FUNCTION log_audit_entry();
-
-DROP TRIGGER IF EXISTS audit_tasks ON public.tasks;
-CREATE TRIGGER audit_tasks
-  AFTER INSERT OR UPDATE OR DELETE ON public.tasks
-  FOR EACH ROW EXECUTE FUNCTION log_audit_entry();
-
-DROP TRIGGER IF EXISTS audit_payouts ON public.payouts;
-CREATE TRIGGER audit_payouts
-  AFTER INSERT OR UPDATE OR DELETE ON public.payouts
-  FOR EACH ROW EXECUTE FUNCTION log_audit_entry();
-
--- ============================================================================
--- ADDITIONAL INDEXES FOR PERFORMANCE
--- ============================================================================
-
--- Index for leaderboard queries
-CREATE INDEX IF NOT EXISTS idx_users_xp_level ON public.users (xp DESC, level DESC);
-CREATE INDEX IF NOT EXISTS idx_users_org_role ON public.users (org_id, role);
-
--- Index for project queries
-CREATE INDEX IF NOT EXISTS idx_projects_status ON public.projects (status, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_projects_pm ON public.projects (pm_id, status);
-
--- Index for payout summary queries
-CREATE INDEX IF NOT EXISTS idx_payouts_created ON public.payouts (created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_payouts_type_status ON public.payouts (payout_type, status);
-
--- ============================================================================
--- METADATA COLUMNS: Add metadata to users for extended profile data
--- ============================================================================
-
--- Add metadata column if not exists
-ALTER TABLE public.users
-  ADD COLUMN IF NOT EXISTS metadata jsonb DEFAULT '{}';
-
--- Update users to have default metadata structure
-UPDATE public.users
-SET metadata = COALESCE(metadata, '{}') || jsonb_build_object(
-  'total_tasks_completed', COALESCE(tasks_completed, 0),
-  'current_streak', COALESCE(streak_days, 0),
-  'longest_streak', COALESCE(streak_days, 0),
-  'first_pass_approvals', 0,
-  'total_earnings', 0,
-  'xp', COALESCE(xp, level * 100)
+-- Register user and create organization
+CREATE OR REPLACE FUNCTION register_user_and_org(
+    p_auth_id UUID,
+    p_email TEXT,
+    p_full_name TEXT,
+    p_org_name TEXT
 )
-WHERE metadata IS NULL OR metadata = '{}';
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_org_id UUID;
+    v_user_id UUID;
+BEGIN
+    INSERT INTO organizations (name, settings)
+    VALUES (p_org_name, '{}')
+    RETURNING id INTO v_org_id;
+
+    INSERT INTO users (auth_id, org_id, email, full_name, role)
+    VALUES (p_auth_id, v_org_id, p_email, p_full_name, 'admin')
+    RETURNING id INTO v_user_id;
+
+    INSERT INTO user_org_memberships (user_id, org_id, role, is_primary)
+    VALUES (v_user_id, v_org_id, 'admin', true);
+
+    RETURN jsonb_build_object('success', true, 'org_id', v_org_id, 'user_id', v_user_id);
+EXCEPTION WHEN OTHERS THEN
+    RETURN jsonb_build_object('success', false, 'error', SQLERRM);
+END;
+$$;
+
+-- Accept organization invite
+CREATE OR REPLACE FUNCTION accept_organization_invite(
+    p_auth_id UUID,
+    p_email TEXT,
+    p_full_name TEXT,
+    p_invite_code TEXT
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_invitation RECORD;
+    v_user_id UUID;
+    v_existing_user RECORD;
+BEGIN
+    SELECT * INTO v_invitation
+    FROM user_invitations
+    WHERE token = p_invite_code AND email = p_email AND status = 'pending' AND expires_at > NOW();
+
+    IF v_invitation IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Invalid or expired invitation');
+    END IF;
+
+    SELECT * INTO v_existing_user FROM users WHERE auth_id = p_auth_id;
+
+    IF v_existing_user IS NOT NULL THEN
+        INSERT INTO user_org_memberships (user_id, org_id, role, is_primary)
+        VALUES (v_existing_user.id, v_invitation.org_id, v_invitation.role, false)
+        ON CONFLICT (user_id, org_id) DO NOTHING;
+        v_user_id := v_existing_user.id;
+    ELSE
+        INSERT INTO users (auth_id, org_id, email, full_name, role)
+        VALUES (p_auth_id, v_invitation.org_id, p_email, p_full_name, v_invitation.role)
+        RETURNING id INTO v_user_id;
+
+        INSERT INTO user_org_memberships (user_id, org_id, role, is_primary)
+        VALUES (v_user_id, v_invitation.org_id, v_invitation.role, true);
+    END IF;
+
+    UPDATE user_invitations SET status = 'accepted', accepted_at = NOW() WHERE id = v_invitation.id;
+
+    RETURN jsonb_build_object('success', true, 'org_id', v_invitation.org_id, 'user_id', v_user_id);
+EXCEPTION WHEN OTHERS THEN
+    RETURN jsonb_build_object('success', false, 'error', SQLERRM);
+END;
+$$;
+
+-- Assign task externally
+CREATE OR REPLACE FUNCTION assign_task_externally(
+    p_task_id UUID,
+    p_contractor_name TEXT,
+    p_contractor_email TEXT,
+    p_use_guest_link BOOLEAN DEFAULT true
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_task RECORD;
+    v_contract_id UUID;
+    v_submission_token TEXT;
+    v_assigner_id UUID;
+BEGIN
+    SELECT id INTO v_assigner_id FROM users WHERE auth_id = auth.uid();
+    IF v_assigner_id IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'User not found');
+    END IF;
+
+    SELECT * INTO v_task FROM tasks WHERE id = p_task_id;
+    IF v_task IS NULL OR v_task.status != 'open' THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Task not available');
+    END IF;
+
+    IF p_use_guest_link THEN
+        v_submission_token := encode(gen_random_bytes(16), 'hex');
+    END IF;
+
+    INSERT INTO contracts (org_id, task_id, template_type, status, party_a_id, party_b_email, terms)
+    VALUES (v_task.org_id, p_task_id, 'task_assignment', 'pending_signature', v_assigner_id, p_contractor_email,
+        jsonb_build_object('task_title', v_task.title, 'compensation', v_task.dollar_value, 'contractor_name', p_contractor_name))
+    RETURNING id INTO v_contract_id;
+
+    UPDATE tasks SET
+        is_external = true, external_contractor_name = p_contractor_name,
+        external_contractor_email = p_contractor_email, external_submission_token = v_submission_token,
+        contract_id = v_contract_id, status = 'assigned', assigned_at = NOW()
+    WHERE id = p_task_id;
+
+    RETURN jsonb_build_object('success', true, 'contract_id', v_contract_id, 'submission_token', v_submission_token);
+EXCEPTION WHEN OTHERS THEN
+    RETURN jsonb_build_object('success', false, 'error', SQLERRM);
+END;
+$$;
+
+-- Submit external work
+CREATE OR REPLACE FUNCTION submit_external_work(
+    p_submission_token TEXT,
+    p_submission_data JSONB
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_task RECORD;
+BEGIN
+    SELECT * INTO v_task FROM tasks WHERE external_submission_token = p_submission_token;
+    IF v_task IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Invalid token');
+    END IF;
+    IF v_task.status NOT IN ('assigned', 'in_progress') THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Task not accepting submissions');
+    END IF;
+
+    UPDATE tasks SET status = 'completed', completed_at = NOW(), submission_data = p_submission_data WHERE id = v_task.id;
+    RETURN jsonb_build_object('success', true, 'task_id', v_task.id);
+EXCEPTION WHEN OTHERS THEN
+    RETURN jsonb_build_object('success', false, 'error', SQLERRM);
+END;
+$$;
+
+-- Get task by submission token
+CREATE OR REPLACE FUNCTION get_task_by_submission_token(p_token TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_task RECORD;
+BEGIN
+    SELECT t.*, p.name as project_name INTO v_task
+    FROM tasks t LEFT JOIN projects p ON t.project_id = p.id
+    WHERE t.external_submission_token = p_token;
+
+    IF v_task IS NULL THEN RETURN NULL; END IF;
+
+    RETURN jsonb_build_object(
+        'id', v_task.id, 'title', v_task.title, 'description', v_task.description,
+        'status', v_task.status, 'dollar_value', v_task.dollar_value, 'deadline', v_task.deadline,
+        'story_points', v_task.story_points, 'tags', v_task.tags,
+        'project', CASE WHEN v_task.project_name IS NOT NULL THEN jsonb_build_object('name', v_task.project_name) ELSE NULL END
+    );
+END;
+$$;
+
+-- Switch organization
+CREATE OR REPLACE FUNCTION switch_organization(p_org_id UUID)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_user_id UUID;
+    v_membership RECORD;
+BEGIN
+    SELECT id INTO v_user_id FROM users WHERE auth_id = auth.uid();
+    IF v_user_id IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'User not found');
+    END IF;
+
+    SELECT * INTO v_membership FROM user_org_memberships WHERE user_id = v_user_id AND org_id = p_org_id;
+    IF v_membership IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Not a member');
+    END IF;
+
+    UPDATE users SET org_id = p_org_id, role = v_membership.role WHERE id = v_user_id;
+    UPDATE user_org_memberships SET is_primary = (org_id = p_org_id) WHERE user_id = v_user_id;
+
+    RETURN jsonb_build_object('success', true, 'org_id', p_org_id);
+END;
+$$;
+
+-- Accept/pickup task
+CREATE OR REPLACE FUNCTION accept_task(p_task_id UUID, p_user_id UUID)
+RETURNS tasks
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_task tasks;
+    v_user users;
+BEGIN
+    SELECT * INTO v_task FROM tasks WHERE id = p_task_id;
+    IF v_task IS NULL OR v_task.status != 'open' THEN
+        RAISE EXCEPTION 'Task not available';
+    END IF;
+
+    SELECT * INTO v_user FROM users WHERE id = p_user_id;
+    IF v_user IS NULL OR v_user.training_level < v_task.required_level THEN
+        RAISE EXCEPTION 'User level too low';
+    END IF;
+
+    UPDATE tasks SET status = 'assigned', assignee_id = p_user_id, assigned_at = NOW()
+    WHERE id = p_task_id RETURNING * INTO v_task;
+
+    RETURN v_task;
+END;
+$$;
+
+-- Reorder tasks within a status column
+CREATE OR REPLACE FUNCTION reorder_tasks(
+    p_project_id UUID,
+    p_task_ids UUID[],
+    p_status TEXT
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_idx INTEGER := 0;
+    v_task_id UUID;
+BEGIN
+    FOREACH v_task_id IN ARRAY p_task_ids LOOP
+        UPDATE tasks SET sort_order = v_idx
+        WHERE id = v_task_id AND project_id = p_project_id AND status = p_status::task_status;
+        v_idx := v_idx + 1;
+    END LOOP;
+    RETURN true;
+EXCEPTION WHEN OTHERS THEN
+    RETURN false;
+END;
+$$;
+
+-- Import guest project to real project
+CREATE OR REPLACE FUNCTION import_guest_project(
+    p_session_id TEXT,
+    p_org_id UUID,
+    p_user_id UUID
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_guest RECORD;
+    v_project_id UUID;
+    v_task JSONB;
+    v_task_id UUID;
+BEGIN
+    SELECT * INTO v_guest FROM guest_projects WHERE session_id = p_session_id;
+    IF v_guest IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Guest project not found');
+    END IF;
+
+    -- Create the real project
+    INSERT INTO projects (org_id, name, description, status, total_value, pm_id)
+    VALUES (p_org_id, v_guest.name, v_guest.description, 'draft', 0, p_user_id)
+    RETURNING id INTO v_project_id;
+
+    -- Import each task
+    FOR v_task IN SELECT * FROM jsonb_array_elements(v_guest.tasks) LOOP
+        INSERT INTO tasks (org_id, project_id, title, description, dollar_value, story_points, tags, sort_order, status)
+        VALUES (
+            p_org_id, v_project_id,
+            v_task->>'title', v_task->>'description',
+            COALESCE((v_task->>'dollar_value')::DECIMAL, 0),
+            (v_task->>'story_points')::INTEGER,
+            ARRAY(SELECT jsonb_array_elements_text(COALESCE(v_task->'tags', '[]'::jsonb))),
+            COALESCE((v_task->>'sort_order')::INTEGER, 0),
+            'open'
+        );
+    END LOOP;
+
+    -- Update project total value
+    UPDATE projects SET total_value = (SELECT COALESCE(SUM(dollar_value), 0) FROM tasks WHERE project_id = v_project_id)
+    WHERE id = v_project_id;
+
+    -- Delete guest project
+    DELETE FROM guest_projects WHERE session_id = p_session_id;
+
+    RETURN jsonb_build_object('success', true, 'project_id', v_project_id);
+EXCEPTION WHEN OTHERS THEN
+    RETURN jsonb_build_object('success', false, 'error', SQLERRM);
+END;
+$$;
 
 -- ============================================================================
--- REALTIME: Enable realtime for key tables
+-- 7. RLS POLICIES
 -- ============================================================================
 
--- Enable realtime for notifications
-ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
+-- Users can view org invitations
+DROP POLICY IF EXISTS "Users can view org invitations" ON user_invitations;
+CREATE POLICY "Users can view org invitations" ON user_invitations
+    FOR SELECT USING (org_id IN (SELECT org_id FROM users WHERE auth_id = auth.uid()));
 
--- Enable realtime for user_badges
-ALTER PUBLICATION supabase_realtime ADD TABLE public.user_badges;
+-- Users can view own memberships
+DROP POLICY IF EXISTS "Users can view own memberships" ON user_org_memberships;
+CREATE POLICY "Users can view own memberships" ON user_org_memberships
+    FOR SELECT USING (user_id IN (SELECT id FROM users WHERE auth_id = auth.uid()));
+
+-- Guest task access by token
+DROP POLICY IF EXISTS "Guest can view task by token" ON tasks;
+CREATE POLICY "Guest can view task by token" ON tasks
+    FOR SELECT TO anon USING (external_submission_token IS NOT NULL);
 
 -- ============================================================================
--- GRANULAR ACCESS CONTROL: Project and Task level permissions
+-- 8. PERMISSIONS
 -- ============================================================================
 
--- Permission levels: none, view, work, manage, admin
-CREATE TYPE permission_level AS ENUM ('none', 'view', 'work', 'manage', 'admin');
+GRANT EXECUTE ON FUNCTION register_user_and_org TO authenticated;
+GRANT EXECUTE ON FUNCTION accept_organization_invite TO authenticated;
+GRANT EXECUTE ON FUNCTION assign_task_externally TO authenticated;
+GRANT EXECUTE ON FUNCTION switch_organization TO authenticated;
+GRANT EXECUTE ON FUNCTION accept_task TO authenticated;
+GRANT EXECUTE ON FUNCTION reorder_tasks TO authenticated;
+GRANT EXECUTE ON FUNCTION import_guest_project TO authenticated;
+GRANT EXECUTE ON FUNCTION submit_external_work TO anon;
+GRANT EXECUTE ON FUNCTION get_task_by_submission_token TO anon;
 
--- Project Access Table: Explicit permissions for users on projects
-CREATE TABLE IF NOT EXISTS public.project_access (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  project_id uuid NOT NULL,
-  user_id uuid NOT NULL,
-  permission_level permission_level NOT NULL DEFAULT 'view',
-  granted_by uuid NOT NULL,
-  granted_at timestamp with time zone DEFAULT now(),
-  expires_at timestamp with time zone,
-  CONSTRAINT project_access_pkey PRIMARY KEY (id),
-  CONSTRAINT project_access_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE,
-  CONSTRAINT project_access_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE,
-  CONSTRAINT project_access_granted_by_fkey FOREIGN KEY (granted_by) REFERENCES public.users(id) ON DELETE SET NULL,
-  CONSTRAINT project_access_unique UNIQUE (project_id, user_id)
-);
-
--- Indexes for project access
-CREATE INDEX IF NOT EXISTS idx_project_access_project ON public.project_access (project_id);
-CREATE INDEX IF NOT EXISTS idx_project_access_user ON public.project_access (user_id);
-CREATE INDEX IF NOT EXISTS idx_project_access_expires ON public.project_access (expires_at) WHERE expires_at IS NOT NULL;
-
--- Enable RLS for project_access
-ALTER TABLE public.project_access ENABLE ROW LEVEL SECURITY;
-
--- Users can view project access where they have manage/admin permission or are admin
-CREATE POLICY "Users can view project access"
-  ON public.project_access FOR SELECT
-  TO authenticated
-  USING (
-    -- Admin can see all
-    EXISTS (SELECT 1 FROM public.users WHERE auth_id = auth.uid() AND role = 'admin')
-    OR
-    -- PM of the project can see
-    EXISTS (
-      SELECT 1 FROM public.projects p
-      JOIN public.users u ON u.auth_id = auth.uid()
-      WHERE p.id = project_id AND p.pm_id = u.id
-    )
-    OR
-    -- User with manage access can see
-    EXISTS (
-      SELECT 1 FROM public.project_access pa
-      JOIN public.users u ON u.auth_id = auth.uid()
-      WHERE pa.project_id = project_access.project_id
-        AND pa.user_id = u.id
-        AND pa.permission_level IN ('manage', 'admin')
-    )
-  );
-
--- Only admins and PMs can grant project access
-CREATE POLICY "Admins and PMs can manage project access"
-  ON public.project_access FOR ALL
-  TO authenticated
-  USING (
-    EXISTS (SELECT 1 FROM public.users WHERE auth_id = auth.uid() AND role = 'admin')
-    OR
-    EXISTS (
-      SELECT 1 FROM public.projects p
-      JOIN public.users u ON u.auth_id = auth.uid()
-      WHERE p.id = project_id AND p.pm_id = u.id
-    )
-  );
-
--- Task Access Table: Explicit permissions for users on tasks
-CREATE TABLE IF NOT EXISTS public.task_access (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  task_id uuid NOT NULL,
-  user_id uuid NOT NULL,
-  permission_level permission_level NOT NULL DEFAULT 'view',
-  granted_by uuid NOT NULL,
-  granted_at timestamp with time zone DEFAULT now(),
-  expires_at timestamp with time zone,
-  CONSTRAINT task_access_pkey PRIMARY KEY (id),
-  CONSTRAINT task_access_task_id_fkey FOREIGN KEY (task_id) REFERENCES public.tasks(id) ON DELETE CASCADE,
-  CONSTRAINT task_access_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE,
-  CONSTRAINT task_access_granted_by_fkey FOREIGN KEY (granted_by) REFERENCES public.users(id) ON DELETE SET NULL,
-  CONSTRAINT task_access_unique UNIQUE (task_id, user_id)
-);
-
--- Indexes for task access
-CREATE INDEX IF NOT EXISTS idx_task_access_task ON public.task_access (task_id);
-CREATE INDEX IF NOT EXISTS idx_task_access_user ON public.task_access (user_id);
-CREATE INDEX IF NOT EXISTS idx_task_access_expires ON public.task_access (expires_at) WHERE expires_at IS NOT NULL;
-
--- Enable RLS for task_access
-ALTER TABLE public.task_access ENABLE ROW LEVEL SECURITY;
-
--- Users can view task access where they have manage permission on the project
-CREATE POLICY "Users can view task access"
-  ON public.task_access FOR SELECT
-  TO authenticated
-  USING (
-    -- Admin can see all
-    EXISTS (SELECT 1 FROM public.users WHERE auth_id = auth.uid() AND role = 'admin')
-    OR
-    -- PM of the task's project can see
-    EXISTS (
-      SELECT 1 FROM public.tasks t
-      JOIN public.projects p ON p.id = t.project_id
-      JOIN public.users u ON u.auth_id = auth.uid()
-      WHERE t.id = task_id AND p.pm_id = u.id
-    )
-  );
-
--- Only admins and PMs can grant task access
-CREATE POLICY "Admins and PMs can manage task access"
-  ON public.task_access FOR ALL
-  TO authenticated
-  USING (
-    EXISTS (SELECT 1 FROM public.users WHERE auth_id = auth.uid() AND role = 'admin')
-    OR
-    EXISTS (
-      SELECT 1 FROM public.tasks t
-      JOIN public.projects p ON p.id = t.project_id
-      JOIN public.users u ON u.auth_id = auth.uid()
-      WHERE t.id = task_id AND p.pm_id = u.id
-    )
-  );
-
--- Team Members Table: Project team assignments with roles
-CREATE TABLE IF NOT EXISTS public.team_members (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  project_id uuid NOT NULL,
-  user_id uuid NOT NULL,
-  role text NOT NULL DEFAULT 'member' CHECK (role IN ('member', 'lead', 'reviewer')),
-  added_by uuid NOT NULL,
-  added_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT team_members_pkey PRIMARY KEY (id),
-  CONSTRAINT team_members_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE,
-  CONSTRAINT team_members_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE,
-  CONSTRAINT team_members_added_by_fkey FOREIGN KEY (added_by) REFERENCES public.users(id) ON DELETE SET NULL,
-  CONSTRAINT team_members_unique UNIQUE (project_id, user_id)
-);
-
--- Indexes for team members
-CREATE INDEX IF NOT EXISTS idx_team_members_project ON public.team_members (project_id);
-CREATE INDEX IF NOT EXISTS idx_team_members_user ON public.team_members (user_id);
-CREATE INDEX IF NOT EXISTS idx_team_members_role ON public.team_members (project_id, role);
-
--- Enable RLS for team_members
-ALTER TABLE public.team_members ENABLE ROW LEVEL SECURITY;
-
--- Users can view team members of projects they have access to
-CREATE POLICY "Users can view team members"
-  ON public.team_members FOR SELECT
-  TO authenticated
-  USING (
-    -- Admin can see all
-    EXISTS (SELECT 1 FROM public.users WHERE auth_id = auth.uid() AND role = 'admin')
-    OR
-    -- Same org can see
-    EXISTS (
-      SELECT 1 FROM public.projects p
-      JOIN public.users u ON u.auth_id = auth.uid()
-      WHERE p.id = project_id AND p.org_id = u.org_id
-    )
-  );
-
--- PMs and admins can manage team members
-CREATE POLICY "PMs and admins can manage team members"
-  ON public.team_members FOR ALL
-  TO authenticated
-  USING (
-    EXISTS (SELECT 1 FROM public.users WHERE auth_id = auth.uid() AND role = 'admin')
-    OR
-    EXISTS (
-      SELECT 1 FROM public.projects p
-      JOIN public.users u ON u.auth_id = auth.uid()
-      WHERE p.id = project_id AND p.pm_id = u.id
-    )
-  );
-
--- Enable realtime for access tables
-ALTER PUBLICATION supabase_realtime ADD TABLE public.project_access;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.task_access;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.team_members;
+-- Guest projects accessible to all
+GRANT ALL ON guest_projects TO anon;
+GRANT ALL ON guest_projects TO authenticated;

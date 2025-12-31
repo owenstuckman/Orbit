@@ -45,6 +45,21 @@
   // Gamification badges
   $: badges = getBadges(task);
 
+  // Tag colors
+  const tagColors = [
+    'bg-blue-100 text-blue-700',
+    'bg-green-100 text-green-700',
+    'bg-purple-100 text-purple-700',
+    'bg-amber-100 text-amber-700',
+    'bg-pink-100 text-pink-700',
+    'bg-cyan-100 text-cyan-700',
+  ];
+
+  function getTagColor(tag: string): string {
+    const hash = tag.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return tagColors[hash % tagColors.length];
+  }
+
   function getBadges(task: Task): { icon: typeof Trophy; label: string; color: string }[] {
     const badges = [];
 
@@ -94,6 +109,22 @@
           {badge.label}
         </span>
       {/each}
+    </div>
+  {/if}
+
+  <!-- Tags -->
+  {#if task.tags && task.tags.length > 0 && !compact}
+    <div class="flex flex-wrap gap-1 mb-2">
+      {#each task.tags.slice(0, 3) as tag}
+        <span class="px-1.5 py-0.5 rounded text-xs font-medium {getTagColor(tag)}">
+          {tag}
+        </span>
+      {/each}
+      {#if task.tags.length > 3}
+        <span class="px-1.5 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600">
+          +{task.tags.length - 3}
+        </span>
+      {/if}
     </div>
   {/if}
 

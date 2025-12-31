@@ -3,7 +3,8 @@
   import { goto } from '$app/navigation';
   import { supabase } from '$lib/services/supabase';
   import { user as userStore, organization as orgStore, auth } from '$lib/stores/auth';
-  import { User, Building, ArrowRight, AlertCircle, Check, Loader } from 'lucide-svelte';
+  import { guestProjectsApi } from '$lib/services/api';
+  import { User, Building, ArrowRight, AlertCircle, Check, Loader, FolderInput } from 'lucide-svelte';
 
   let fullName = '';
   let organizationName = '';
@@ -14,6 +15,9 @@
   let success = false;
   let checking = true;
   let authUser: { id: string; email: string } | null = null;
+  let hasGuestProject = false;
+  let guestProjectImported = false;
+  let importingProject = false;
 
   onMount(async () => {
     // Check if user is authenticated
@@ -42,6 +46,17 @@
     }
 
     console.log('[CompleteReg] No user profile, showing registration form');
+
+    // Check if there's a pending guest project to import
+    const importPending = localStorage.getItem('orbit_import_pending');
+    if (importPending) {
+      const guestProject = await guestProjectsApi.getCurrent();
+      if (guestProject && guestProject.tasks.length > 0) {
+        hasGuestProject = true;
+        console.log('[CompleteReg] Guest project found with', guestProject.tasks.length, 'tasks');
+      }
+    }
+
     checking = false;
   });
 
@@ -102,8 +117,27 @@
       await userStore.load();
       await orgStore.load();
 
+      // Import guest project if available
+      if (hasGuestProject && regResult.org_id) {
+        importingProject = true;
+        console.log('[CompleteReg] Importing guest project...');
+
+        const importResult = await guestProjectsApi.importToOrganization(regResult.org_id);
+
+        if (importResult.success) {
+          guestProjectImported = true;
+          console.log('[CompleteReg] Guest project imported:', importResult.project_id);
+        } else {
+          console.error('[CompleteReg] Failed to import guest project:', importResult.error);
+        }
+
+        // Clear the import pending flag
+        localStorage.removeItem('orbit_import_pending');
+        importingProject = false;
+      }
+
       // Redirect to dashboard after short delay
-      setTimeout(() => goto('/dashboard'), 1500);
+      setTimeout(() => goto('/dashboard'), hasGuestProject ? 2500 : 1500);
 
     } catch (err) {
       console.error('[CompleteReg] Unexpected error:', err);
@@ -155,6 +189,28 @@
           <p class="text-indigo-200 mb-4">
             Your account is ready. Redirecting to your dashboard...
           </p>
+
+          {#if hasGuestProject}
+            <div class="bg-indigo-500/20 rounded-lg p-4 mb-4">
+              {#if importingProject}
+                <div class="flex items-center justify-center gap-2 text-indigo-200">
+                  <div class="w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin"></div>
+                  <span>Importing your project...</span>
+                </div>
+              {:else if guestProjectImported}
+                <div class="flex items-center justify-center gap-2 text-green-300">
+                  <FolderInput size={18} />
+                  <span>Your project has been imported!</span>
+                </div>
+              {:else}
+                <div class="flex items-center justify-center gap-2 text-amber-300">
+                  <AlertCircle size={18} />
+                  <span>Could not import project</span>
+                </div>
+              {/if}
+            </div>
+          {/if}
+
           <div class="w-8 h-8 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin mx-auto"></div>
         </div>
       {:else}
@@ -163,6 +219,14 @@
           <Check size={18} />
           <span class="text-sm font-medium">Email verified: {authUser?.email}</span>
         </div>
+
+        {#if hasGuestProject}
+          <!-- Guest project notice -->
+          <div class="flex items-center gap-2 bg-indigo-500/20 text-indigo-300 px-4 py-2 rounded-lg mb-6">
+            <FolderInput size={18} />
+            <span class="text-sm font-medium">Your project will be imported after setup</span>
+          </div>
+        {/if}
 
         <form on:submit={handleComplete} class="space-y-6">
           <!-- Error message -->

@@ -1,5 +1,5 @@
 import { writable, derived, get } from 'svelte/store';
-import type { User, Organization, RoleCapabilities } from '$lib/types';
+import type { User, Organization, RoleCapabilities, UserOrgMembership } from '$lib/types';
 import { supabase } from '$lib/services/supabase';
 import { usersApi, organizationsApi } from '$lib/services/api';
 
@@ -113,7 +113,7 @@ function createOrgStore() {
 
   return {
     subscribe,
-    
+
     async load() {
       const org = await organizationsApi.getCurrent();
       set(org);
@@ -129,6 +129,47 @@ function createOrgStore() {
 }
 
 export const organization = createOrgStore();
+
+// ============================================================================
+// User Organizations Store (for multi-org support)
+// ============================================================================
+
+function createUserOrgsStore() {
+  const { subscribe, set, update } = writable<UserOrgMembership[]>([]);
+
+  return {
+    subscribe,
+
+    async load() {
+      const memberships = await usersApi.listUserOrganizations();
+      set(memberships);
+      return memberships;
+    },
+
+    set,
+
+    clear() {
+      set([]);
+    },
+
+    /**
+     * Switch to a different organization
+     * Updates the user's active org_id and reloads the organization store
+     */
+    async switchOrg(orgId: string): Promise<boolean> {
+      const success = await usersApi.switchOrganization(orgId);
+      if (success) {
+        // Reload the user and organization stores
+        await user.load();
+        await organization.load();
+        return true;
+      }
+      return false;
+    }
+  };
+}
+
+export const userOrganizations = createUserOrgsStore();
 
 // ============================================================================
 // Role Capabilities

@@ -97,6 +97,44 @@ export interface UserMetadata {
   [key: string]: unknown;
 }
 
+// ============================================================================
+// User Invitations
+// ============================================================================
+
+export type InvitationStatus = 'pending' | 'accepted' | 'expired' | 'cancelled';
+
+export interface UserInvitation {
+  id: string;
+  org_id: string;
+  email: string;
+  role: UserRole;
+  invited_by: string;
+  token: string;
+  status: InvitationStatus;
+  expires_at: string;
+  created_at: string;
+  accepted_at?: string;
+  // Joined fields
+  organization?: Organization;
+  inviter?: User;
+}
+
+// ============================================================================
+// Multi-Organization Memberships
+// ============================================================================
+
+export interface UserOrgMembership {
+  id: string;
+  user_id: string;
+  org_id: string;
+  role: UserRole;
+  is_primary: boolean;
+  joined_at: string;
+  // Joined fields
+  organization?: Organization;
+  user?: User;
+}
+
 export interface Project {
   id: string;
   org_id: string;
@@ -139,10 +177,36 @@ export interface Task {
   submission_files: string[] | null;
   created_at: string;
   updated_at: string;
+  // Tags and ordering
+  tags?: string[];
+  sort_order?: number;
+  // External work fields
+  is_external?: boolean;
+  external_contractor_name?: string | null;
+  external_contractor_email?: string | null;
+  external_submission_token?: string | null;
+  contract_id?: string | null;
   // Joined fields
   project?: Project;
   assignee?: User;
   qc_reviews?: QCReview[];
+  contract?: Contract;
+}
+
+// External assignment request
+export interface ExternalAssignment {
+  contractor_name: string;
+  contractor_email: string;
+  use_guest_link: boolean;
+}
+
+// External assignment result
+export interface ExternalAssignmentResult {
+  success: boolean;
+  error?: string;
+  contract_id?: string;
+  submission_token?: string;
+  task_id?: string;
 }
 
 export interface QCReview {
@@ -411,4 +475,31 @@ export interface TrendData {
   tasks: number;
   payouts: number;
   users: number;
+}
+
+// ============================================================================
+// Guest Project Types (for anonymous users)
+// ============================================================================
+
+export interface GuestTask {
+  id: string;
+  title: string;
+  description?: string;
+  dollar_value: number;
+  story_points?: number;
+  tags: string[];
+  sort_order: number;
+  status: 'open';
+}
+
+export interface GuestProject {
+  id: string;
+  session_id: string;
+  name: string;
+  description?: string;
+  tasks: GuestTask[];
+  settings: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+  expires_at: string;
 }

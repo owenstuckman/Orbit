@@ -8,7 +8,15 @@ import type {
   Payout,
   Organization,
   TaskStatus,
-  ProjectStatus
+  ProjectStatus,
+  UserRole,
+  UserInvitation,
+  UserOrgMembership,
+  ExternalAssignment,
+  ExternalAssignmentResult,
+  TaskSubmissionData,
+  GuestProject,
+  GuestTask
 } from '$lib/types';
 
 // Generic query builder helpers
@@ -131,6 +139,153 @@ export const usersApi = {
 
   async updateSalaryMix(id: string, r: number): Promise<User | null> {
     return this.update(id, { r });
+  },
+
+  // ============================================================================
+  // User Invitations
+  // ============================================================================
+
+  async invite(email: string, role: UserRole): Promise<UserInvitation | null> {
+    const user = await this.getCurrent();
+    if (!user?.org_id) return null;
+
+    // Generate a random invite token (6 characters, uppercase alphanumeric)
+    const token = Array.from(crypto.getRandomValues(new Uint8Array(4)))
+      .map(b => b.toString(36).toUpperCase())
+      .join('')
+      .slice(0, 6);
+
+    // Set expiration to 7 days from now
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7);
+
+    const { data, error } = await supabase
+      .from('user_invitations')
+      .insert({
+        org_id: user.org_id,
+        email,
+        role,
+        invited_by: user.id,
+        token,
+        status: 'pending',
+        expires_at: expiresAt.toISOString()
+      })
+      .select(`
+        *,
+        organization:organizations(*),
+        inviter:users!user_invitations_invited_by_fkey(id, full_name, email)
+      `)
+      .single();
+
+    if (error) {
+      console.error('Error creating invitation:', error);
+      return null;
+    }
+    return data;
+  },
+
+  async listInvitations(): Promise<UserInvitation[]> {
+    const user = await this.getCurrent();
+    if (!user?.org_id) return [];
+
+    const { data, error } = await supabase
+      .from('user_invitations')
+      .select(`
+        *,
+        inviter:users!user_invitations_invited_by_fkey(id, full_name, email)
+      `)
+      .eq('org_id', user.org_id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching invitations:', error);
+      return [];
+    }
+    return data ?? [];
+  },
+
+  async cancelInvitation(inviteId: string): Promise<boolean> {
+    const { error } = await supabase
+      .from('user_invitations')
+      .update({ status: 'cancelled' })
+      .eq('id', inviteId);
+
+    if (error) {
+      console.error('Error cancelling invitation:', error);
+      return false;
+    }
+    return true;
+  },
+
+  /**
+   * Accept an invitation to join an organization (for existing users)
+   * @param inviteCode The 6-character invite code
+   * @returns Object with success status, org_id, role, or error message
+   */
+  async acceptInvitation(inviteCode: string): Promise<{ success: boolean; org_id?: string; role?: string; error?: string }> {
+    const { data, error } = await supabase.rpc('accept_organization_invite', {
+      p_invite_code: inviteCode
+    });
+
+    if (error) {
+      console.error('Error accepting invitation:', error);
+      return { success: false, error: error.message };
+    }
+
+    if (!data?.success) {
+      return { success: false, error: data?.error || 'Failed to accept invitation' };
+    }
+
+    return {
+      success: true,
+      org_id: data.org_id,
+      role: data.role
+    };
+  },
+
+  // ============================================================================
+  // Organization Memberships
+  // ============================================================================
+
+  async listUserOrganizations(): Promise<UserOrgMembership[]> {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) return [];
+
+    // First get the user record to get user.id
+    const user = await this.getCurrent();
+    if (!user) return [];
+
+    const { data, error } = await supabase
+      .from('user_organization_memberships')
+      .select(`
+        *,
+        organization:organizations(*)
+      `)
+      .eq('user_id', user.id)
+      .order('is_primary', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching user organizations:', error);
+      return [];
+    }
+    return data ?? [];
+  },
+
+  async switchOrganization(orgId: string): Promise<boolean> {
+    const user = await this.getCurrent();
+    if (!user) return false;
+
+    // Update the user's active org_id
+    const { error } = await supabase
+      .from('users')
+      .update({ org_id: orgId })
+      .eq('id', user.id);
+
+    if (error) {
+      console.error('Error switching organization:', error);
+      return false;
+    }
+    return true;
   }
 };
 
@@ -347,6 +502,114 @@ export const tasksApi = {
       { body: { task_id: taskId, calculation_type: 'employee' } }
     );
     return data ?? { payout: 0, details: {} };
+  },
+
+  // ============================================================================
+  // External Work Assignment
+  // ============================================================================
+
+  /**
+   * Assign a task to an external contractor
+   * Auto-generates a contract and optionally a guest submission link
+   */
+  async assignExternal(
+    taskId: string,
+    assignment: ExternalAssignment
+  ): Promise<ExternalAssignmentResult> {
+    const { data, error } = await supabase.rpc('assign_task_externally', {
+      p_task_id: taskId,
+      p_contractor_name: assignment.contractor_name,
+      p_contractor_email: assignment.contractor_email,
+      p_use_guest_link: assignment.use_guest_link
+    });
+
+    if (error) {
+      console.error('Error assigning task externally:', error);
+      return { success: false, error: error.message };
+    }
+
+    if (!data?.success) {
+      return { success: false, error: data?.error || 'Failed to assign task externally' };
+    }
+
+    return {
+      success: true,
+      contract_id: data.contract_id,
+      submission_token: data.submission_token,
+      task_id: data.task_id
+    };
+  },
+
+  /**
+   * Get task details by guest submission token (for external contractors)
+   */
+  async getBySubmissionToken(token: string): Promise<Task | null> {
+    const { data, error } = await supabase.rpc('get_task_by_submission_token', {
+      p_submission_token: token
+    });
+
+    if (error) {
+      console.error('Error fetching task by token:', error);
+      return null;
+    }
+
+    if (!data?.success) {
+      return null;
+    }
+
+    return data.task;
+  },
+
+  /**
+   * Submit work for an externally assigned task (guest submission)
+   */
+  async submitExternal(
+    token: string,
+    submissionData: TaskSubmissionData
+  ): Promise<{ success: boolean; error?: string; task_id?: string }> {
+    const { data, error } = await supabase.rpc('submit_external_work', {
+      p_submission_token: token,
+      p_submission_data: submissionData
+    });
+
+    if (error) {
+      console.error('Error submitting external work:', error);
+      return { success: false, error: error.message };
+    }
+
+    if (!data?.success) {
+      return { success: false, error: data?.error || 'Failed to submit work' };
+    }
+
+    return {
+      success: true,
+      task_id: data.task_id
+    };
+  },
+
+  // ============================================================================
+  // Task Reordering
+  // ============================================================================
+
+  /**
+   * Reorder tasks within a status column
+   * Updates sort_order for all tasks in the provided order
+   */
+  async reorderTasks(
+    taskIds: string[],
+    status: TaskStatus
+  ): Promise<boolean> {
+    const { data, error } = await supabase.rpc('reorder_tasks', {
+      p_task_ids: taskIds,
+      p_status: status
+    });
+
+    if (error) {
+      console.error('Error reordering tasks:', error);
+      return false;
+    }
+
+    return data?.success ?? false;
   }
 };
 
@@ -650,5 +913,196 @@ export const organizationsApi = {
       return null;
     }
     return data;
+  }
+};
+
+// ============================================================================
+// Guest Projects API (for anonymous users trying Orbit)
+// ============================================================================
+
+// Generate or retrieve a session ID for guest users
+function getGuestSessionId(): string {
+  if (typeof window === 'undefined') return '';
+
+  let sessionId = localStorage.getItem('orbit_guest_session');
+  if (!sessionId) {
+    sessionId = crypto.randomUUID();
+    localStorage.setItem('orbit_guest_session', sessionId);
+  }
+  return sessionId;
+}
+
+export const guestProjectsApi = {
+  /**
+   * Get the current guest project for this session
+   */
+  async getCurrent(): Promise<GuestProject | null> {
+    const sessionId = getGuestSessionId();
+    if (!sessionId) return null;
+
+    const { data, error } = await supabase
+      .from('guest_projects')
+      .select('*')
+      .eq('session_id', sessionId)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error fetching guest project:', error);
+      return null;
+    }
+    return data;
+  },
+
+  /**
+   * Create or update a guest project
+   */
+  async save(project: Partial<GuestProject>): Promise<GuestProject | null> {
+    const sessionId = getGuestSessionId();
+    if (!sessionId) return null;
+
+    // Check if project exists
+    const existing = await this.getCurrent();
+
+    if (existing) {
+      // Update existing project
+      const { data, error } = await supabase
+        .from('guest_projects')
+        .update({
+          name: project.name ?? existing.name,
+          description: project.description ?? existing.description,
+          tasks: project.tasks ?? existing.tasks,
+          settings: project.settings ?? existing.settings,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existing.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating guest project:', error);
+        return null;
+      }
+      return data;
+    } else {
+      // Create new project
+      const { data, error } = await supabase
+        .from('guest_projects')
+        .insert({
+          session_id: sessionId,
+          name: project.name || 'My Project',
+          description: project.description || null,
+          tasks: project.tasks || [],
+          settings: project.settings || {}
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating guest project:', error);
+        return null;
+      }
+      return data;
+    }
+  },
+
+  /**
+   * Add a task to the guest project
+   */
+  async addTask(task: Omit<GuestTask, 'id' | 'sort_order'>): Promise<GuestProject | null> {
+    const project = await this.getCurrent();
+    if (!project) {
+      // Create project with first task
+      return this.save({
+        name: 'My Project',
+        tasks: [{
+          id: crypto.randomUUID(),
+          ...task,
+          sort_order: 0
+        }]
+      });
+    }
+
+    const newTask: GuestTask = {
+      id: crypto.randomUUID(),
+      ...task,
+      sort_order: project.tasks.length
+    };
+
+    return this.save({
+      tasks: [...project.tasks, newTask]
+    });
+  },
+
+  /**
+   * Update a task in the guest project
+   */
+  async updateTask(taskId: string, updates: Partial<GuestTask>): Promise<GuestProject | null> {
+    const project = await this.getCurrent();
+    if (!project) return null;
+
+    const tasks = project.tasks.map(t =>
+      t.id === taskId ? { ...t, ...updates } : t
+    );
+
+    return this.save({ tasks });
+  },
+
+  /**
+   * Remove a task from the guest project
+   */
+  async removeTask(taskId: string): Promise<GuestProject | null> {
+    const project = await this.getCurrent();
+    if (!project) return null;
+
+    const tasks = project.tasks.filter(t => t.id !== taskId);
+    return this.save({ tasks });
+  },
+
+  /**
+   * Import guest project into a real organization after sign-in
+   */
+  async importToOrganization(orgId: string, projectId?: string): Promise<{ success: boolean; project_id?: string; error?: string }> {
+    const sessionId = getGuestSessionId();
+    if (!sessionId) {
+      return { success: false, error: 'No guest session found' };
+    }
+
+    const { data, error } = await supabase.rpc('import_guest_project', {
+      p_session_id: sessionId,
+      p_org_id: orgId,
+      p_pm_id: null // Will be set to current user in the function
+    });
+
+    if (error) {
+      console.error('Error importing guest project:', error);
+      return { success: false, error: error.message };
+    }
+
+    if (!data?.success) {
+      return { success: false, error: data?.error || 'Failed to import project' };
+    }
+
+    // Clear the guest session after successful import
+    localStorage.removeItem('orbit_guest_session');
+
+    return {
+      success: true,
+      project_id: data.project_id
+    };
+  },
+
+  /**
+   * Clear the guest project and session
+   */
+  async clear(): Promise<void> {
+    const sessionId = getGuestSessionId();
+    if (!sessionId) return;
+
+    await supabase
+      .from('guest_projects')
+      .delete()
+      .eq('session_id', sessionId);
+
+    localStorage.removeItem('orbit_guest_session');
   }
 };

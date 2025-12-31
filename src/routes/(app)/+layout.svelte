@@ -7,10 +7,12 @@
     auth,
     user,
     organization,
+    userOrganizations,
     isAuthenticated,
     capabilities
   } from '$lib/stores/auth';
   import NotificationDropdown from '$lib/components/common/NotificationDropdown.svelte';
+  import OrganizationSwitcher from '$lib/components/common/OrganizationSwitcher.svelte';
   import Toast from '$lib/components/common/Toast.svelte';
   import {
     LayoutDashboard,
@@ -250,20 +252,20 @@ Error: {errorDetails}</pre>
 {:else if $user}
   <div class="min-h-screen bg-slate-50">
     <!-- Sidebar -->
-    <aside 
-      class="fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 transform transition-transform duration-200 ease-in-out lg:translate-x-0"
+    <aside
+      class="fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 transform transition-transform duration-200 ease-in-out lg:translate-x-0 flex flex-col"
       class:translate-x-0={sidebarOpen}
       class:-translate-x-full={!sidebarOpen}
     >
       <!-- Logo -->
-      <div class="flex items-center justify-between h-16 px-6 border-b border-slate-800">
+      <div class="flex items-center justify-between h-16 px-6 border-b border-slate-800 flex-shrink-0">
         <a href="/dashboard" class="flex items-center gap-3">
           <div class="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
             <span class="text-white font-bold text-lg">O</span>
           </div>
           <span class="text-white font-semibold text-xl tracking-tight">Orbit</span>
         </a>
-        <button 
+        <button
           class="lg:hidden text-slate-400 hover:text-white"
           on:click={toggleSidebar}
         >
@@ -271,16 +273,13 @@ Error: {errorDetails}</pre>
         </button>
       </div>
 
-      <!-- Organization -->
-      {#if $organization}
-        <div class="px-6 py-4 border-b border-slate-800">
-          <p class="text-xs text-slate-500 uppercase tracking-wider mb-1">Organization</p>
-          <p class="text-white font-medium truncate">{$organization.name}</p>
-        </div>
-      {/if}
+      <!-- Organization Switcher -->
+      <div class="border-b border-slate-800 flex-shrink-0">
+        <OrganizationSwitcher />
+      </div>
 
-      <!-- Navigation -->
-      <nav class="px-3 py-4 space-y-1">
+      <!-- Navigation (scrollable) -->
+      <nav class="px-3 py-4 space-y-1 flex-1 overflow-y-auto">
         {#each navItems as item}
           <a
             href={item.href}
@@ -298,7 +297,7 @@ Error: {errorDetails}</pre>
       </nav>
 
       <!-- User section at bottom -->
-      <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-800">
+      <div class="p-4 border-t border-slate-800 flex-shrink-0">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
             <span class="text-white font-semibold">
@@ -358,7 +357,7 @@ Error: {errorDetails}</pre>
             <div class="relative">
               <button
                 class="flex items-center gap-2 p-2 hover:bg-slate-100 rounded-lg"
-                on:click={() => userMenuOpen = !userMenuOpen}
+                on:click|stopPropagation={() => userMenuOpen = !userMenuOpen}
               >
                 <div class="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
                   <span class="text-white text-sm font-semibold">
@@ -371,16 +370,27 @@ Error: {errorDetails}</pre>
               {#if userMenuOpen}
                 <div class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1">
                   <a
-                    href="/settings"
-                    class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                    href="/profile"
+                    class="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
                     on:click={() => userMenuOpen = false}
                   >
+                    <User size={16} />
+                    Profile
+                  </a>
+                  <a
+                    href="/settings"
+                    class="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                    on:click={() => userMenuOpen = false}
+                  >
+                    <Settings size={16} />
                     Settings
                   </a>
+                  <div class="border-t border-slate-100 my-1"></div>
                   <button
-                    class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                    class="flex items-center gap-2 w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
                     on:click={handleSignOut}
                   >
+                    <LogOut size={16} />
                     Sign out
                   </button>
                 </div>

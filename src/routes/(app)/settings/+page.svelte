@@ -1,8 +1,10 @@
 <script lang="ts">
-  import { user, organization, auth } from '$lib/stores/auth';
+  import { user, organization, userOrganizations } from '$lib/stores/auth';
   import { formatCurrency, calculateSalaryBreakdown, projectAnnualSalary, validateR } from '$lib/utils/payout';
   import { toasts } from '$lib/stores/notifications';
   import { supabase } from '$lib/services/supabase';
+  import { usersApi } from '$lib/services/api';
+  import { goto } from '$app/navigation';
   import {
     User,
     DollarSign,
@@ -16,7 +18,11 @@
     X,
     Eye,
     EyeOff,
-    Lock
+    Lock,
+    Building2,
+    Plus,
+    Check,
+    Loader
   } from 'lucide-svelte';
 
   // Local state for form
@@ -92,6 +98,72 @@
     showPasswordModal = false;
     passwordForm = { currentPassword: '', newPassword: '', confirmPassword: '' };
     passwordError = '';
+  }
+
+  // Join organization state
+  let showJoinOrgModal = false;
+  let inviteCode = '';
+  let joiningOrg = false;
+  let joinError = '';
+  let joinSuccess = false;
+  let joinedOrgName = '';
+
+  async function handleJoinOrganization() {
+    if (!inviteCode.trim()) {
+      joinError = 'Please enter an invite code';
+      return;
+    }
+
+    joiningOrg = true;
+    joinError = '';
+
+    try {
+      const result = await usersApi.acceptInvitation(inviteCode.trim());
+
+      if (!result.success) {
+        joinError = result.error || 'Failed to join organization';
+        return;
+      }
+
+      // Reload organizations list
+      await userOrganizations.load();
+
+      // Find the org name from the memberships
+      const newMembership = $userOrganizations.find(m => m.org_id === result.org_id);
+      joinedOrgName = newMembership?.organization?.name || 'the organization';
+
+      joinSuccess = true;
+      inviteCode = '';
+      toasts.success(`Successfully joined ${joinedOrgName}!`);
+
+      // Close modal after brief delay
+      setTimeout(() => {
+        closeJoinOrgModal();
+      }, 2000);
+
+    } catch (error) {
+      joinError = error instanceof Error ? error.message : 'An error occurred';
+    } finally {
+      joiningOrg = false;
+    }
+  }
+
+  function closeJoinOrgModal() {
+    showJoinOrgModal = false;
+    inviteCode = '';
+    joinError = '';
+    joinSuccess = false;
+    joinedOrgName = '';
+  }
+
+  async function handleSwitchOrg(orgId: string) {
+    const success = await userOrganizations.switchOrg(orgId);
+    if (success) {
+      toasts.success('Switched organization');
+      goto('/dashboard');
+    } else {
+      toasts.error('Failed to switch organization');
+    }
   }
 
   // Calculate preview values
@@ -401,7 +473,160 @@
       </div>
     </div>
   </section>
+
+  <!-- Organizations Section -->
+  <section class="bg-white rounded-xl border border-slate-200">
+    <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <Building2 class="text-slate-400" size={20} />
+        <h2 class="font-semibold text-slate-900">Organizations</h2>
+      </div>
+      <button
+        on:click={() => showJoinOrgModal = true}
+        class="flex items-center gap-2 px-3 py-1.5 text-sm bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg font-medium transition-colors"
+      >
+        <Plus size={16} />
+        Join Organization
+      </button>
+    </div>
+    <div class="p-6">
+      {#if $userOrganizations.length === 0}
+        <p class="text-slate-500 text-center py-4">Loading organizations...</p>
+      {:else}
+        <div class="space-y-3">
+          {#each $userOrganizations as membership}
+            <div class="flex items-center justify-between p-4 rounded-lg border {membership.org_id === $organization?.id ? 'border-indigo-200 bg-indigo-50' : 'border-slate-200'}">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg flex items-center justify-center {membership.org_id === $organization?.id ? 'bg-indigo-600' : 'bg-slate-200'}">
+                  <Building2 size={18} class={membership.org_id === $organization?.id ? 'text-white' : 'text-slate-500'} />
+                </div>
+                <div>
+                  <p class="font-medium text-slate-900">{membership.organization?.name || 'Unknown Organization'}</p>
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm text-slate-500 capitalize">{membership.role}</span>
+                    {#if membership.is_primary}
+                      <span class="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">Primary</span>
+                    {/if}
+                  </div>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                {#if membership.org_id === $organization?.id}
+                  <span class="flex items-center gap-1 text-sm text-indigo-600 font-medium">
+                    <Check size={16} />
+                    Active
+                  </span>
+                {:else}
+                  <button
+                    on:click={() => handleSwitchOrg(membership.org_id)}
+                    class="px-3 py-1.5 text-sm text-indigo-600 hover:bg-indigo-100 rounded-lg font-medium transition-colors"
+                  >
+                    Switch
+                  </button>
+                {/if}
+              </div>
+            </div>
+          {/each}
+        </div>
+      {/if}
+    </div>
+  </section>
 </div>
+
+<!-- Join Organization Modal -->
+{#if showJoinOrgModal}
+  <div class="fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex min-h-full items-center justify-center p-4">
+      <button
+        class="fixed inset-0 bg-black/50"
+        on:click={closeJoinOrgModal}
+        aria-label="Close modal"
+      />
+
+      <div class="relative bg-white rounded-xl shadow-xl w-full max-w-md">
+        <!-- Header -->
+        <div class="flex items-center justify-between p-6 border-b border-slate-200">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+              <Building2 class="text-indigo-600" size={20} />
+            </div>
+            <h2 class="text-lg font-semibold text-slate-900">Join Organization</h2>
+          </div>
+          <button
+            on:click={closeJoinOrgModal}
+            class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <!-- Content -->
+        {#if joinSuccess}
+          <div class="p-6 text-center">
+            <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Check class="text-green-600" size={32} />
+            </div>
+            <h3 class="text-lg font-semibold text-slate-900 mb-2">Welcome!</h3>
+            <p class="text-slate-600">You've successfully joined <span class="font-medium">{joinedOrgName}</span>.</p>
+            <p class="text-sm text-slate-500 mt-2">You can now switch to this organization using the switcher in the sidebar.</p>
+          </div>
+        {:else}
+          <form on:submit|preventDefault={handleJoinOrganization} class="p-6 space-y-4">
+            <p class="text-slate-600 text-sm">
+              Enter the invite code provided by your organization admin to join a new organization.
+            </p>
+
+            {#if joinError}
+              <div class="bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2 text-sm text-red-700">
+                <AlertTriangle size={16} />
+                {joinError}
+              </div>
+            {/if}
+
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">
+                Invite Code
+              </label>
+              <input
+                type="text"
+                bind:value={inviteCode}
+                class="w-full px-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center text-xl font-mono uppercase tracking-widest"
+                placeholder="ABC123"
+                maxlength="6"
+                disabled={joiningOrg}
+              />
+              <p class="mt-1 text-xs text-slate-500">The 6-character code from your organization admin</p>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex justify-end gap-3 pt-4 border-t border-slate-200">
+              <button
+                type="button"
+                on:click={closeJoinOrgModal}
+                class="px-4 py-2 border border-slate-200 rounded-lg font-medium text-slate-700 hover:bg-slate-50"
+                disabled={joiningOrg}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={!inviteCode.trim() || joiningOrg}
+                class="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {#if joiningOrg}
+                  <Loader size={16} class="animate-spin" />
+                  Joining...
+                {:else}
+                  Join Organization
+                {/if}
+              </button>
+            </div>
+          </form>
+        {/if}
+      </div>
+    </div>
+  </div>
+{/if}
 
 <!-- Password Change Modal -->
 {#if showPasswordModal}

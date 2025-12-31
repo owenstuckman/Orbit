@@ -5,7 +5,8 @@
   import { tasks, tasksByStatus, taskCounts } from '$lib/stores/tasks';
   import { projects } from '$lib/stores/projects';
   import { subscribeToTable } from '$lib/services/supabase';
-  import { TaskCard, TaskCreateModal, TaskFilters } from '$lib/components/tasks';
+  import { TaskCard, TaskCreateModal, TaskFilters, DraggableTaskList } from '$lib/components/tasks';
+  import { tasksApi } from '$lib/services/api';
   import ExportButton from '$lib/components/common/ExportButton.svelte';
   import { exportTasks, type TaskExport } from '$lib/services/export';
   import {
@@ -256,6 +257,18 @@
     }));
     exportTasks(exportData, format as 'csv' | 'pdf');
   }
+
+  async function handleReorderTasks(event: CustomEvent<{ taskIds: string[]; status: TaskStatus }>) {
+    const { taskIds, status } = event.detail;
+    const success = await tasksApi.reorderTasks(taskIds, status);
+    if (success) {
+      // Refresh tasks to get updated sort order
+      await refreshTasks();
+    }
+  }
+
+  // Determine if reordering should be enabled
+  $: canReorder = $capabilities.canCreateTasks || $capabilities.canManageProjects;
 </script>
 
 <div class="space-y-6">
@@ -435,19 +448,16 @@
             </div>
 
             <!-- Tasks column -->
-            <div class="space-y-3 min-h-[200px] {column.bgColor} rounded-xl p-3">
-              {#each filteredTasks(column.status) as task (task.id)}
-                <TaskCard
-                  {task}
-                  showAcceptButton={column.status === 'open' && $capabilities.canAcceptTasks}
-                  on:click={() => handleTaskClick(task)}
-                  on:accept={() => handleAcceptTask(task)}
-                />
-              {:else}
-                <div class="flex items-center justify-center h-24 text-slate-400 text-sm">
-                  No tasks
-                </div>
-              {/each}
+            <div class="min-h-[200px] {column.bgColor} rounded-xl p-3">
+              <DraggableTaskList
+                tasks={filteredTasks(column.status)}
+                status={column.status}
+                showAcceptButton={column.status === 'open' && $capabilities.canAcceptTasks}
+                {canReorder}
+                on:click={(e) => handleTaskClick(e.detail)}
+                on:accept={(e) => handleAcceptTask(e.detail)}
+                on:reorder={handleReorderTasks}
+              />
             </div>
           </div>
         {/each}

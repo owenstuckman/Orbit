@@ -1,9 +1,10 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  import { X, Plus, Calendar, DollarSign, Sparkles, AlertCircle } from 'lucide-svelte';
+  import { X, Plus, Calendar, DollarSign, Sparkles, AlertCircle, Tag } from 'lucide-svelte';
   import { tasks } from '$lib/stores/tasks';
   import { projects } from '$lib/stores/projects';
   import { user } from '$lib/stores/auth';
+  import TagInput from '$lib/components/common/TagInput.svelte';
   import type { Task } from '$lib/types';
 
   export let show = false;
@@ -20,6 +21,10 @@
   let requiredLevel = 1;
   let deadline = '';
   let selectedProjectId = projectId || '';
+  let tags: string[] = [];
+
+  // Common tag suggestions
+  const tagSuggestions = ['bug', 'feature', 'urgent', 'design', 'backend', 'frontend', 'documentation', 'testing', 'refactor', 'security'];
 
   // UI state
   let submitting = false;
@@ -44,6 +49,7 @@
     requiredLevel = 1;
     deadline = '';
     selectedProjectId = projectId || '';
+    tags = [];
     error = '';
   }
 
@@ -80,6 +86,7 @@
         urgency_multiplier: urgencyMultiplier,
         required_level: requiredLevel,
         deadline: deadline ? new Date(deadline).toISOString() : null,
+        tags: tags,
         status: 'open'
       };
 
@@ -207,6 +214,22 @@
               placeholder="Describe the task requirements..."
               class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none"
             ></textarea>
+          </div>
+
+          <!-- Tags -->
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">
+              <div class="flex items-center gap-2">
+                <Tag size={16} class="text-slate-400" />
+                Tags
+              </div>
+            </label>
+            <TagInput
+              bind:tags
+              suggestions={tagSuggestions}
+              placeholder="Add tags (press Enter or comma)..."
+            />
+            <p class="mt-1 text-xs text-slate-500">Add tags to categorize and filter tasks</p>
           </div>
 
           <!-- Value and Points Row -->

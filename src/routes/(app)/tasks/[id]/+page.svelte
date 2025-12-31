@@ -9,12 +9,13 @@
   import { toasts } from '$lib/stores/notifications';
   import { formatCurrency } from '$lib/utils/payout';
   import TaskEditModal from '$lib/components/tasks/TaskEditModal.svelte';
+  import { ExternalAssignmentModal } from '$lib/components/tasks';
   import {
     ArtifactList,
     ArtifactAddModal,
     SubmissionDraftBanner
   } from '$lib/components/submissions';
-  import type { TaskStatus, TaskSubmissionData } from '$lib/types';
+  import type { TaskStatus, TaskSubmissionData, ExternalAssignmentResult } from '$lib/types';
   import {
     ArrowLeft,
     Clock,
@@ -36,7 +37,11 @@
     Flag,
     Folder,
     Shield,
-    Plus
+    Plus,
+    ExternalLink,
+    Mail,
+    Link,
+    Copy
   } from 'lucide-svelte';
 
   $: taskId = $page.params.id;
@@ -46,6 +51,8 @@
   let showEditModal = false;
   let showSubmitModal = false;
   let showAddArtifactModal = false;
+  let showExternalAssignModal = false;
+  let copiedSubmissionLink = false;
 
   // Status colors and labels
   const statusConfig: Record<TaskStatus, { color: string; bg: string; label: string }> = {
@@ -98,6 +105,14 @@
 
   // Can edit task (PM/Admin)
   $: canEdit = $capabilities.canCreateTasks || $user?.role === 'admin';
+
+  // Can assign externally (PM/Admin and task is open)
+  $: canAssignExternal = canEdit && $currentTask.task?.status === 'open';
+
+  // Get submission URL for external tasks
+  $: submissionUrl = $currentTask.task?.external_submission_token
+    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/submit/${$currentTask.task.external_submission_token}`
+    : '';
 
   // Calculate total value with urgency
   $: totalValue = $currentTask.task
@@ -203,6 +218,18 @@
     loadTask();
     showEditModal = false;
   }
+
+  function handleExternalAssigned(e: CustomEvent<ExternalAssignmentResult>) {
+    loadTask();
+  }
+
+  async function copySubmissionLink() {
+    if (submissionUrl) {
+      await navigator.clipboard.writeText(submissionUrl);
+      copiedSubmissionLink = true;
+      setTimeout(() => copiedSubmissionLink = false, 2000);
+    }
+  }
 </script>
 
 <svelte:head>
@@ -273,6 +300,16 @@
           >
             <Edit size={18} />
             Edit
+          </button>
+        {/if}
+
+        {#if canAssignExternal}
+          <button
+            on:click={() => showExternalAssignModal = true}
+            class="flex items-center gap-2 px-4 py-2 text-orange-600 hover:text-orange-700 hover:bg-orange-50 rounded-lg transition-colors"
+          >
+            <ExternalLink size={18} />
+            Assign Externally
           </button>
         {/if}
 
@@ -502,7 +539,17 @@
                 <User size={16} />
                 <span>Assignee</span>
               </div>
-              {#if task.assignee}
+              {#if task.is_external && task.external_contractor_name}
+                <div class="flex items-center gap-2">
+                  <div class="w-6 h-6 rounded-full bg-gradient-to-br from-orange-400 to-amber-500 flex items-center justify-center text-white text-xs font-medium">
+                    {task.external_contractor_name.charAt(0)}
+                  </div>
+                  <div class="text-right">
+                    <span class="text-slate-900 font-medium">{task.external_contractor_name}</span>
+                    <span class="ml-1 text-xs px-1.5 py-0.5 bg-orange-100 text-orange-700 rounded">External</span>
+                  </div>
+                </div>
+              {:else if task.assignee}
                 <div class="flex items-center gap-2">
                   <div class="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-xs font-medium">
                     {task.assignee.full_name?.charAt(0) || task.assignee.email.charAt(0).toUpperCase()}
@@ -568,6 +615,68 @@
             </div>
           </div>
         </div>
+
+        <!-- External Assignment Info (for PM/Admin) -->
+        {#if task.is_external && canEdit}
+          <div class="bg-white rounded-xl border border-orange-200 p-6">
+            <h3 class="font-semibold text-slate-900 mb-4 flex items-center gap-2">
+              <ExternalLink class="text-orange-500" size={18} />
+              External Assignment
+            </h3>
+
+            <div class="space-y-4">
+              <!-- Contractor Info -->
+              <div>
+                <p class="text-sm text-slate-500 mb-1">Contractor</p>
+                <p class="font-medium text-slate-900">{task.external_contractor_name}</p>
+                <div class="flex items-center gap-1 text-sm text-slate-600">
+                  <Mail size={14} />
+                  {task.external_contractor_email}
+                </div>
+              </div>
+
+              <!-- Submission Link -->
+              {#if submissionUrl}
+                <div>
+                  <p class="text-sm text-slate-500 mb-2">Guest Submission Link</p>
+                  <div class="flex items-center gap-2">
+                    <div class="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-600 font-mono truncate">
+                      {submissionUrl}
+                    </div>
+                    <button
+                      on:click={copySubmissionLink}
+                      class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                      title="Copy link"
+                    >
+                      {#if copiedSubmissionLink}
+                        <CheckCircle size={18} class="text-green-600" />
+                      {:else}
+                        <Copy size={18} />
+                      {/if}
+                    </button>
+                  </div>
+                  {#if copiedSubmissionLink}
+                    <p class="text-sm text-green-600 mt-1">Copied to clipboard!</p>
+                  {/if}
+                </div>
+              {/if}
+
+              <!-- Linked Contract -->
+              {#if task.contract_id}
+                <div>
+                  <p class="text-sm text-slate-500 mb-1">Contract</p>
+                  <a
+                    href="/contracts/{task.contract_id}"
+                    class="flex items-center gap-2 text-indigo-600 hover:text-indigo-700 font-medium"
+                  >
+                    <FileText size={16} />
+                    View Contract
+                  </a>
+                </div>
+              {/if}
+            </div>
+          </div>
+        {/if}
 
         <!-- Assignment Status for Workers -->
         {#if $user?.role === 'employee' || $user?.role === 'contractor'}
@@ -712,4 +821,12 @@
       on:updated={handleTaskUpdated}
     />
   {/if}
+
+  <!-- External Assignment Modal -->
+  <ExternalAssignmentModal
+    bind:show={showExternalAssignModal}
+    {task}
+    on:close={() => showExternalAssignModal = false}
+    on:assigned={handleExternalAssigned}
+  />
 {/if}

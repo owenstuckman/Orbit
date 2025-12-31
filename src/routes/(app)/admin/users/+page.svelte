@@ -3,7 +3,8 @@
   import { goto } from '$app/navigation';
   import { user } from '$lib/stores/auth';
   import { usersApi } from '$lib/services/api';
-  import type { User, UserRole } from '$lib/types';
+  import { InviteConfirmationModal } from '$lib/components/admin';
+  import type { User, UserRole, UserInvitation } from '$lib/types';
   import {
     Search,
     Plus,
@@ -16,19 +17,26 @@
     ChevronDown,
     X,
     Check,
-    AlertTriangle
+    AlertTriangle,
+    Clock,
+    Copy,
+    XCircle
   } from 'lucide-svelte';
 
   let users: User[] = [];
   let filteredUsers: User[] = [];
+  let invitations: UserInvitation[] = [];
   let loading = true;
+  let loadingInvitations = true;
   let searchQuery = '';
   let roleFilter: UserRole | '' = '';
 
   // Modal states
   let showInviteModal = false;
   let showEditModal = false;
+  let showConfirmationModal = false;
   let selectedUser: User | null = null;
+  let lastInvitation: UserInvitation | null = null;
 
   // Invite form
   let inviteEmail = '';
@@ -53,7 +61,7 @@
       goto('/dashboard');
       return;
     }
-    await loadUsers();
+    await Promise.all([loadUsers(), loadInvitations()]);
   });
 
   async function loadUsers() {
@@ -65,6 +73,17 @@
       console.error('Failed to load users:', error);
     } finally {
       loading = false;
+    }
+  }
+
+  async function loadInvitations() {
+    loadingInvitations = true;
+    try {
+      invitations = await usersApi.listInvitations();
+    } catch (error) {
+      console.error('Failed to load invitations:', error);
+    } finally {
+      loadingInvitations = false;
     }
   }
 
@@ -118,13 +137,17 @@
     inviting = true;
     inviteError = '';
     try {
-      // In a real implementation, this would send an invite email
-      // For now, we'll create a placeholder user
-      console.log('Inviting user:', inviteEmail, inviteRole);
-      // await usersApi.invite(inviteEmail, inviteRole);
-      showInviteModal = false;
-      inviteEmail = '';
-      inviteRole = 'employee';
+      const invitation = await usersApi.invite(inviteEmail, inviteRole);
+      if (invitation) {
+        lastInvitation = invitation;
+        showInviteModal = false;
+        showConfirmationModal = true;
+        inviteEmail = '';
+        inviteRole = 'employee';
+        await loadInvitations();
+      } else {
+        inviteError = 'Failed to create invitation. Please try again.';
+      }
     } catch (error) {
       inviteError = error instanceof Error ? error.message : 'Failed to send invite';
     } finally {
@@ -132,8 +155,28 @@
     }
   }
 
-  function getRoleBadgeColor(role: UserRole): string {
-    const colors: Record<UserRole, string> = {
+  async function cancelInvitation(inviteId: string) {
+    try {
+      await usersApi.cancelInvitation(inviteId);
+      await loadInvitations();
+    } catch (error) {
+      console.error('Failed to cancel invitation:', error);
+    }
+  }
+
+  function handleSendAnother() {
+    showConfirmationModal = false;
+    showInviteModal = true;
+    lastInvitation = null;
+  }
+
+  function handleConfirmationClose() {
+    showConfirmationModal = false;
+    lastInvitation = null;
+  }
+
+  function getRoleBadgeColor(role: UserRole | string): string {
+    const colors: Record<string, string> = {
       admin: 'bg-red-100 text-red-700',
       sales: 'bg-green-100 text-green-700',
       pm: 'bg-blue-100 text-blue-700',
@@ -143,6 +186,39 @@
     };
     return colors[role] || 'bg-slate-100 text-slate-700';
   }
+
+  function getStatusBadgeColor(status: string): string {
+    const colors: Record<string, string> = {
+      pending: 'bg-yellow-100 text-yellow-700',
+      accepted: 'bg-green-100 text-green-700',
+      expired: 'bg-slate-100 text-slate-500',
+      cancelled: 'bg-red-100 text-red-700'
+    };
+    return colors[status] || 'bg-slate-100 text-slate-700';
+  }
+
+  function formatDate(dateString: string): string {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  }
+
+  function isExpired(expiresAt: string): boolean {
+    return new Date(expiresAt) < new Date();
+  }
+
+  async function copyInviteCode(token: string) {
+    try {
+      await navigator.clipboard.writeText(token);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  }
+
+  $: pendingInvitations = invitations.filter(i => i.status === 'pending' && !isExpired(i.expires_at));
+  $: pastInvitations = invitations.filter(i => i.status !== 'pending' || isExpired(i.expires_at));
 </script>
 
 <svelte:head>
@@ -165,6 +241,57 @@
       Invite User
     </button>
   </div>
+
+  <!-- Pending Invitations -->
+  {#if pendingInvitations.length > 0}
+    <div class="bg-amber-50 border border-amber-200 rounded-xl p-6">
+      <div class="flex items-center gap-2 mb-4">
+        <Clock size={20} class="text-amber-600" />
+        <h2 class="text-lg font-semibold text-amber-900">Pending Invitations</h2>
+        <span class="px-2 py-0.5 bg-amber-200 text-amber-800 text-xs font-medium rounded-full">
+          {pendingInvitations.length}
+        </span>
+      </div>
+      <div class="space-y-3">
+        {#each pendingInvitations as invite}
+          <div class="flex items-center justify-between bg-white rounded-lg p-4 border border-amber-100">
+            <div class="flex items-center gap-4">
+              <div>
+                <p class="font-medium text-slate-900">{invite.email}</p>
+                <div class="flex items-center gap-2 mt-1">
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {getRoleBadgeColor(invite.role)}">
+                    {invite.role}
+                  </span>
+                  <span class="text-xs text-slate-500">
+                    Expires {formatDate(invite.expires_at)}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              <div class="flex items-center gap-2 bg-slate-100 rounded-lg px-3 py-1.5">
+                <span class="font-mono font-bold text-slate-900">{invite.token}</span>
+                <button
+                  on:click={() => copyInviteCode(invite.token)}
+                  class="text-slate-400 hover:text-indigo-600 transition-colors"
+                  title="Copy code"
+                >
+                  <Copy size={14} />
+                </button>
+              </div>
+              <button
+                on:click={() => cancelInvitation(invite.id)}
+                class="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                title="Cancel invitation"
+              >
+                <XCircle size={18} />
+              </button>
+            </div>
+          </div>
+        {/each}
+      </div>
+    </div>
+  {/if}
 
   <!-- Filters -->
   <div class="flex flex-col sm:flex-row gap-4">
@@ -274,6 +401,38 @@
       </div>
     {/if}
   </div>
+
+  <!-- Past Invitations (collapsed by default) -->
+  {#if pastInvitations.length > 0}
+    <details class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <summary class="px-6 py-4 cursor-pointer hover:bg-slate-50 transition-colors flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="font-medium text-slate-900">Past Invitations</span>
+          <span class="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs font-medium rounded-full">
+            {pastInvitations.length}
+          </span>
+        </div>
+        <ChevronDown size={18} class="text-slate-400" />
+      </summary>
+      <div class="px-6 pb-4 border-t border-slate-100">
+        <div class="space-y-2 mt-4">
+          {#each pastInvitations as invite}
+            <div class="flex items-center justify-between py-2 px-3 rounded-lg bg-slate-50">
+              <div class="flex items-center gap-3">
+                <span class="text-sm text-slate-900">{invite.email}</span>
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {getRoleBadgeColor(invite.role)}">
+                  {invite.role}
+                </span>
+              </div>
+              <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {getStatusBadgeColor(isExpired(invite.expires_at) ? 'expired' : invite.status)}">
+                {isExpired(invite.expires_at) ? 'expired' : invite.status}
+              </span>
+            </div>
+          {/each}
+        </div>
+      </div>
+    </details>
+  {/if}
 </div>
 
 <!-- Invite Modal -->
@@ -326,6 +485,10 @@
           </select>
         </div>
 
+        <div class="bg-slate-50 rounded-lg p-4 text-sm text-slate-600">
+          <p>An invite code will be generated. Share it with the user so they can join your organization during registration.</p>
+        </div>
+
         <div class="flex justify-end gap-3 pt-4">
           <button
             type="button"
@@ -342,14 +505,24 @@
             {#if inviting}
               <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
             {:else}
-              <Mail size={16} />
+              <UserPlus size={16} />
             {/if}
-            Send Invite
+            Create Invitation
           </button>
         </div>
       </form>
     </div>
   </div>
+{/if}
+
+<!-- Invite Confirmation Modal -->
+{#if lastInvitation}
+  <InviteConfirmationModal
+    invitation={lastInvitation}
+    open={showConfirmationModal}
+    on:close={handleConfirmationClose}
+    on:sendAnother={handleSendAnother}
+  />
 {/if}
 
 <!-- Edit Modal -->

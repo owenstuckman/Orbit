@@ -1,7 +1,8 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  import { X, Edit3, Calendar, DollarSign, Sparkles, AlertCircle, Trash2 } from 'lucide-svelte';
+  import { X, Edit3, Calendar, DollarSign, Sparkles, AlertCircle, Trash2, Tag } from 'lucide-svelte';
   import { tasks } from '$lib/stores/tasks';
+  import TagInput from '$lib/components/common/TagInput.svelte';
   import type { Task, TaskStatus } from '$lib/types';
 
   export let show = false;
@@ -18,6 +19,10 @@
   let requiredLevel = 1;
   let deadline = '';
   let status: TaskStatus = 'open';
+  let tags: string[] = [];
+
+  // Common tag suggestions
+  const tagSuggestions = ['bug', 'feature', 'urgent', 'design', 'backend', 'frontend', 'documentation', 'testing', 'refactor', 'security'];
 
   // UI state
   let submitting = false;
@@ -40,6 +45,7 @@
     requiredLevel = task.required_level;
     deadline = task.deadline ? new Date(task.deadline).toISOString().slice(0, 16) : '';
     status = task.status;
+    tags = task.tags || [];
     error = '';
     showDeleteConfirm = false;
   }
@@ -72,6 +78,7 @@
         urgency_multiplier: urgencyMultiplier,
         required_level: requiredLevel,
         deadline: deadline ? new Date(deadline).toISOString() : null,
+        tags: tags,
         status
       };
 
@@ -250,6 +257,22 @@
               placeholder="Describe the task requirements..."
               class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none disabled:bg-slate-50 disabled:text-slate-500"
             ></textarea>
+          </div>
+
+          <!-- Tags -->
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">
+              <div class="flex items-center gap-2">
+                <Tag size={16} class="text-slate-400" />
+                Tags
+              </div>
+            </label>
+            <TagInput
+              bind:tags
+              suggestions={tagSuggestions}
+              placeholder="Add tags..."
+              disabled={!canEdit}
+            />
           </div>
 
           <!-- Value and Points Row -->
