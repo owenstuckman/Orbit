@@ -119,46 +119,32 @@
     errorDetails = '';
 
     try {
-      // Step 1: Get current auth state (don't subscribe, just read once)
+      // Auth is guaranteed to be initialized by the root layout
       const authState = get(auth);
       console.log('[Layout] Auth state:', { initialized: authState.initialized, hasSession: !!authState.session });
 
-      // If auth not initialized yet, wait a bit and check again
-      if (!authState.initialized) {
-        console.log('[Layout] Waiting for auth initialization...');
-        await new Promise(resolve => setTimeout(resolve, 500));
-        const newAuthState = get(auth);
-        if (!newAuthState.initialized) {
-          // Still not initialized, wait more
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-      }
-
-      // Re-check auth state
-      const currentAuth = get(auth);
-      
-      if (!currentAuth.session) {
+      if (!authState.session) {
         console.log('[Layout] No session, redirecting to login');
-        goto('/auth/login');
+        goto('/auth/login', { replaceState: true });
         return;
       }
 
-      // Step 2: Load user data
+      // Load user data
       console.log('[Layout] Loading user data...');
       const loadedUser = await user.load();
-      console.log('[Layout] User loaded:', loadedUser);
+      console.log('[Layout] User loaded:', loadedUser?.id);
 
       if (!loadedUser) {
         // User is authenticated but has no profile - redirect to complete registration
         console.log('[Layout] No user profile, redirecting to complete registration');
-        goto('/auth/complete-registration');
+        goto('/auth/complete-registration', { replaceState: true });
         return;
       }
 
-      // Step 3: Load organization
+      // Load organization
       console.log('[Layout] Loading organization...');
       const loadedOrg = await organization.load();
-      console.log('[Layout] Organization loaded:', loadedOrg);
+      console.log('[Layout] Organization loaded:', loadedOrg?.id);
 
       if (!loadedOrg) {
         loadError = 'Organization not found';

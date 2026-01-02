@@ -22,10 +22,10 @@
   onMount(async () => {
     // Check if user is authenticated
     const { data: { user } } = await supabase.auth.getUser();
-    
+
     if (!user) {
       console.log('[CompleteReg] No authenticated user, redirecting to login');
-      goto('/auth/login');
+      goto('/auth/login', { replaceState: true });
       return;
     }
 
@@ -41,7 +41,7 @@
 
     if (existingUser) {
       console.log('[CompleteReg] User profile exists, redirecting to dashboard');
-      goto('/dashboard');
+      goto('/dashboard', { replaceState: true });
       return;
     }
 
@@ -153,7 +153,7 @@
       }
 
       // Redirect to dashboard after short delay
-      setTimeout(() => goto('/dashboard'), hasGuestProject ? 2500 : 1500);
+      setTimeout(() => goto('/dashboard', { replaceState: true }), hasGuestProject ? 2500 : 1500);
 
     } catch (err) {
       console.error('[CompleteReg] Unexpected error:', err);

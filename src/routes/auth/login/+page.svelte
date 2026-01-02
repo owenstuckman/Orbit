@@ -37,7 +37,7 @@
       if (!loadedUser) {
         // User is authenticated but has no profile - go to complete registration
         console.log('[Login] No user profile, redirecting to complete registration');
-        goto('/auth/complete-registration');
+        goto('/auth/complete-registration', { replaceState: true });
         return;
       }
 
@@ -45,7 +45,7 @@
       await organization.load();
 
       // Redirect to dashboard
-      goto('/dashboard');
+      goto('/dashboard', { replaceState: true });
     } catch (err) {
       error = err instanceof Error ? err.message : 'An error occurred';
     } finally {
