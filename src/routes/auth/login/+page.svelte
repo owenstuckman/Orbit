@@ -31,8 +31,17 @@
         return;
       }
 
-      // Load user data
-      await user.load();
+      // Try to load user data
+      const loadedUser = await user.load();
+
+      if (!loadedUser) {
+        // User is authenticated but has no profile - go to complete registration
+        console.log('[Login] No user profile, redirecting to complete registration');
+        goto('/auth/complete-registration');
+        return;
+      }
+
+      // Load organization
       await organization.load();
 
       // Redirect to dashboard

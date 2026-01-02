@@ -4,6 +4,7 @@
   import { user, capabilities } from '$lib/stores/auth';
   import { tasks, tasksByStatus, taskCounts } from '$lib/stores/tasks';
   import { projects } from '$lib/stores/projects';
+  import { toasts } from '$lib/stores/notifications';
   import { subscribeToTable } from '$lib/services/supabase';
   import { TaskCard, TaskCreateModal, TaskFilters, DraggableTaskList } from '$lib/components/tasks';
   import { tasksApi } from '$lib/services/api';
@@ -20,7 +21,9 @@
     WifiOff,
     TrendingUp,
     Clock,
-    CheckCircle
+    CheckCircle,
+    Hand,
+    Sparkles
   } from 'lucide-svelte';
   import type { Task, TaskStatus } from '$lib/types';
 
@@ -212,7 +215,18 @@
 
   async function handleAcceptTask(task: Task) {
     if (!$user) return;
-    await tasks.accept(task.id, $user.id);
+    try {
+      const acceptedTask = await tasks.accept(task.id, $user.id);
+      if (acceptedTask) {
+        toasts.success(`You picked up "${task.title}"! Good luck!`);
+        // Optionally navigate to the task
+        goto(`/tasks/${task.id}`);
+      } else {
+        toasts.error('Failed to pick up task. It may have been claimed already.');
+      }
+    } catch (err) {
+      toasts.error(err instanceof Error ? err.message : 'Failed to pick up task');
+    }
   }
 
   function handleTaskClick(task: Task) {
@@ -277,7 +291,13 @@
     <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
       <div>
         <div class="flex items-center gap-3">
-          <h1 class="text-2xl font-bold text-slate-900">Tasks</h1>
+          <h1 class="text-2xl font-bold text-slate-900">
+            {#if ($user?.role === 'employee' || $user?.role === 'contractor') && showAvailableOnly}
+              Pick Up Tasks
+            {:else}
+              Tasks
+            {/if}
+          </h1>
           <!-- Real-time indicator -->
           <div class="flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium
             {isConnected ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}">
@@ -289,10 +309,21 @@
               <span>Offline</span>
             {/if}
           </div>
+          <!-- Level indicator for employees -->
+          {#if ($user?.role === 'employee' || $user?.role === 'contractor') && $user?.training_level}
+            <div class="flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+              <Sparkles size={12} />
+              <span>Level {$user.training_level}</span>
+            </div>
+          {/if}
         </div>
         <p class="mt-1 text-slate-600">
           {#if $user?.role === 'employee' || $user?.role === 'contractor'}
-            {showAvailableOnly ? 'Available tasks for your level' : 'Your assigned tasks'}
+            {#if showAvailableOnly}
+              Browse available tasks matching your level and pick one to work on
+            {:else}
+              View and manage your assigned tasks
+            {/if}
           {:else if $user?.role === 'qc'}
             Tasks pending quality review
           {:else}

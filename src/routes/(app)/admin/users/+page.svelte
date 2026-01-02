@@ -1,8 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { user } from '$lib/stores/auth';
+  import { user, organization } from '$lib/stores/auth';
   import { usersApi } from '$lib/services/api';
+  import { toasts } from '$lib/stores/notifications';
   import { InviteConfirmationModal } from '$lib/components/admin';
   import type { User, UserRole, UserInvitation } from '$lib/types';
   import {
@@ -20,7 +21,8 @@
     AlertTriangle,
     Clock,
     Copy,
-    XCircle
+    XCircle,
+    Crown
   } from 'lucide-svelte';
 
   let users: User[] = [];
@@ -30,6 +32,8 @@
   let loadingInvitations = true;
   let searchQuery = '';
   let roleFilter: UserRole | '' = '';
+  let isOwner = false;
+  let orgOwnerId: string | null = null;
 
   // Modal states
   let showInviteModal = false;
@@ -53,14 +57,22 @@
     base_salary: 0
   };
   let saving = false;
+  let roleChangeError = '';
 
   const roles: UserRole[] = ['admin', 'sales', 'pm', 'qc', 'employee', 'contractor'];
+
+  // Determine which roles current user can assign
+  // Both owner and admins can assign any role
+  $: availableRoles = roles;
 
   onMount(async () => {
     if ($user?.role !== 'admin') {
       goto('/dashboard');
       return;
     }
+    // Check if current user is owner
+    isOwner = await usersApi.isOrgOwner();
+    orgOwnerId = $organization?.owner_id || null;
     await Promise.all([loadUsers(), loadInvitations()]);
   });
 
@@ -115,17 +127,47 @@
     showEditModal = true;
   }
 
+  // Check if current user can edit a target user's role
+  function canEditUserRole(targetUser: User): boolean {
+    // Cannot edit yourself
+    if (targetUser.id === $user?.id) return false;
+    // Cannot edit the owner
+    if (targetUser.id === orgOwnerId) return false;
+    // Owner and admins can edit anyone else
+    return true;
+  }
+
   async function saveUser() {
     if (!selectedUser) return;
 
     saving = true;
+    roleChangeError = '';
+
     try {
-      await usersApi.update(selectedUser.id, editForm);
+      const originalRole = selectedUser.role;
+      const roleChanged = editForm.role !== originalRole;
+
+      // If role changed, use the RPC function for proper permission checks
+      if (roleChanged) {
+        const result = await usersApi.updateRole(selectedUser.id, editForm.role);
+        if (!result.success) {
+          roleChangeError = result.error || 'Failed to update role';
+          saving = false;
+          return;
+        }
+      }
+
+      // Update other fields (name, level, salary)
+      const { role, ...otherUpdates } = editForm;
+      await usersApi.update(selectedUser.id, otherUpdates);
+
       await loadUsers();
       showEditModal = false;
       selectedUser = null;
+      toasts.success('User updated successfully');
     } catch (error) {
       console.error('Failed to update user:', error);
+      toasts.error('Failed to update user');
     } finally {
       saving = false;
     }
@@ -354,7 +396,18 @@
                       </span>
                     </div>
                     <div>
-                      <p class="font-medium text-slate-900">{u.full_name || 'No name'}</p>
+                      <div class="flex items-center gap-2">
+                        <p class="font-medium text-slate-900">{u.full_name || 'No name'}</p>
+                        {#if u.id === orgOwnerId}
+                          <span class="inline-flex items-center gap-1 px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded text-xs font-medium">
+                            <Crown size={10} />
+                            Owner
+                          </span>
+                        {/if}
+                        {#if u.id === $user?.id}
+                          <span class="text-xs text-slate-400">(You)</span>
+                        {/if}
+                      </div>
                       <p class="text-sm text-slate-500">{u.email}</p>
                     </div>
                   </div>
@@ -532,11 +585,26 @@
 
     <div class="relative bg-white rounded-xl shadow-xl max-w-md w-full p-6">
       <div class="flex items-center justify-between mb-6">
-        <h2 class="text-xl font-bold text-slate-900">Edit User</h2>
-        <button on:click={() => showEditModal = false} class="text-slate-400 hover:text-slate-600">
+        <div>
+          <h2 class="text-xl font-bold text-slate-900">Edit User</h2>
+          {#if selectedUser.id === orgOwnerId}
+            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded text-xs font-medium mt-1">
+              <Crown size={10} />
+              Organization Owner
+            </span>
+          {/if}
+        </div>
+        <button on:click={() => { showEditModal = false; roleChangeError = ''; }} class="text-slate-400 hover:text-slate-600">
           <X size={20} />
         </button>
       </div>
+
+      {#if roleChangeError}
+        <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700">
+          <AlertTriangle size={16} />
+          {roleChangeError}
+        </div>
+      {/if}
 
       <form on:submit|preventDefault={saveUser} class="space-y-4">
         <div>
@@ -555,15 +623,28 @@
           <label class="block text-sm font-medium text-slate-700 mb-1" for="edit-role">
             Role
           </label>
-          <select
-            id="edit-role"
-            bind:value={editForm.role}
-            class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-          >
-            {#each roles as role}
-              <option value={role}>{role.charAt(0).toUpperCase() + role.slice(1)}</option>
-            {/each}
-          </select>
+          {#if canEditUserRole(selectedUser)}
+            <select
+              id="edit-role"
+              bind:value={editForm.role}
+              class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            >
+              {#each availableRoles as role}
+                <option value={role}>{role.charAt(0).toUpperCase() + role.slice(1)}</option>
+              {/each}
+            </select>
+          {:else}
+            <div class="w-full px-4 py-2 border border-slate-200 bg-slate-50 rounded-lg text-slate-600">
+              {selectedUser.role.charAt(0).toUpperCase() + selectedUser.role.slice(1)}
+            </div>
+            <p class="text-xs text-slate-500 mt-1">
+              {#if selectedUser.id === $user?.id}
+                You cannot change your own role.
+              {:else if selectedUser.id === orgOwnerId}
+                The organization owner's role cannot be changed.
+              {/if}
+            </p>
+          {/if}
         </div>
 
         <div class="grid grid-cols-2 gap-4">

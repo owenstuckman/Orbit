@@ -59,6 +59,7 @@ export type ContractStatus = 'draft' | 'pending_signature' | 'active' | 'complet
 export interface Organization {
   id: string;
   name: string;
+  owner_id: string | null;
   settings: Record<string, unknown>;
   default_r: number;
   r_bounds: { min: number; max: number };

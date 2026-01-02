@@ -1,8 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { user } from '$lib/stores/auth';
+  import { user, organization } from '$lib/stores/auth';
   import { qcApi, tasksApi } from '$lib/services/api';
   import { formatCurrency, computeQCMarginals, calculateQCPayout } from '$lib/utils/payout';
+  import { toasts } from '$lib/stores/notifications';
   import type { Task, QCReview, ShapleyParams } from '$lib/types';
   import {
     Shield,
@@ -26,10 +27,14 @@
   let reviewPassed = true;
   let feedback = '';
 
-  // QC payout preview
+  // QC payout preview - reactively update when org settings or task changes
   $: potentialPayout = selectedTask ? calculatePotentialPayout(selectedTask) : 0;
 
   onMount(async () => {
+    // Ensure organization settings are loaded
+    if (!$organization) {
+      await organization.load();
+    }
     await loadPendingTasks();
   });
 
@@ -39,6 +44,7 @@
       pendingTasks = await qcApi.listPending();
     } catch (error) {
       console.error('Failed to load pending tasks:', error);
+      toasts.error('Failed to load review queue');
     } finally {
       loading = false;
     }
@@ -49,18 +55,18 @@
   }
 
   function calculatePotentialPayout(task: Task): number {
-    // Get org settings (would normally come from store)
-    const beta = 0.25;
-    const gamma = 0.4;
-    const v0 = task.dollar_value * 0.7;
-    
+    // Use organization settings with sensible defaults
+    const beta = $organization?.qc_beta ?? 0.25;
+    const gamma = $organization?.qc_gamma ?? 0.4;
+    const v0 = task.dollar_value * 0.7; // Worker baseline: 70% of task value
+
     // Get latest AI confidence if available
     const aiReview = task.qc_reviews?.find(r => r.review_type === 'ai');
     const p0 = aiReview?.confidence ?? 0.8;
-    
-    // Number of passes (how many times it's been reviewed)
-    const K = (task.qc_reviews?.filter(r => !r.passed).length ?? 0) + 1;
-    
+
+    // Number of passes (how many times it's been reviewed/rejected + current)
+    const K = (task.qc_reviews?.filter(r => r.review_type !== 'ai' && !r.passed).length ?? 0) + 1;
+
     const params: ShapleyParams = {
       V: task.dollar_value,
       v0,
@@ -69,32 +75,51 @@
       gamma,
       K
     };
-    
+
     return calculateQCPayout(params);
   }
 
   async function submitReview() {
     if (!selectedTask || !$user) return;
-    
+
+    // Validate feedback is required for rejections
+    if (!reviewPassed && !feedback.trim()) {
+      toasts.error('Please provide feedback explaining what needs to be fixed');
+      return;
+    }
+
     submitting = true;
     try {
-      await qcApi.submitReview(
+      const result = await qcApi.submitReview(
         selectedTask.id,
         $user.id,
         reviewPassed,
         feedback,
         'independent'
       );
-      
+
+      if (!result) {
+        toasts.error('Failed to submit review');
+        return;
+      }
+
+      // Show success message
+      if (reviewPassed) {
+        toasts.success(`Task approved! Payout: ${formatCurrency(potentialPayout)}`);
+      } else {
+        toasts.info('Task returned for revisions');
+      }
+
       // Reset form
       feedback = '';
       reviewPassed = true;
       selectedTask = null;
-      
+
       // Reload tasks
       await loadPendingTasks();
     } catch (error) {
       console.error('Failed to submit review:', error);
+      toasts.error('Failed to submit review. Please try again.');
     } finally {
       submitting = false;
     }

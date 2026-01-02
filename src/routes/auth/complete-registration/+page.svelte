@@ -87,14 +87,30 @@
     error = '';
 
     try {
-      // Call the registration function to create org + user
-      const { data: regResult, error: regError } = await supabase.rpc('register_user_and_org', {
-        p_auth_id: authUser.id,
-        p_email: authUser.email,
-        p_full_name: fullName,
-        p_org_name: joinExisting ? null : organizationName,
-        p_org_invite_code: joinExisting ? organizationCode : null
-      });
+      let regResult;
+      let regError;
+
+      if (joinExisting) {
+        // Join an existing organization with invite code
+        const result = await supabase.rpc('accept_organization_invite', {
+          p_auth_id: authUser.id,
+          p_email: authUser.email,
+          p_full_name: fullName,
+          p_invite_code: organizationCode.trim().toUpperCase()
+        });
+        regResult = result.data;
+        regError = result.error;
+      } else {
+        // Create a new organization
+        const result = await supabase.rpc('register_user_and_org', {
+          p_auth_id: authUser.id,
+          p_email: authUser.email,
+          p_full_name: fullName,
+          p_org_name: organizationName
+        });
+        regResult = result.data;
+        regError = result.error;
+      }
 
       console.log('[CompleteReg] Registration result:', regResult, regError);
 

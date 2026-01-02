@@ -308,9 +308,16 @@ Error: {errorDetails}</pre>
             <p class="text-white text-sm font-medium truncate">
               {$user.full_name || $user.email}
             </p>
-            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {getRoleBadgeColor($user.role)}">
-              {$user.role}
-            </span>
+            <div class="flex items-center gap-2 mt-0.5">
+              <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {getRoleBadgeColor($user.role)}">
+                {$user.role}
+              </span>
+              {#if $user.training_level}
+                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
+                  Lv.{$user.training_level}
+                </span>
+              {/if}
+            </div>
           </div>
           <button
             on:click={handleSignOut}

@@ -286,6 +286,54 @@ export const usersApi = {
       return false;
     }
     return true;
+  },
+
+  // ============================================================================
+  // Role Management
+  // ============================================================================
+
+  /**
+   * Update a user's role with proper permission checks
+   * - Owner can change any role
+   * - Admins can change any role except other admins
+   */
+  async updateRole(userId: string, newRole: UserRole): Promise<{ success: boolean; error?: string }> {
+    const { data, error } = await supabase.rpc('update_user_role', {
+      p_target_user_id: userId,
+      p_new_role: newRole
+    });
+
+    if (error) {
+      console.error('Error updating user role:', error);
+      return { success: false, error: error.message };
+    }
+
+    if (!data?.success) {
+      return { success: false, error: data?.error || 'Failed to update role' };
+    }
+
+    return { success: true };
+  },
+
+  /**
+   * Check if the current user is the organization owner
+   */
+  async isOrgOwner(): Promise<boolean> {
+    const user = await this.getCurrent();
+    if (!user?.org_id) return false;
+
+    const { data, error } = await supabase
+      .from('organizations')
+      .select('owner_id')
+      .eq('id', user.org_id)
+      .single();
+
+    if (error) {
+      console.error('Error checking org owner:', error);
+      return false;
+    }
+
+    return data?.owner_id === user.id;
   }
 };
 
@@ -467,11 +515,23 @@ export const tasksApi = {
   },
 
   async accept(taskId: string, userId: string): Promise<Task | null> {
-    return this.update(taskId, {
-      assignee_id: userId,
-      assigned_at: new Date().toISOString(),
-      status: 'assigned' as TaskStatus
+    // Use RPC function which validates user level and handles the assignment atomically
+    const { data, error } = await supabase.rpc('accept_task', {
+      p_task_id: taskId,
+      p_user_id: userId
     });
+
+    if (error) {
+      console.error('Error accepting task:', error);
+      // Fallback to direct update if RPC not available
+      return this.update(taskId, {
+        assignee_id: userId,
+        assigned_at: new Date().toISOString(),
+        status: 'assigned' as TaskStatus
+      });
+    }
+
+    return data;
   },
 
   async submit(

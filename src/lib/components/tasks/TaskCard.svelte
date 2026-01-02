@@ -1,6 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  import { Clock, DollarSign, User, Sparkles, TrendingUp, Trophy, Zap } from 'lucide-svelte';
+  import { Clock, DollarSign, User, Sparkles, TrendingUp, Trophy, Zap, Hand } from 'lucide-svelte';
   import { user } from '$lib/stores/auth';
   import { formatCurrency, calculateTaskPayout } from '$lib/utils/payout';
   import type { Task } from '$lib/types';
@@ -180,9 +180,10 @@
   {#if showAcceptButton}
     <button
       on:click={handleAccept}
-      class="mt-3 w-full py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+      class="mt-3 w-full py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-semibold rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2"
     >
-      Accept Task
+      <Hand size={16} />
+      Pick Up Task
     </button>
   {/if}
 </button>

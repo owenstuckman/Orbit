@@ -177,6 +177,18 @@
                 {#if copied}
                   <p class="text-sm text-green-600">Copied to clipboard!</p>
                 {/if}
+
+                <!-- Email and Copy buttons -->
+                <div class="flex gap-2 pt-2">
+                  <a
+                    href="mailto:{contractorEmail}?subject=Task Assignment: {encodeURIComponent(task.title)}&body={encodeURIComponent(`Hi ${contractorName},\n\nYou have been assigned to work on the following task:\n\n${task.title}\n\nValue: ${formatCurrency(task.dollar_value)}\n${task.deadline ? `Deadline: ${new Date(task.deadline).toLocaleDateString()}\n` : ''}\nPlease submit your work using this link:\n${submissionUrl}\n\nThank you!`)}"
+                    class="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+                  >
+                    <Mail size={16} />
+                    Email Link to Contractor
+                  </a>
+                </div>
+
                 <p class="text-xs text-slate-500">
                   Share this link with the contractor. They can submit their work without creating an account.
                 </p>
