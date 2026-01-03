@@ -89,11 +89,12 @@ export const usersApi = {
 
     console.log('[usersApi.getCurrent] Auth user id:', authUser.id);
 
+    // First get just the user record (without organization join to avoid RLS issues)
     const { data, error } = await supabase
       .from('users')
-      .select('*, organization:organizations(*)')
+      .select('*')
       .eq('auth_id', authUser.id)
-      .maybeSingle(); // Use maybeSingle() instead of single() to handle 0 rows gracefully
+      .maybeSingle();
 
     if (error) {
       console.error('[usersApi.getCurrent] Error fetching user profile:', error);
@@ -105,8 +106,25 @@ export const usersApi = {
       return null;
     }
 
+    // Now try to fetch organization separately if user has org_id
+    let organization = null;
+    if (data.org_id) {
+      const { data: orgData, error: orgError } = await supabase
+        .from('organizations')
+        .select('*')
+        .eq('id', data.org_id)
+        .maybeSingle();
+
+      if (orgError) {
+        console.warn('[usersApi.getCurrent] Could not fetch organization:', orgError.message);
+        // Continue without organization - user can still sign in
+      } else {
+        organization = orgData;
+      }
+    }
+
     console.log('[usersApi.getCurrent] User loaded:', data.id, 'org_id:', data.org_id);
-    return data;
+    return { ...data, organization };
   },
 
   async getById(id: string): Promise<User | null> {
