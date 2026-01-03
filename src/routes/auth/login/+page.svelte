@@ -31,13 +31,42 @@
         return;
       }
 
-      // Try to load user data
+      // Clear any redirect loop tracking from previous attempts
+      try {
+        sessionStorage.removeItem('orbit_auth_redirect_count');
+      } catch {
+        // Ignore storage errors
+      }
+
+      // Get the auth user to check profile
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) {
+        error = 'Authentication failed. Please try again.';
+        return;
+      }
+
+      // Check if user profile exists
+      const { data: existingProfile } = await supabase
+        .from('users')
+        .select('id, org_id')
+        .eq('auth_id', authUser.id)
+        .maybeSingle();
+
+      if (!existingProfile) {
+        // No profile exists - go to complete registration
+        console.log('[Login] No user profile exists, redirecting to complete registration');
+        goto('/auth/complete-registration', { replaceState: true });
+        return;
+      }
+
+      // Profile exists - try to load full user data
+      console.log('[Login] User profile exists, loading full data...');
       const loadedUser = await user.load();
 
       if (!loadedUser) {
-        // User is authenticated but has no profile - go to complete registration
-        console.log('[Login] No user profile, redirecting to complete registration');
-        goto('/auth/complete-registration', { replaceState: true });
+        // Profile exists but couldn't load - this is an error state
+        console.error('[Login] User profile exists but failed to load');
+        error = 'Failed to load your profile. Please try again or contact support.';
         return;
       }
 

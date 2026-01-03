@@ -77,8 +77,17 @@ function applyFilters<T>(query: T, filters?: QueryFilters): T {
 // Users API
 export const usersApi = {
   async getCurrent(): Promise<User | null> {
-    const { data: { user: authUser } } = await supabase.auth.getUser();
-    if (!authUser) return null;
+    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+    if (authError) {
+      console.error('[usersApi.getCurrent] Auth error:', authError);
+      return null;
+    }
+    if (!authUser) {
+      console.log('[usersApi.getCurrent] No auth user');
+      return null;
+    }
+
+    console.log('[usersApi.getCurrent] Auth user id:', authUser.id);
 
     const { data, error } = await supabase
       .from('users')
@@ -87,9 +96,16 @@ export const usersApi = {
       .maybeSingle(); // Use maybeSingle() instead of single() to handle 0 rows gracefully
 
     if (error) {
-      console.error('Error fetching user:', error);
+      console.error('[usersApi.getCurrent] Error fetching user profile:', error);
       return null;
     }
+
+    if (!data) {
+      console.log('[usersApi.getCurrent] No user profile found for auth_id:', authUser.id);
+      return null;
+    }
+
+    console.log('[usersApi.getCurrent] User loaded:', data.id, 'org_id:', data.org_id);
     return data;
   },
 

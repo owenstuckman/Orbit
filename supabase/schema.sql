@@ -170,3 +170,127 @@ ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE qc_reviews ENABLE ROW LEVEL SECURITY;
 ALTER TABLE contracts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payouts ENABLE ROW LEVEL SECURITY;
+
+-- ============================================================================
+-- RLS POLICIES
+-- ============================================================================
+
+-- Helper function to get current user's org_id (avoids recursive RLS on users table)
+CREATE OR REPLACE FUNCTION get_my_org_id()
+RETURNS UUID
+LANGUAGE SQL
+SECURITY DEFINER
+STABLE
+AS $$
+    SELECT org_id FROM users WHERE auth_id = auth.uid() LIMIT 1;
+$$;
+
+-- Helper function to get current user's id
+CREATE OR REPLACE FUNCTION get_my_user_id()
+RETURNS UUID
+LANGUAGE SQL
+SECURITY DEFINER
+STABLE
+AS $$
+    SELECT id FROM users WHERE auth_id = auth.uid() LIMIT 1;
+$$;
+
+-- Helper function to get current user's role
+CREATE OR REPLACE FUNCTION get_my_role()
+RETURNS user_role
+LANGUAGE SQL
+SECURITY DEFINER
+STABLE
+AS $$
+    SELECT role FROM users WHERE auth_id = auth.uid() LIMIT 1;
+$$;
+
+-- Users policies (non-recursive - use auth_id directly)
+CREATE POLICY "Users can read own profile"
+    ON users FOR SELECT
+    USING (auth_id = auth.uid());
+
+CREATE POLICY "Users can update own profile"
+    ON users FOR UPDATE
+    USING (auth_id = auth.uid());
+
+CREATE POLICY "Users can insert own profile"
+    ON users FOR INSERT
+    WITH CHECK (auth_id = auth.uid());
+
+-- Organizations policies (use helper function)
+CREATE POLICY "Users can view own organization"
+    ON organizations FOR SELECT
+    USING (id = get_my_org_id());
+
+CREATE POLICY "Admins can update their organization"
+    ON organizations FOR UPDATE
+    USING (id = get_my_org_id() AND get_my_role() = 'admin');
+
+-- Projects policies
+CREATE POLICY "Users can view projects in their organization"
+    ON projects FOR SELECT
+    USING (org_id = get_my_org_id());
+
+CREATE POLICY "PMs and admins can create projects"
+    ON projects FOR INSERT
+    WITH CHECK (org_id = get_my_org_id() AND get_my_role() IN ('admin', 'pm', 'sales'));
+
+CREATE POLICY "PMs and admins can update projects"
+    ON projects FOR UPDATE
+    USING (org_id = get_my_org_id() AND get_my_role() IN ('admin', 'pm'));
+
+-- Tasks policies
+CREATE POLICY "Users can view tasks in their organization"
+    ON tasks FOR SELECT
+    USING (org_id = get_my_org_id());
+
+CREATE POLICY "PMs and admins can create tasks"
+    ON tasks FOR INSERT
+    WITH CHECK (org_id = get_my_org_id() AND get_my_role() IN ('admin', 'pm'));
+
+CREATE POLICY "Users can update their tasks or if admin/pm"
+    ON tasks FOR UPDATE
+    USING (
+        org_id = get_my_org_id()
+        AND (assignee_id = get_my_user_id() OR get_my_role() IN ('admin', 'pm'))
+    );
+
+-- QC Reviews policies
+CREATE POLICY "Users can view QC reviews in their organization"
+    ON qc_reviews FOR SELECT
+    USING (task_id IN (SELECT id FROM tasks WHERE org_id = get_my_org_id()));
+
+CREATE POLICY "QC and admins can create reviews"
+    ON qc_reviews FOR INSERT
+    WITH CHECK (get_my_role() IN ('admin', 'qc'));
+
+-- Contracts policies
+CREATE POLICY "Users can view contracts they are party to or if admin"
+    ON contracts FOR SELECT
+    USING (
+        party_a_id = get_my_user_id()
+        OR party_b_id = get_my_user_id()
+        OR (org_id = get_my_org_id() AND get_my_role() = 'admin')
+    );
+
+CREATE POLICY "Users can create contracts"
+    ON contracts FOR INSERT
+    WITH CHECK (org_id = get_my_org_id());
+
+CREATE POLICY "Parties can update contracts"
+    ON contracts FOR UPDATE
+    USING (party_a_id = get_my_user_id() OR party_b_id = get_my_user_id());
+
+-- Payouts policies
+CREATE POLICY "Users can view their own payouts"
+    ON payouts FOR SELECT
+    USING (user_id = get_my_user_id());
+
+CREATE POLICY "Admins can view all payouts in their organization"
+    ON payouts FOR SELECT
+    USING (org_id = get_my_org_id() AND get_my_role() = 'admin');
+
+CREATE POLICY "Admins and PMs can create payouts"
+    ON payouts FOR INSERT
+    WITH CHECK (org_id = get_my_org_id() AND get_my_role() IN ('admin', 'pm'));

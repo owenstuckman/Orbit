@@ -32,17 +32,55 @@
     authUser = { id: user.id, email: user.email || '' };
     console.log('[CompleteReg] Auth user found:', authUser.email);
 
-    // Check if user profile already exists
-    const { data: existingUser } = await supabase
+    // First, check if a user profile exists at all (simple query without joins)
+    const { data: existingProfile, error: profileError } = await supabase
       .from('users')
-      .select('id')
+      .select('id, org_id')
       .eq('auth_id', user.id)
       .maybeSingle();
 
-    if (existingUser) {
-      console.log('[CompleteReg] User profile exists, redirecting to dashboard');
-      goto('/dashboard', { replaceState: true });
-      return;
+    if (profileError) {
+      console.error('[CompleteReg] Error checking profile:', profileError);
+      console.error('[CompleteReg] Error code:', profileError.code, 'Details:', profileError.details, 'Hint:', profileError.hint);
+
+      // If it's an RLS error, the user likely doesn't have a profile yet - continue to show form
+      if (profileError.code === '42501' || profileError.message?.includes('permission denied') || profileError.code === 'PGRST301') {
+        console.log('[CompleteReg] RLS error - user likely has no profile, showing registration form');
+        // Continue to show registration form
+      } else {
+        error = `Error checking your account: ${profileError.message || profileError.code}`;
+        checking = false;
+        return;
+      }
+    }
+
+    if (existingProfile) {
+      console.log('[CompleteReg] User profile exists:', existingProfile.id);
+
+      // User profile exists - try to load it fully
+      const loadedUser = await userStore.load();
+
+      if (loadedUser) {
+        console.log('[CompleteReg] User profile loaded successfully, loading org...');
+        const loadedOrg = await orgStore.load();
+
+        if (loadedOrg) {
+          console.log('[CompleteReg] User and org loaded, redirecting to dashboard');
+          goto('/dashboard', { replaceState: true });
+          return;
+        }
+      }
+
+      // User exists but something failed - check if org_id is the issue
+      if (!existingProfile.org_id) {
+        console.log('[CompleteReg] User exists but has no org_id, showing form to join/create org');
+        error = 'Your account exists but is not linked to an organization. Please join or create one.';
+      } else {
+        // org_id exists but org load failed - might be invalid reference
+        console.log('[CompleteReg] User exists with org_id but org load failed, redirecting to dashboard to show error');
+        goto('/dashboard', { replaceState: true });
+        return;
+      }
     }
 
     console.log('[CompleteReg] No user profile, showing registration form');
@@ -128,6 +166,13 @@
 
       console.log('[CompleteReg] Registration successful!');
       success = true;
+
+      // Clear any redirect loop tracking
+      try {
+        sessionStorage.removeItem('orbit_auth_redirect_count');
+      } catch {
+        // Ignore storage errors
+      }
 
       // Load user and org into stores
       await userStore.load();

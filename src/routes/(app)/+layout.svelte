@@ -39,6 +39,10 @@
   let loadError = '';
   let errorDetails = '';
 
+  // Redirect loop prevention
+  const REDIRECT_KEY = 'orbit_auth_redirect_count';
+  const MAX_REDIRECTS = 3;
+
   // Navigation items based on role
   $: navItems = [
     {
@@ -113,6 +117,32 @@
     initializeApp();
   });
 
+  function getRedirectCount(): number {
+    try {
+      return parseInt(sessionStorage.getItem(REDIRECT_KEY) || '0', 10);
+    } catch {
+      return 0;
+    }
+  }
+
+  function incrementRedirectCount(): number {
+    const count = getRedirectCount() + 1;
+    try {
+      sessionStorage.setItem(REDIRECT_KEY, count.toString());
+    } catch {
+      // Ignore storage errors
+    }
+    return count;
+  }
+
+  function clearRedirectCount(): void {
+    try {
+      sessionStorage.removeItem(REDIRECT_KEY);
+    } catch {
+      // Ignore storage errors
+    }
+  }
+
   async function initializeApp() {
     loading = true;
     loadError = '';
@@ -125,6 +155,7 @@
 
       if (!authState.session) {
         console.log('[Layout] No session, redirecting to login');
+        clearRedirectCount();
         goto('/auth/login', { replaceState: true });
         return;
       }
@@ -135,11 +166,27 @@
       console.log('[Layout] User loaded:', loadedUser?.id);
 
       if (!loadedUser) {
+        // Check for redirect loop
+        const redirectCount = incrementRedirectCount();
+        console.log('[Layout] Redirect count:', redirectCount);
+
+        if (redirectCount >= MAX_REDIRECTS) {
+          console.error('[Layout] Redirect loop detected! Stopping redirect and showing error.');
+          clearRedirectCount();
+          loadError = 'Authentication loop detected';
+          errorDetails = 'There was a problem loading your profile. Please sign out and try again, or contact support if the issue persists.';
+          loading = false;
+          return;
+        }
+
         // User is authenticated but has no profile - redirect to complete registration
         console.log('[Layout] No user profile, redirecting to complete registration');
         goto('/auth/complete-registration', { replaceState: true });
         return;
       }
+
+      // User loaded successfully - clear redirect count
+      clearRedirectCount();
 
       // Load organization
       console.log('[Layout] Loading organization...');
@@ -148,7 +195,7 @@
 
       if (!loadedOrg) {
         loadError = 'Organization not found';
-        errorDetails = 'Could not load your organization data. Please contact support.';
+        errorDetails = 'Could not load your organization data. Please try joining or creating an organization.';
         loading = false;
         return;
       }
