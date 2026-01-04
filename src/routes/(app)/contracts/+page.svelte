@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { user, capabilities } from '$lib/stores/auth';
+  import { user, capabilities, currentOrgRole } from '$lib/stores/auth';
   import { contractsApi } from '$lib/services/api';
   import { toasts } from '$lib/stores/notifications';
   import type { Contract } from '$lib/types';
@@ -35,8 +35,8 @@
   });
 
   onMount(async () => {
-    // Route guard: Only PM, Sales, and Admin can access contracts
-    if (!['pm', 'sales', 'admin'].includes($user?.role || '')) {
+    // Route guard: Only PM, Sales, and Admin can access contracts (using org-specific role)
+    if (!['pm', 'sales', 'admin'].includes($currentOrgRole)) {
       toasts.error('You do not have permission to access contracts');
       goto('/dashboard');
       return;

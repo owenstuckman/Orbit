@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { user, capabilities } from '$lib/stores/auth';
+  import { user, capabilities, currentOrgRole } from '$lib/stores/auth';
   import { usersApi, organizationsApi } from '$lib/services/api';
   import type { User, Organization } from '$lib/types';
   import {
@@ -29,8 +29,8 @@
   let loading = true;
 
   onMount(async () => {
-    // Redirect non-admins
-    if ($user?.role !== 'admin') {
+    // Redirect non-admins (using org-specific role)
+    if ($currentOrgRole !== 'admin') {
       goto('/dashboard');
       return;
     }

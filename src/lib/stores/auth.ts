@@ -155,13 +155,18 @@ function createUserOrgsStore() {
     /**
      * Switch to a different organization
      * Updates the user's active org_id and reloads the organization store
+     * Also reloads memberships so the role updates properly
      */
     async switchOrg(orgId: string): Promise<boolean> {
       const success = await usersApi.switchOrganization(orgId);
       if (success) {
-        // Reload the user and organization stores
+        // Reload all stores in the correct order
+        // 1. User first (to get the new org_id)
         await user.load();
+        // 2. Organization (to get the new org data)
         await organization.load();
+        // 3. Reload memberships to ensure role is current
+        await this.load();
         return true;
       }
       return false;
@@ -170,6 +175,32 @@ function createUserOrgsStore() {
 }
 
 export const userOrganizations = createUserOrgsStore();
+
+// ============================================================================
+// Current Organization Role (derived from user_organization_memberships)
+// ============================================================================
+
+// Derived store that gets the user's role in their current organization
+export const currentOrgRole = derived(
+  [user, userOrganizations],
+  ([$user, $userOrganizations]): string => {
+    if (!$user || !$userOrganizations.length) {
+      return $user?.role || 'employee'; // Fallback to user.role or employee
+    }
+
+    // Find the membership for the current organization
+    const currentMembership = $userOrganizations.find(
+      membership => membership.org_id === $user.org_id
+    );
+
+    if (currentMembership) {
+      return currentMembership.role;
+    }
+
+    // Fallback to user.role if no membership found
+    return $user.role || 'employee';
+  }
+);
 
 // ============================================================================
 // Role Capabilities
@@ -256,25 +287,29 @@ const ROLE_CAPABILITIES: Record<string, RoleCapabilities> = {
   }
 };
 
-// Derived store for current user's capabilities
-export const capabilities = derived(user, ($user): RoleCapabilities => {
-  if (!$user) {
-    return {
-      canViewTasks: false,
-      canCreateTasks: false,
-      canAssignTasks: false,
-      canAcceptTasks: false,
-      canReviewQC: false,
-      canViewPayouts: 'self',
-      canCreateProjects: false,
-      canManageProjects: false,
-      canViewContracts: 'own',
-      canSignContracts: false,
-      canAccessSettings: 'own'
-    };
+// Derived store for current user's capabilities (based on org-specific role)
+export const capabilities = derived(
+  [user, currentOrgRole],
+  ([$user, $currentOrgRole]): RoleCapabilities => {
+    if (!$user) {
+      return {
+        canViewTasks: false,
+        canCreateTasks: false,
+        canAssignTasks: false,
+        canAcceptTasks: false,
+        canReviewQC: false,
+        canViewPayouts: 'self',
+        canCreateProjects: false,
+        canManageProjects: false,
+        canViewContracts: 'own',
+        canSignContracts: false,
+        canAccessSettings: 'own'
+      };
+    }
+    // Use the org-specific role for capabilities
+    return ROLE_CAPABILITIES[$currentOrgRole] || ROLE_CAPABILITIES.employee;
   }
-  return ROLE_CAPABILITIES[$user.role] || ROLE_CAPABILITIES.employee;
-});
+);
 
 // Derived store for checking if user is authenticated
 export const isAuthenticated = derived(auth, ($auth) => !!$auth.session);

@@ -2,7 +2,7 @@
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
   import { onMount, onDestroy } from 'svelte';
-  import { user, capabilities } from '$lib/stores/auth';
+  import { user, capabilities, currentOrgRole } from '$lib/stores/auth';
   import { currentTask, tasks } from '$lib/stores/tasks';
   import { artifactStore, artifactCount } from '$lib/stores/artifacts';
   import { tasksApi } from '$lib/services/api';
@@ -104,7 +104,7 @@
     $currentTask.task.required_level <= ($user?.training_level || 1);
 
   // Can edit task (PM/Admin)
-  $: canEdit = $capabilities.canCreateTasks || $user?.role === 'admin';
+  $: canEdit = $capabilities.canCreateTasks || $currentOrgRole === 'admin';
 
   // Can assign externally (PM/Admin and task is open)
   $: canAssignExternal = canEdit && $currentTask.task?.status === 'open';
@@ -679,7 +679,7 @@
         {/if}
 
         <!-- Assignment Status for Workers -->
-        {#if $user?.role === 'employee' || $user?.role === 'contractor'}
+        {#if $currentOrgRole === 'employee' || $currentOrgRole === 'contractor'}
           <div class="bg-white rounded-xl border border-slate-200 p-6">
             <h3 class="font-semibold text-slate-900 mb-4">Your Status</h3>
 

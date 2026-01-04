@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { user, capabilities } from '$lib/stores/auth';
+  import { user, capabilities, currentOrgRole } from '$lib/stores/auth';
   import { projects, projectsByStatus } from '$lib/stores/projects';
   import { toasts } from '$lib/stores/notifications';
   import { formatCurrency, calculatePMPayout } from '$lib/utils/payout';
@@ -60,9 +60,9 @@
       return;
     }
 
-    if ($user?.role === 'pm') {
+    if ($currentOrgRole === 'pm') {
       await projects.loadByPM($user.id);
-    } else if ($user?.role === 'sales') {
+    } else if ($currentOrgRole === 'sales') {
       await projects.loadBySales($user.id);
     } else {
       await projects.load();
@@ -123,9 +123,9 @@
     <div>
       <h1 class="text-2xl font-bold text-slate-900">Projects</h1>
       <p class="mt-1 text-slate-600">
-        {#if $user?.role === 'pm'}
+        {#if $currentOrgRole === 'pm'}
           Manage your projects and track budgets
-        {:else if $user?.role === 'sales'}
+        {:else if $currentOrgRole === 'sales'}
           Track your sold projects
         {:else}
           All organization projects
@@ -143,7 +143,7 @@
         >
           All
         </button>
-        {#if $user?.role === 'pm'}
+        {#if $currentOrgRole === 'pm'}
           <button
             class="px-4 py-2 text-sm font-medium rounded-md transition-colors
               {viewMode === 'pending' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}"
@@ -174,7 +174,7 @@
   </div>
 
   <!-- Stats for PM -->
-  {#if $user?.role === 'pm'}
+  {#if $currentOrgRole === 'pm'}
     <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
       <div class="bg-white rounded-xl border border-slate-200 p-6">
         <div class="flex items-center justify-between">
@@ -239,7 +239,7 @@
     <div class="bg-white rounded-xl border border-slate-200 p-12 text-center">
       <FolderKanban class="mx-auto text-slate-300 mb-4" size={48} />
       <p class="text-slate-500">No projects found</p>
-      {#if viewMode === 'pending' && $user?.role === 'pm'}
+      {#if viewMode === 'pending' && $currentOrgRole === 'pm'}
         <p class="text-sm text-slate-400 mt-1">No projects waiting to be picked up</p>
       {/if}
     </div>
@@ -313,7 +313,7 @@
               {/if}
             </div>
             
-            {#if project.status === 'pending_pm' && $user?.role === 'pm'}
+            {#if project.status === 'pending_pm' && $currentOrgRole === 'pm'}
               <button
                 class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
                 on:click|preventDefault|stopPropagation={() => handlePickUpProject(project)}

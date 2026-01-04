@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { user, organization } from '$lib/stores/auth';
+  import { user, organization, currentOrgRole } from '$lib/stores/auth';
   import { organizationsApi } from '$lib/services/api';
   import type { Organization } from '$lib/types';
   import {
@@ -37,7 +37,7 @@
   $: hasChanges = JSON.stringify(form) !== JSON.stringify(originalForm);
 
   onMount(async () => {
-    if ($user?.role !== 'admin') {
+    if ($currentOrgRole !== 'admin') {
       goto('/dashboard');
       return;
     }

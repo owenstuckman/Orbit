@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { user } from '$lib/stores/auth';
+  import { user, currentOrgRole } from '$lib/stores/auth';
   import { toasts } from '$lib/stores/notifications';
   import { gamification, BADGE_DEFINITIONS, xpToNextLevel } from '$lib/stores/gamification';
   import AchievementsGrid from '$lib/components/gamification/AchievementsGrid.svelte';
@@ -18,8 +18,8 @@
   let loading = true;
 
   onMount(async () => {
-    // Route guard: Only employees and contractors see achievements
-    if ($user?.role !== 'employee' && $user?.role !== 'contractor') {
+    // Route guard: Only employees and contractors see achievements (using org-specific role)
+    if ($currentOrgRole !== 'employee' && $currentOrgRole !== 'contractor') {
       toasts.error('Achievements are only available for employees and contractors');
       goto('/dashboard');
       return;

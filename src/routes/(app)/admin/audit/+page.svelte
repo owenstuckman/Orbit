@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { user } from '$lib/stores/auth';
+  import { user, currentOrgRole } from '$lib/stores/auth';
   import type { AuditLog } from '$lib/types';
   import {
     Activity,
@@ -27,7 +27,7 @@
   const entities = ['task', 'project', 'user', 'contract', 'payout', 'qc_review'];
 
   onMount(async () => {
-    if ($user?.role !== 'admin') {
+    if ($currentOrgRole !== 'admin') {
       goto('/dashboard');
       return;
     }

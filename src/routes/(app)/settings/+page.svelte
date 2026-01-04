@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { user, organization, userOrganizations } from '$lib/stores/auth';
+  import { user, organization, userOrganizations, currentOrgRole } from '$lib/stores/auth';
   import { formatCurrency, calculateSalaryBreakdown, projectAnnualSalary, validateR } from '$lib/utils/payout';
   import { toasts } from '$lib/stores/notifications';
   import { supabase } from '$lib/services/supabase';
@@ -260,7 +260,7 @@
           <label class="block text-sm font-medium text-slate-700 mb-1">Role</label>
           <input
             type="text"
-            value={$user?.role || ''}
+            value={$currentOrgRole || ''}
             class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 capitalize"
             disabled
           />
@@ -279,7 +279,7 @@
   </section>
 
   <!-- Salary Mixer Section -->
-  {#if $user?.role === 'employee' || $user?.role === 'contractor'}
+  {#if $currentOrgRole === 'employee' || $currentOrgRole === 'contractor'}
     <section class="bg-white rounded-xl border border-slate-200">
       <div class="px-6 py-4 border-b border-slate-200 flex items-center gap-3">
         <Sliders class="text-slate-400" size={20} />

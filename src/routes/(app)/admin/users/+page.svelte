@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { user, organization } from '$lib/stores/auth';
+  import { user, organization, currentOrgRole } from '$lib/stores/auth';
   import { usersApi } from '$lib/services/api';
   import { toasts } from '$lib/stores/notifications';
   import { InviteConfirmationModal } from '$lib/components/admin';
@@ -66,7 +66,7 @@
   $: availableRoles = roles;
 
   onMount(async () => {
-    if ($user?.role !== 'admin') {
+    if ($currentOrgRole !== 'admin') {
       goto('/dashboard');
       return;
     }

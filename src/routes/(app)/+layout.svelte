@@ -9,8 +9,10 @@
     organization,
     userOrganizations,
     isAuthenticated,
-    capabilities
+    capabilities,
+    currentOrgRole
   } from '$lib/stores/auth';
+  import { theme } from '$lib/stores/theme';
   import NotificationDropdown from '$lib/components/common/NotificationDropdown.svelte';
   import OrganizationSwitcher from '$lib/components/common/OrganizationSwitcher.svelte';
   import Toast from '$lib/components/common/Toast.svelte';
@@ -30,7 +32,9 @@
     Trophy,
     BarChart3,
     Users,
-    User
+    User,
+    Moon,
+    Sun
   } from 'lucide-svelte';
 
   let sidebarOpen = true;
@@ -57,7 +61,7 @@
     return ROLE_DISPLAY[role] || { label: role, description: role };
   }
 
-  // Navigation items - strictly role-based access
+  // Navigation items - strictly role-based access (using org-specific role)
   // Employee/Contractor: Dashboard, Pick Up Tasks, My Payouts, Achievements, Settings
   // QC: Dashboard, Tasks (for review queue), QC Reviews, My Payouts, Settings
   // PM: Dashboard, Tasks, Projects, My Payouts, Analytics, Settings
@@ -72,31 +76,31 @@
     },
     {
       href: '/tasks',
-      label: $user?.role === 'employee' || $user?.role === 'contractor' ? 'Pick Up Tasks' : 'Tasks',
+      label: $currentOrgRole === 'employee' || $currentOrgRole === 'contractor' ? 'Pick Up Tasks' : 'Tasks',
       icon: CheckSquare,
       // Employees/contractors pick up tasks, PM/Admin manage tasks, QC views for review
-      show: ['employee', 'contractor', 'pm', 'admin', 'qc'].includes($user?.role || '')
+      show: ['employee', 'contractor', 'pm', 'admin', 'qc'].includes($currentOrgRole)
     },
     {
       href: '/projects',
       label: 'Projects',
       icon: FolderKanban,
       // Only PM, Sales, and Admin can see projects
-      show: ['pm', 'sales', 'admin'].includes($user?.role || '')
+      show: ['pm', 'sales', 'admin'].includes($currentOrgRole)
     },
     {
       href: '/qc',
       label: 'QC Reviews',
       icon: Shield,
       // Only QC and Admin can review
-      show: ['qc', 'admin'].includes($user?.role || '')
+      show: ['qc', 'admin'].includes($currentOrgRole)
     },
     {
       href: '/contracts',
       label: 'Contracts',
       icon: FileText,
       // PM, Sales, and Admin manage contracts
-      show: ['pm', 'sales', 'admin'].includes($user?.role || '')
+      show: ['pm', 'sales', 'admin'].includes($currentOrgRole)
     },
     {
       href: '/payouts',
@@ -109,21 +113,21 @@
       label: 'Achievements',
       icon: Trophy,
       // Only employees and contractors have gamification
-      show: ['employee', 'contractor'].includes($user?.role || '')
+      show: ['employee', 'contractor'].includes($currentOrgRole)
     },
     {
       href: '/analytics',
       label: 'Analytics',
       icon: BarChart3,
       // Only Admin and PM see analytics
-      show: ['admin', 'pm'].includes($user?.role || '')
+      show: ['admin', 'pm'].includes($currentOrgRole)
     },
     {
       href: '/admin',
       label: 'Admin Panel',
       icon: Users,
       // Only Admin
-      show: $user?.role === 'admin'
+      show: $currentOrgRole === 'admin'
     },
     {
       href: '/settings',
@@ -220,6 +224,11 @@
         return;
       }
 
+      // Load user organization memberships (for org-specific roles)
+      console.log('[Layout] Loading user organization memberships...');
+      await userOrganizations.load();
+      console.log('[Layout] User organizations loaded');
+
       console.log('[Layout] Initialization complete');
       loading = false;
 
@@ -235,6 +244,7 @@
     await auth.signOut();
     user.clear();
     organization.clear();
+    userOrganizations.clear();
     goto('/auth/login');
   }
 
@@ -260,27 +270,27 @@
 </svelte:head>
 
 {#if loading}
-  <div class="min-h-screen flex items-center justify-center bg-slate-50">
+  <div class="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 transition-colors">
     <div class="flex flex-col items-center gap-4">
       <div class="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-      <p class="text-slate-600 font-medium">Loading...</p>
+      <p class="text-slate-600 dark:text-slate-300 font-medium">Loading...</p>
       <p class="text-xs text-slate-400">Initializing application</p>
     </div>
   </div>
 {:else if loadError}
-  <div class="min-h-screen flex items-center justify-center bg-slate-50 p-4">
-    <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-8 max-w-md w-full">
+  <div class="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 p-4 transition-colors">
+    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 p-8 max-w-md w-full">
       <div class="text-center">
-        <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <AlertTriangle class="text-red-600" size={32} />
+        <div class="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+          <AlertTriangle class="text-red-600 dark:text-red-400" size={32} />
         </div>
-        <h2 class="text-xl font-semibold text-slate-900 mb-2">{loadError}</h2>
-        <p class="text-slate-600 mb-4">{errorDetails}</p>
-        
+        <h2 class="text-xl font-semibold text-slate-900 dark:text-white mb-2">{loadError}</h2>
+        <p class="text-slate-600 dark:text-slate-300 mb-4">{errorDetails}</p>
+
         <!-- Debug info -->
-        <details class="text-left mb-6 bg-slate-50 rounded-lg p-3">
-          <summary class="text-xs text-slate-500 cursor-pointer">Debug Information</summary>
-          <pre class="text-xs text-slate-600 mt-2 overflow-auto max-h-32">User loaded: {$user ? 'Yes' : 'No'}
+        <details class="text-left mb-6 bg-slate-50 dark:bg-slate-900 rounded-lg p-3">
+          <summary class="text-xs text-slate-500 dark:text-slate-400 cursor-pointer">Debug Information</summary>
+          <pre class="text-xs text-slate-600 dark:text-slate-400 mt-2 overflow-auto max-h-32">User loaded: {$user ? 'Yes' : 'No'}
 Org loaded: {$organization ? 'Yes' : 'No'}
 Error: {errorDetails}</pre>
         </details>
@@ -294,7 +304,7 @@ Error: {errorDetails}</pre>
           </button>
           <button
             on:click={handleSignOut}
-            class="px-6 py-2 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors"
+            class="px-6 py-2 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 font-medium rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
           >
             Sign Out & Re-register
           </button>
@@ -303,7 +313,7 @@ Error: {errorDetails}</pre>
     </div>
   </div>
 {:else if $user}
-  <div class="min-h-screen bg-slate-50">
+  <div class="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors">
     <!-- Sidebar -->
     <aside
       class="fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 transform transition-transform duration-200 ease-in-out lg:translate-x-0 flex flex-col"
@@ -362,10 +372,10 @@ Error: {errorDetails}</pre>
               {$user.full_name || $user.email}
             </p>
             <div class="flex items-center gap-2 mt-0.5">
-              <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {getRoleBadgeColor($user.role)}">
-                {getRoleDisplay($user.role).label}
+              <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {getRoleBadgeColor($currentOrgRole)}">
+                {getRoleDisplay($currentOrgRole).label}
               </span>
-              {#if ($user.role === 'employee' || $user.role === 'contractor') && $user.training_level}
+              {#if ($currentOrgRole === 'employee' || $currentOrgRole === 'contractor') && $user.training_level}
                 <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
                   Lv.{$user.training_level}
                 </span>
@@ -395,11 +405,11 @@ Error: {errorDetails}</pre>
     <!-- Main content -->
     <div class="lg:pl-64">
       <!-- Top bar -->
-      <header class="sticky top-0 z-30 bg-white border-b border-slate-200">
+      <header class="sticky top-0 z-30 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 transition-colors">
         <div class="flex items-center justify-between h-16 px-4 lg:px-8">
           <!-- Mobile menu button -->
           <button
-            class="lg:hidden p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg"
+            class="lg:hidden p-2 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg"
             on:click={toggleSidebar}
           >
             <Menu size={20} />
@@ -410,13 +420,26 @@ Error: {errorDetails}</pre>
 
           <!-- Right side actions -->
           <div class="flex items-center gap-2">
+            <!-- Dark mode toggle -->
+            <button
+              on:click={() => theme.toggle()}
+              class="p-2 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+              title={$theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {#if $theme === 'dark'}
+                <Sun size={20} />
+              {:else}
+                <Moon size={20} />
+              {/if}
+            </button>
+
             <!-- Notifications -->
             <NotificationDropdown />
 
             <!-- User menu -->
             <div class="relative">
               <button
-                class="flex items-center gap-2 p-2 hover:bg-slate-100 rounded-lg"
+                class="flex items-center gap-2 p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg"
                 on:click|stopPropagation={() => userMenuOpen = !userMenuOpen}
               >
                 <div class="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
@@ -428,10 +451,10 @@ Error: {errorDetails}</pre>
               </button>
 
               {#if userMenuOpen}
-                <div class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1">
+                <div class="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1">
                   <a
                     href="/profile"
-                    class="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                    class="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
                     on:click={() => userMenuOpen = false}
                   >
                     <User size={16} />
@@ -439,15 +462,15 @@ Error: {errorDetails}</pre>
                   </a>
                   <a
                     href="/settings"
-                    class="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                    class="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
                     on:click={() => userMenuOpen = false}
                   >
                     <Settings size={16} />
                     Settings
                   </a>
-                  <div class="border-t border-slate-100 my-1"></div>
+                  <div class="border-t border-slate-100 dark:border-slate-700 my-1"></div>
                   <button
-                    class="flex items-center gap-2 w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                    class="flex items-center gap-2 w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
                     on:click={handleSignOut}
                   >
                     <LogOut size={16} />
@@ -461,7 +484,7 @@ Error: {errorDetails}</pre>
       </header>
 
       <!-- Page content -->
-      <main class="p-4 lg:p-8">
+      <main class="p-4 lg:p-8 bg-slate-50 dark:bg-slate-900 min-h-screen transition-colors">
         <slot />
       </main>
     </div>

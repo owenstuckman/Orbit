@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { user, capabilities, organization } from '$lib/stores/auth';
+  import { user, capabilities, organization, currentOrgRole } from '$lib/stores/auth';
   import { tasks } from '$lib/stores/tasks';
   import { projects } from '$lib/stores/projects';
   import { payoutsApi } from '$lib/services/api';
@@ -152,7 +152,7 @@
     </div>
   {:else}
     <!-- Employee/Contractor Dashboard -->
-    {#if $user?.role === 'employee' || $user?.role === 'contractor'}
+    {#if $currentOrgRole === 'employee' || $currentOrgRole === 'contractor'}
       <!-- Stats Grid -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div class="bg-white rounded-xl border border-slate-200 p-6">
@@ -287,7 +287,7 @@
     {/if}
 
     <!-- PM Dashboard -->
-    {#if $user?.role === 'pm'}
+    {#if $currentOrgRole === 'pm'}
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div class="bg-white rounded-xl border border-slate-200 p-6">
           <div class="flex items-center justify-between">
@@ -380,7 +380,7 @@
     {/if}
 
     <!-- QC Dashboard -->
-    {#if $user?.role === 'qc'}
+    {#if $currentOrgRole === 'qc'}
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div class="bg-white rounded-xl border border-slate-200 p-6">
           <div class="flex items-center justify-between">
@@ -449,7 +449,7 @@
     {/if}
 
     <!-- Sales Dashboard -->
-    {#if $user?.role === 'sales'}
+    {#if $currentOrgRole === 'sales'}
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div class="bg-white rounded-xl border border-slate-200 p-6">
           <div class="flex items-center justify-between">
@@ -503,7 +503,7 @@
     {/if}
 
     <!-- Admin Dashboard -->
-    {#if $user?.role === 'admin'}
+    {#if $currentOrgRole === 'admin'}
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div class="bg-white rounded-xl border border-slate-200 p-6">
           <div class="flex items-center justify-between">

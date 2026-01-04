@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { goto } from '$app/navigation';
-  import { user, capabilities } from '$lib/stores/auth';
+  import { user, capabilities, currentOrgRole } from '$lib/stores/auth';
   import { tasks, tasksByStatus, taskCounts } from '$lib/stores/tasks';
   import { projects } from '$lib/stores/projects';
   import { toasts } from '$lib/stores/notifications';
@@ -61,7 +61,7 @@
 
   // Filter columns based on role
   $: visibleColumns = (() => {
-    if ($user?.role === 'employee' || $user?.role === 'contractor') {
+    if ($currentOrgRole === 'employee' || $currentOrgRole === 'contractor') {
       if (showAvailableOnly) {
         return columns.filter(c => c.status === 'open');
       }
@@ -69,7 +69,7 @@
         ['open', 'assigned', 'in_progress', 'completed', 'approved'].includes(c.status)
       );
     }
-    if ($user?.role === 'qc') {
+    if ($currentOrgRole === 'qc') {
       return columns.filter(c =>
         ['completed', 'under_review', 'approved'].includes(c.status)
       );
@@ -128,7 +128,7 @@
     }
 
     // Role-based filtering
-    if ($user?.role === 'employee' || $user?.role === 'contractor') {
+    if ($currentOrgRole === 'employee' || $currentOrgRole === 'contractor') {
       if (status === 'open') {
         items = items.filter(t => t.required_level <= ($user?.training_level || 1));
       } else {
@@ -161,7 +161,7 @@
     projects.load();
 
     // Load tasks based on role
-    if ($user?.role === 'employee' || $user?.role === 'contractor') {
+    if ($currentOrgRole === 'employee' || $currentOrgRole === 'contractor') {
       if (showAvailableOnly) {
         await tasks.loadAvailable($user.training_level);
       } else {
@@ -202,7 +202,7 @@
   }
 
   async function refreshTasks() {
-    if ($user?.role === 'employee' || $user?.role === 'contractor') {
+    if ($currentOrgRole === 'employee' || $currentOrgRole === 'contractor') {
       if (showAvailableOnly) {
         await tasks.loadAvailable($user.training_level);
       } else {
@@ -292,7 +292,7 @@
       <div>
         <div class="flex items-center gap-3">
           <h1 class="text-2xl font-bold text-slate-900">
-            {#if ($user?.role === 'employee' || $user?.role === 'contractor') && showAvailableOnly}
+            {#if ($currentOrgRole === 'employee' || $currentOrgRole === 'contractor') && showAvailableOnly}
               Pick Up Tasks
             {:else}
               Tasks
@@ -310,7 +310,7 @@
             {/if}
           </div>
           <!-- Level indicator for employees -->
-          {#if ($user?.role === 'employee' || $user?.role === 'contractor') && $user?.training_level}
+          {#if ($currentOrgRole === 'employee' || $currentOrgRole === 'contractor') && $user?.training_level}
             <div class="flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
               <Sparkles size={12} />
               <span>Level {$user.training_level}</span>
@@ -318,13 +318,13 @@
           {/if}
         </div>
         <p class="mt-1 text-slate-600">
-          {#if $user?.role === 'employee' || $user?.role === 'contractor'}
+          {#if $currentOrgRole === 'employee' || $currentOrgRole === 'contractor'}
             {#if showAvailableOnly}
               Browse available tasks matching your level and pick one to work on
             {:else}
               View and manage your assigned tasks
             {/if}
-          {:else if $user?.role === 'qc'}
+          {:else if $currentOrgRole === 'qc'}
             Tasks pending quality review
           {:else}
             Manage and track all tasks
@@ -399,7 +399,7 @@
 
     <div class="flex items-center gap-3">
       <!-- View toggle for employees -->
-      {#if $user?.role === 'employee' || $user?.role === 'contractor'}
+      {#if $currentOrgRole === 'employee' || $currentOrgRole === 'contractor'}
         <button
           class="px-4 py-2 rounded-lg font-medium transition-colors
             {showAvailableOnly ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'}"
