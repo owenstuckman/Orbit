@@ -1,7 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { goto } from '$app/navigation';
   import { user, capabilities } from '$lib/stores/auth';
   import { projects, projectsByStatus } from '$lib/stores/projects';
+  import { toasts } from '$lib/stores/notifications';
   import { formatCurrency, calculatePMPayout } from '$lib/utils/payout';
   import type { Project } from '$lib/types';
   import {
@@ -51,6 +53,13 @@
   })();
 
   onMount(async () => {
+    // Route guard: Only PM, Sales, and Admin can access projects
+    if (!$capabilities.canManageProjects && !$capabilities.canCreateProjects) {
+      toasts.error('You do not have permission to access projects');
+      goto('/dashboard');
+      return;
+    }
+
     if ($user?.role === 'pm') {
       await projects.loadByPM($user.id);
     } else if ($user?.role === 'sales') {
@@ -58,7 +67,7 @@
     } else {
       await projects.load();
     }
-    
+
     projects.subscribeToChanges();
   });
 

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { user, organization } from '$lib/stores/auth';
+  import { goto } from '$app/navigation';
+  import { user, organization, capabilities } from '$lib/stores/auth';
   import { qcApi, tasksApi } from '$lib/services/api';
   import { formatCurrency, computeQCMarginals, calculateQCPayout } from '$lib/utils/payout';
   import { toasts } from '$lib/stores/notifications';
@@ -31,6 +32,13 @@
   $: potentialPayout = selectedTask ? calculatePotentialPayout(selectedTask) : 0;
 
   onMount(async () => {
+    // Route guard: Only QC reviewers and admins can access this page
+    if (!$capabilities.canReviewQC) {
+      toasts.error('You do not have permission to access QC reviews');
+      goto('/dashboard');
+      return;
+    }
+
     // Ensure organization settings are loaded
     if (!$organization) {
       await organization.load();

@@ -1,7 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { goto } from '$app/navigation';
   import { user, organization } from '$lib/stores/auth';
   import { analyticsApi } from '$lib/services/analytics';
+  import { toasts } from '$lib/stores/notifications';
   import { exportToCSV } from '$lib/services/export';
   import type { AnalyticsData, TaskMetrics, PayoutMetrics, UserMetrics, TrendData } from '$lib/types';
   import {
@@ -52,6 +54,13 @@
   let trends: TrendData[] = [];
 
   onMount(async () => {
+    // Route guard: Only Admin and PM can access analytics
+    if ($user?.role !== 'admin' && $user?.role !== 'pm') {
+      toasts.error('You do not have permission to access analytics');
+      goto('/dashboard');
+      return;
+    }
+
     await loadAnalytics();
   });
 

@@ -43,7 +43,26 @@
   const REDIRECT_KEY = 'orbit_auth_redirect_count';
   const MAX_REDIRECTS = 3;
 
-  // Navigation items based on role
+  // Role display names and descriptions
+  const ROLE_DISPLAY: Record<string, { label: string; description: string }> = {
+    admin: { label: 'Admin', description: 'Organization Administrator' },
+    sales: { label: 'Sales', description: 'Sales Representative' },
+    pm: { label: 'Project Manager', description: 'Project Manager' },
+    qc: { label: 'QC Reviewer', description: 'Quality Control' },
+    employee: { label: 'Employee', description: 'Team Member' },
+    contractor: { label: 'Contractor', description: 'External Contractor' }
+  };
+
+  function getRoleDisplay(role: string): { label: string; description: string } {
+    return ROLE_DISPLAY[role] || { label: role, description: role };
+  }
+
+  // Navigation items - strictly role-based access
+  // Employee/Contractor: Dashboard, Pick Up Tasks, My Payouts, Achievements, Settings
+  // QC: Dashboard, Tasks (for review queue), QC Reviews, My Payouts, Settings
+  // PM: Dashboard, Tasks, Projects, My Payouts, Analytics, Settings
+  // Sales: Dashboard, Projects, Contracts, My Payouts, Settings
+  // Admin: Everything
   $: navItems = [
     {
       href: '/dashboard',
@@ -53,31 +72,35 @@
     },
     {
       href: '/tasks',
-      label: 'Tasks',
+      label: $user?.role === 'employee' || $user?.role === 'contractor' ? 'Pick Up Tasks' : 'Tasks',
       icon: CheckSquare,
-      show: $capabilities.canViewTasks || $capabilities.canAcceptTasks
+      // Employees/contractors pick up tasks, PM/Admin manage tasks, QC views for review
+      show: ['employee', 'contractor', 'pm', 'admin', 'qc'].includes($user?.role || '')
     },
     {
       href: '/projects',
       label: 'Projects',
       icon: FolderKanban,
-      show: $capabilities.canManageProjects || $capabilities.canCreateProjects
+      // Only PM, Sales, and Admin can see projects
+      show: ['pm', 'sales', 'admin'].includes($user?.role || '')
     },
     {
       href: '/qc',
-      label: 'Quality Control',
+      label: 'QC Reviews',
       icon: Shield,
-      show: $capabilities.canReviewQC
+      // Only QC and Admin can review
+      show: ['qc', 'admin'].includes($user?.role || '')
     },
     {
       href: '/contracts',
       label: 'Contracts',
       icon: FileText,
-      show: $capabilities.canSignContracts
+      // PM, Sales, and Admin manage contracts
+      show: ['pm', 'sales', 'admin'].includes($user?.role || '')
     },
     {
       href: '/payouts',
-      label: 'Payouts',
+      label: 'My Payouts',
       icon: DollarSign,
       show: true
     },
@@ -85,25 +108,22 @@
       href: '/achievements',
       label: 'Achievements',
       icon: Trophy,
-      show: true
+      // Only employees and contractors have gamification
+      show: ['employee', 'contractor'].includes($user?.role || '')
     },
     {
       href: '/analytics',
       label: 'Analytics',
       icon: BarChart3,
-      show: $user?.role === 'admin' || $user?.role === 'pm'
+      // Only Admin and PM see analytics
+      show: ['admin', 'pm'].includes($user?.role || '')
     },
     {
       href: '/admin',
-      label: 'Admin',
+      label: 'Admin Panel',
       icon: Users,
+      // Only Admin
       show: $user?.role === 'admin'
-    },
-    {
-      href: '/profile',
-      label: 'Profile',
-      icon: User,
-      show: true
     },
     {
       href: '/settings',
@@ -343,9 +363,9 @@ Error: {errorDetails}</pre>
             </p>
             <div class="flex items-center gap-2 mt-0.5">
               <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {getRoleBadgeColor($user.role)}">
-                {$user.role}
+                {getRoleDisplay($user.role).label}
               </span>
-              {#if $user.training_level}
+              {#if ($user.role === 'employee' || $user.role === 'contractor') && $user.training_level}
                 <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
                   Lv.{$user.training_level}
                 </span>
