@@ -287,11 +287,11 @@
 
 <div class="space-y-6">
   <!-- Header with Stats -->
-  <div class="bg-white rounded-xl border border-slate-200 p-6">
+  <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
     <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
       <div>
         <div class="flex items-center gap-3">
-          <h1 class="text-2xl font-bold text-slate-900">
+          <h1 class="text-2xl font-bold text-slate-900 dark:text-white">
             {#if ($currentOrgRole === 'employee' || $currentOrgRole === 'contractor') && showAvailableOnly}
               Pick Up Tasks
             {:else}
@@ -300,7 +300,7 @@
           </h1>
           <!-- Real-time indicator -->
           <div class="flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium
-            {isConnected ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}">
+            {isConnected ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}">
             {#if isConnected}
               <Wifi size={12} />
               <span>Live</span>
@@ -311,13 +311,13 @@
           </div>
           <!-- Level indicator for employees -->
           {#if ($currentOrgRole === 'employee' || $currentOrgRole === 'contractor') && $user?.training_level}
-            <div class="flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+            <div class="flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
               <Sparkles size={12} />
               <span>Level {$user.training_level}</span>
             </div>
           {/if}
         </div>
-        <p class="mt-1 text-slate-600">
+        <p class="mt-1 text-slate-600 dark:text-slate-300">
           {#if $currentOrgRole === 'employee' || $currentOrgRole === 'contractor'}
             {#if showAvailableOnly}
               Browse available tasks matching your level and pick one to work on
@@ -335,22 +335,22 @@
       <!-- Quick Stats -->
       <div class="flex gap-6">
         <div class="text-center">
-          <div class="text-2xl font-bold text-slate-900">{stats.open}</div>
-          <div class="text-xs text-slate-500 flex items-center gap-1 justify-center">
+          <div class="text-2xl font-bold text-slate-900 dark:text-white">{stats.open}</div>
+          <div class="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1 justify-center">
             <Clock size={12} />
             Open
           </div>
         </div>
         <div class="text-center">
-          <div class="text-2xl font-bold text-indigo-600">{stats.inProgress}</div>
-          <div class="text-xs text-slate-500 flex items-center gap-1 justify-center">
+          <div class="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{stats.inProgress}</div>
+          <div class="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1 justify-center">
             <TrendingUp size={12} />
             In Progress
           </div>
         </div>
         <div class="text-center">
-          <div class="text-2xl font-bold text-green-600">{stats.completed}</div>
-          <div class="text-xs text-slate-500 flex items-center gap-1 justify-center">
+          <div class="text-2xl font-bold text-green-600 dark:text-green-400">{stats.completed}</div>
+          <div class="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1 justify-center">
             <CheckCircle size={12} />
             Completed
           </div>
@@ -364,12 +364,12 @@
     <div class="flex items-center gap-3">
       <!-- Search -->
       <div class="relative">
-        <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+        <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={18} />
         <input
           type="text"
           placeholder="Search tasks..."
           bind:value={searchQuery}
-          class="pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent w-64"
+          class="pl-10 pr-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent w-64"
         />
       </div>
 
@@ -377,7 +377,7 @@
       <button
         on:click={() => showFiltersPanel = true}
         class="flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors
-          {activeFilterCount > 0 ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}"
+          {activeFilterCount > 0 ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'}"
       >
         <Filter size={18} />
         Filters
@@ -390,7 +390,7 @@
       <button
         on:click={refreshTasks}
         disabled={$tasks.loading}
-        class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50"
+        class="p-2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors disabled:opacity-50"
         title="Refresh tasks"
       >
         <RefreshCw size={18} class={$tasks.loading ? 'animate-spin' : ''} />
@@ -402,7 +402,7 @@
       {#if $currentOrgRole === 'employee' || $currentOrgRole === 'contractor'}
         <button
           class="px-4 py-2 rounded-lg font-medium transition-colors
-            {showAvailableOnly ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'}"
+            {showAvailableOnly ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}"
           on:click={toggleViewMode}
         >
           {showAvailableOnly ? 'Available' : 'My Tasks'}
@@ -410,17 +410,17 @@
       {/if}
 
       <!-- View mode toggle -->
-      <div class="flex items-center bg-slate-100 rounded-lg p-1">
+      <div class="flex items-center bg-slate-100 dark:bg-slate-700 rounded-lg p-1">
         <button
           on:click={() => viewMode = 'board'}
-          class="p-2 rounded transition-colors {viewMode === 'board' ? 'bg-white shadow text-indigo-600' : 'text-slate-400 hover:text-slate-600'}"
+          class="p-2 rounded transition-colors {viewMode === 'board' ? 'bg-white dark:bg-slate-600 shadow text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'}"
           title="Board view"
         >
           <LayoutGrid size={18} />
         </button>
         <button
           on:click={() => viewMode = 'list'}
-          class="p-2 rounded transition-colors {viewMode === 'list' ? 'bg-white shadow text-indigo-600' : 'text-slate-400 hover:text-slate-600'}"
+          class="p-2 rounded transition-colors {viewMode === 'list' ? 'bg-white dark:bg-slate-600 shadow text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'}"
           title="List view"
         >
           <List size={18} />
@@ -448,15 +448,15 @@
     <div class="flex items-center justify-center py-12">
       <div class="flex flex-col items-center gap-3">
         <div class="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-        <p class="text-sm text-slate-500">Loading tasks...</p>
+        <p class="text-sm text-slate-500 dark:text-slate-400">Loading tasks...</p>
       </div>
     </div>
   {:else if $tasks.error}
-    <div class="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-      <p class="text-red-700">{$tasks.error}</p>
+    <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 text-center">
+      <p class="text-red-700 dark:text-red-400">{$tasks.error}</p>
       <button
         on:click={refreshTasks}
-        class="mt-3 text-red-600 hover:text-red-800 underline text-sm"
+        class="mt-3 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 underline text-sm"
       >
         Try again
       </button>
@@ -471,15 +471,15 @@
             <div class="flex items-center justify-between mb-4 px-2">
               <div class="flex items-center gap-2">
                 <span class="w-3 h-3 rounded-full {column.color}"></span>
-                <h3 class="font-semibold text-slate-900">{column.label}</h3>
-                <span class="px-2 py-0.5 bg-slate-100 rounded-full text-xs font-medium text-slate-600">
+                <h3 class="font-semibold text-slate-900 dark:text-white">{column.label}</h3>
+                <span class="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 rounded-full text-xs font-medium text-slate-600 dark:text-slate-300">
                   {filteredTasks(column.status).length}
                 </span>
               </div>
             </div>
 
             <!-- Tasks column -->
-            <div class="min-h-[200px] {column.bgColor} rounded-xl p-3">
+            <div class="min-h-[200px] {column.bgColor} dark:bg-slate-800/50 rounded-xl p-3">
               <DraggableTaskList
                 tasks={filteredTasks(column.status)}
                 status={column.status}
@@ -495,23 +495,23 @@
       </div>
     {:else}
       <!-- List View -->
-      <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
         <div class="overflow-x-auto">
           <table class="w-full">
-            <thead class="bg-slate-50 border-b border-slate-200">
+            <thead class="bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700">
               <tr>
-                <th class="text-left px-6 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Task</th>
-                <th class="text-left px-6 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
-                <th class="text-left px-6 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Value</th>
-                <th class="text-left px-6 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Deadline</th>
-                <th class="text-left px-6 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Level</th>
-                <th class="text-left px-6 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Assignee</th>
+                <th class="text-left px-6 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Task</th>
+                <th class="text-left px-6 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
+                <th class="text-left px-6 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Value</th>
+                <th class="text-left px-6 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Deadline</th>
+                <th class="text-left px-6 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Level</th>
+                <th class="text-left px-6 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Assignee</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-slate-200">
+            <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
               {#each visibleColumns.flatMap(c => filteredTasks(c.status)) as task (task.id)}
                 <tr
-                  class="hover:bg-slate-50 cursor-pointer transition-colors"
+                  class="hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer transition-colors"
                   on:click={() => handleTaskClick(task)}
                 >
                   <td class="px-6 py-4">
@@ -520,44 +520,44 @@
                         <span class="w-2 h-2 rounded-full {task.urgency_multiplier > 1.2 ? 'bg-red-500' : 'bg-amber-500'}"></span>
                       {/if}
                       <div>
-                        <p class="font-medium text-slate-900">{task.title}</p>
+                        <p class="font-medium text-slate-900 dark:text-white">{task.title}</p>
                         {#if task.project}
-                          <p class="text-xs text-slate-500">{task.project.name}</p>
+                          <p class="text-xs text-slate-500 dark:text-slate-400">{task.project.name}</p>
                         {/if}
                       </div>
                     </div>
                   </td>
                   <td class="px-6 py-4">
                     <span class="px-2 py-1 text-xs font-medium rounded-full
-                      {task.status === 'open' ? 'bg-slate-100 text-slate-700' :
-                        task.status === 'assigned' ? 'bg-blue-100 text-blue-700' :
-                        task.status === 'in_progress' ? 'bg-yellow-100 text-yellow-700' :
-                        task.status === 'completed' ? 'bg-purple-100 text-purple-700' :
-                        task.status === 'under_review' ? 'bg-orange-100 text-orange-700' :
-                        task.status === 'approved' ? 'bg-green-100 text-green-700' :
-                        'bg-slate-100 text-slate-700'}">
+                      {task.status === 'open' ? 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300' :
+                        task.status === 'assigned' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' :
+                        task.status === 'in_progress' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400' :
+                        task.status === 'completed' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400' :
+                        task.status === 'under_review' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400' :
+                        task.status === 'approved' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' :
+                        'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'}">
                       {task.status.replace('_', ' ')}
                     </span>
                   </td>
                   <td class="px-6 py-4">
-                    <span class="font-medium text-green-600">${task.dollar_value.toFixed(2)}</span>
+                    <span class="font-medium text-green-600 dark:text-green-400">${task.dollar_value.toFixed(2)}</span>
                     {#if task.urgency_multiplier > 1}
-                      <span class="text-xs text-amber-600 ml-1">+{((task.urgency_multiplier - 1) * 100).toFixed(0)}%</span>
+                      <span class="text-xs text-amber-600 dark:text-amber-400 ml-1">+{((task.urgency_multiplier - 1) * 100).toFixed(0)}%</span>
                     {/if}
                   </td>
-                  <td class="px-6 py-4 text-sm text-slate-600">
+                  <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">
                     {task.deadline ? new Date(task.deadline).toLocaleDateString() : '—'}
                   </td>
-                  <td class="px-6 py-4 text-sm text-slate-600">
+                  <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">
                     Level {task.required_level}+
                   </td>
-                  <td class="px-6 py-4 text-sm text-slate-600">
+                  <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">
                     {task.assignee?.full_name || '—'}
                   </td>
                 </tr>
               {:else}
                 <tr>
-                  <td colspan="6" class="px-6 py-12 text-center text-slate-500">
+                  <td colspan="6" class="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
                     No tasks match your filters
                   </td>
                 </tr>

@@ -224,53 +224,53 @@
 <div class="max-w-4xl mx-auto space-y-8">
   <!-- Header -->
   <div>
-    <h1 class="text-2xl font-bold text-slate-900">Settings</h1>
-    <p class="mt-1 text-slate-600">Manage your account and compensation preferences</p>
+    <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Settings</h1>
+    <p class="mt-1 text-slate-600 dark:text-slate-300">Manage your account and compensation preferences</p>
   </div>
 
   <!-- Profile Section -->
-  <section class="bg-white rounded-xl border border-slate-200">
-    <div class="px-6 py-4 border-b border-slate-200 flex items-center gap-3">
-      <User class="text-slate-400" size={20} />
-      <h2 class="font-semibold text-slate-900">Profile</h2>
+  <section class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+    <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center gap-3">
+      <User class="text-slate-400 dark:text-slate-500" size={20} />
+      <h2 class="font-semibold text-slate-900 dark:text-white">Profile</h2>
     </div>
     <div class="p-6 space-y-4">
       <div class="grid grid-cols-2 gap-4">
         <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
+          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Full Name</label>
           <input
             type="text"
             value={$user?.full_name || ''}
-            class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            class="w-full px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
             disabled
           />
         </div>
         <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">Email</label>
+          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Email</label>
           <input
             type="email"
             value={$user?.email || ''}
-            class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50"
+            class="w-full px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white"
             disabled
           />
         </div>
       </div>
       <div class="grid grid-cols-2 gap-4">
         <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">Role</label>
+          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Role</label>
           <input
             type="text"
             value={$currentOrgRole || ''}
-            class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 capitalize"
+            class="w-full px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white capitalize"
             disabled
           />
         </div>
         <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">Level</label>
+          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Level</label>
           <input
             type="text"
             value="Level {$user?.level || 1} (Training Level {$user?.training_level || 1})"
-            class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50"
+            class="w-full px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white"
             disabled
           />
         </div>
@@ -280,21 +280,21 @@
 
   <!-- Salary Mixer Section -->
   {#if $currentOrgRole === 'employee' || $currentOrgRole === 'contractor'}
-    <section class="bg-white rounded-xl border border-slate-200">
-      <div class="px-6 py-4 border-b border-slate-200 flex items-center gap-3">
-        <Sliders class="text-slate-400" size={20} />
-        <h2 class="font-semibold text-slate-900">Salary Mix</h2>
+    <section class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+      <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center gap-3">
+        <Sliders class="text-slate-400 dark:text-slate-500" size={20} />
+        <h2 class="font-semibold text-slate-900 dark:text-white">Salary Mix</h2>
       </div>
-      
+
       <div class="p-6 space-y-6">
         <!-- Explanation -->
-        <div class="bg-indigo-50 rounded-lg p-4 flex gap-3">
-          <Info class="text-indigo-600 flex-shrink-0" size={20} />
-          <div class="text-sm text-indigo-800">
+        <div class="bg-indigo-50 dark:bg-indigo-900/20 rounded-lg p-4 flex gap-3">
+          <Info class="text-indigo-600 dark:text-indigo-400 flex-shrink-0" size={20} />
+          <div class="text-sm text-indigo-800 dark:text-indigo-300">
             <p class="font-medium mb-1">How the salary mix works</p>
             <p>
               Your compensation is split between a guaranteed base salary and performance-based task earnings.
-              A higher base ratio (r) means more stable income. A lower ratio means more of your pay comes from 
+              A higher base ratio (r) means more stable income. A lower ratio means more of your pay comes from
               completing tasks, offering higher potential earnings if you're productive.
             </p>
           </div>
@@ -303,10 +303,10 @@
         <!-- The Slider -->
         <div class="space-y-4">
           <div class="flex items-center justify-between">
-            <label class="text-sm font-medium text-slate-700">
+            <label class="text-sm font-medium text-slate-700 dark:text-slate-300">
               Base Salary Ratio (r)
             </label>
-            <span class="text-2xl font-bold text-slate-900">
+            <span class="text-2xl font-bold text-slate-900 dark:text-white">
               {(localR * 100).toFixed(0)}%
             </span>
           </div>
@@ -318,21 +318,21 @@
             step="5"
             value={sliderValue}
             on:input={(e) => localR = parseInt(e.currentTarget.value) / 100}
-            class="w-full h-3 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+            class="w-full h-3 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-600"
           />
 
-          <div class="flex justify-between text-sm text-slate-500">
+          <div class="flex justify-between text-sm text-slate-500 dark:text-slate-400">
             <span>More task-based ({(rBounds.min * 100).toFixed(0)}%)</span>
             <span>More stable ({(rBounds.max * 100).toFixed(0)}%)</span>
           </div>
         </div>
 
         <!-- Risk Profile -->
-        <div class="flex items-center gap-3 p-4 bg-slate-50 rounded-lg">
+        <div class="flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
           <TrendingUp class={riskProfile.color} size={24} />
           <div>
             <p class="font-semibold {riskProfile.color}">{riskProfile.level}</p>
-            <p class="text-sm text-slate-600">{riskProfile.description}</p>
+            <p class="text-sm text-slate-600 dark:text-slate-400">{riskProfile.description}</p>
           </div>
         </div>
 
@@ -370,26 +370,26 @@
             </div>
           </div>
 
-          <p class="text-xs text-slate-500 text-center">
+          <p class="text-xs text-slate-500 dark:text-slate-400 text-center">
             * Projections based on average monthly task value of {formatCurrency(avgMonthlyTaskValue)}. Actual earnings may vary.
           </p>
         {/if}
 
         <!-- Validation Warning -->
         {#if !validation.valid}
-          <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center gap-3">
-            <AlertTriangle class="text-amber-600" size={20} />
-            <p class="text-sm text-amber-800">
+          <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 flex items-center gap-3">
+            <AlertTriangle class="text-amber-600 dark:text-amber-400" size={20} />
+            <p class="text-sm text-amber-800 dark:text-amber-300">
               Value will be adjusted to {(validation.clamped * 100).toFixed(0)}% (within allowed range)
             </p>
           </div>
         {/if}
 
         <!-- Save Button -->
-        <div class="flex items-center justify-between pt-4 border-t border-slate-200">
+        <div class="flex items-center justify-between pt-4 border-t border-slate-200 dark:border-slate-700">
           <div>
             {#if saveSuccess}
-              <p class="text-green-600 text-sm font-medium">✓ Settings saved successfully</p>
+              <p class="text-green-600 dark:text-green-400 text-sm font-medium">✓ Settings saved successfully</p>
             {/if}
           </div>
           <button
@@ -406,37 +406,37 @@
   {/if}
 
   <!-- Notification Settings -->
-  <section class="bg-white rounded-xl border border-slate-200">
-    <div class="px-6 py-4 border-b border-slate-200 flex items-center gap-3">
-      <Bell class="text-slate-400" size={20} />
-      <h2 class="font-semibold text-slate-900">Notifications</h2>
+  <section class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+    <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center gap-3">
+      <Bell class="text-slate-400 dark:text-slate-500" size={20} />
+      <h2 class="font-semibold text-slate-900 dark:text-white">Notifications</h2>
     </div>
     <div class="p-6 space-y-4">
       <label class="flex items-center justify-between cursor-pointer">
         <div>
-          <p class="font-medium text-slate-900">Task assignments</p>
-          <p class="text-sm text-slate-500">Get notified when a new task is assigned to you</p>
+          <p class="font-medium text-slate-900 dark:text-white">Task assignments</p>
+          <p class="text-sm text-slate-500 dark:text-slate-400">Get notified when a new task is assigned to you</p>
         </div>
         <input type="checkbox" checked class="w-5 h-5 rounded text-indigo-600" />
       </label>
       <label class="flex items-center justify-between cursor-pointer">
         <div>
-          <p class="font-medium text-slate-900">QC reviews</p>
-          <p class="text-sm text-slate-500">Get notified when your work is reviewed</p>
+          <p class="font-medium text-slate-900 dark:text-white">QC reviews</p>
+          <p class="text-sm text-slate-500 dark:text-slate-400">Get notified when your work is reviewed</p>
         </div>
         <input type="checkbox" checked class="w-5 h-5 rounded text-indigo-600" />
       </label>
       <label class="flex items-center justify-between cursor-pointer">
         <div>
-          <p class="font-medium text-slate-900">Payouts</p>
-          <p class="text-sm text-slate-500">Get notified when you receive a payout</p>
+          <p class="font-medium text-slate-900 dark:text-white">Payouts</p>
+          <p class="text-sm text-slate-500 dark:text-slate-400">Get notified when you receive a payout</p>
         </div>
         <input type="checkbox" checked class="w-5 h-5 rounded text-indigo-600" />
       </label>
       <label class="flex items-center justify-between cursor-pointer">
         <div>
-          <p class="font-medium text-slate-900">Deadline reminders</p>
-          <p class="text-sm text-slate-500">Get reminded about upcoming task deadlines</p>
+          <p class="font-medium text-slate-900 dark:text-white">Deadline reminders</p>
+          <p class="text-sm text-slate-500 dark:text-slate-400">Get reminded about upcoming task deadlines</p>
         </div>
         <input type="checkbox" checked class="w-5 h-5 rounded text-indigo-600" />
       </label>
@@ -444,30 +444,30 @@
   </section>
 
   <!-- Security -->
-  <section class="bg-white rounded-xl border border-slate-200">
-    <div class="px-6 py-4 border-b border-slate-200 flex items-center gap-3">
-      <Shield class="text-slate-400" size={20} />
-      <h2 class="font-semibold text-slate-900">Security</h2>
+  <section class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+    <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center gap-3">
+      <Shield class="text-slate-400 dark:text-slate-500" size={20} />
+      <h2 class="font-semibold text-slate-900 dark:text-white">Security</h2>
     </div>
     <div class="p-6 space-y-4">
       <div class="flex items-center justify-between">
         <div>
-          <p class="font-medium text-slate-900">Password</p>
-          <p class="text-sm text-slate-500">Change your account password</p>
+          <p class="font-medium text-slate-900 dark:text-white">Password</p>
+          <p class="text-sm text-slate-500 dark:text-slate-400">Change your account password</p>
         </div>
         <button
           on:click={() => showPasswordModal = true}
-          class="px-4 py-2 text-indigo-600 hover:bg-indigo-50 rounded-lg font-medium transition-colors"
+          class="px-4 py-2 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg font-medium transition-colors"
         >
           Change Password
         </button>
       </div>
       <div class="flex items-center justify-between">
         <div>
-          <p class="font-medium text-slate-900">Two-factor authentication</p>
-          <p class="text-sm text-slate-500">Add an extra layer of security</p>
+          <p class="font-medium text-slate-900 dark:text-white">Two-factor authentication</p>
+          <p class="text-sm text-slate-500 dark:text-slate-400">Add an extra layer of security</p>
         </div>
-        <button class="px-4 py-2 text-indigo-600 hover:bg-indigo-50 rounded-lg font-medium transition-colors">
+        <button class="px-4 py-2 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg font-medium transition-colors">
           Enable
         </button>
       </div>
@@ -475,15 +475,15 @@
   </section>
 
   <!-- Organizations Section -->
-  <section class="bg-white rounded-xl border border-slate-200">
-    <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+  <section class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+    <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
       <div class="flex items-center gap-3">
-        <Building2 class="text-slate-400" size={20} />
-        <h2 class="font-semibold text-slate-900">Organizations</h2>
+        <Building2 class="text-slate-400 dark:text-slate-500" size={20} />
+        <h2 class="font-semibold text-slate-900 dark:text-white">Organizations</h2>
       </div>
       <button
         on:click={() => showJoinOrgModal = true}
-        class="flex items-center gap-2 px-3 py-1.5 text-sm bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg font-medium transition-colors"
+        class="flex items-center gap-2 px-3 py-1.5 text-sm bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 rounded-lg font-medium transition-colors"
       >
         <Plus size={16} />
         Join Organization
@@ -491,35 +491,35 @@
     </div>
     <div class="p-6">
       {#if $userOrganizations.length === 0}
-        <p class="text-slate-500 text-center py-4">Loading organizations...</p>
+        <p class="text-slate-500 dark:text-slate-400 text-center py-4">Loading organizations...</p>
       {:else}
         <div class="space-y-3">
           {#each $userOrganizations as membership}
-            <div class="flex items-center justify-between p-4 rounded-lg border {membership.org_id === $organization?.id ? 'border-indigo-200 bg-indigo-50' : 'border-slate-200'}">
+            <div class="flex items-center justify-between p-4 rounded-lg border {membership.org_id === $organization?.id ? 'border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-900/20' : 'border-slate-200 dark:border-slate-700'}">
               <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-lg flex items-center justify-center {membership.org_id === $organization?.id ? 'bg-indigo-600' : 'bg-slate-200'}">
-                  <Building2 size={18} class={membership.org_id === $organization?.id ? 'text-white' : 'text-slate-500'} />
+                <div class="w-10 h-10 rounded-lg flex items-center justify-center {membership.org_id === $organization?.id ? 'bg-indigo-600' : 'bg-slate-200 dark:bg-slate-700'}">
+                  <Building2 size={18} class={membership.org_id === $organization?.id ? 'text-white' : 'text-slate-500 dark:text-slate-400'} />
                 </div>
                 <div>
-                  <p class="font-medium text-slate-900">{membership.organization?.name || 'Unknown Organization'}</p>
+                  <p class="font-medium text-slate-900 dark:text-white">{membership.organization?.name || 'Unknown Organization'}</p>
                   <div class="flex items-center gap-2">
-                    <span class="text-sm text-slate-500 capitalize">{membership.role}</span>
+                    <span class="text-sm text-slate-500 dark:text-slate-400 capitalize">{membership.role}</span>
                     {#if membership.is_primary}
-                      <span class="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">Primary</span>
+                      <span class="text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded">Primary</span>
                     {/if}
                   </div>
                 </div>
               </div>
               <div class="flex items-center gap-2">
                 {#if membership.org_id === $organization?.id}
-                  <span class="flex items-center gap-1 text-sm text-indigo-600 font-medium">
+                  <span class="flex items-center gap-1 text-sm text-indigo-600 dark:text-indigo-400 font-medium">
                     <Check size={16} />
                     Active
                   </span>
                 {:else}
                   <button
                     on:click={() => handleSwitchOrg(membership.org_id)}
-                    class="px-3 py-1.5 text-sm text-indigo-600 hover:bg-indigo-100 rounded-lg font-medium transition-colors"
+                    class="px-3 py-1.5 text-sm text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/20 rounded-lg font-medium transition-colors"
                   >
                     Switch
                   </button>
@@ -543,18 +543,18 @@
         aria-label="Close modal"
       />
 
-      <div class="relative bg-white rounded-xl shadow-xl w-full max-w-md">
+      <div class="relative bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-md">
         <!-- Header -->
-        <div class="flex items-center justify-between p-6 border-b border-slate-200">
+        <div class="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-700">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
-              <Building2 class="text-indigo-600" size={20} />
+            <div class="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg flex items-center justify-center">
+              <Building2 class="text-indigo-600 dark:text-indigo-400" size={20} />
             </div>
-            <h2 class="text-lg font-semibold text-slate-900">Join Organization</h2>
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-white">Join Organization</h2>
           </div>
           <button
             on:click={closeJoinOrgModal}
-            class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg"
+            class="p-2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg"
           >
             <X size={20} />
           </button>
@@ -563,47 +563,47 @@
         <!-- Content -->
         {#if joinSuccess}
           <div class="p-6 text-center">
-            <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Check class="text-green-600" size={32} />
+            <div class="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Check class="text-green-600 dark:text-green-400" size={32} />
             </div>
-            <h3 class="text-lg font-semibold text-slate-900 mb-2">Welcome!</h3>
-            <p class="text-slate-600">You've successfully joined <span class="font-medium">{joinedOrgName}</span>.</p>
-            <p class="text-sm text-slate-500 mt-2">You can now switch to this organization using the switcher in the sidebar.</p>
+            <h3 class="text-lg font-semibold text-slate-900 dark:text-white mb-2">Welcome!</h3>
+            <p class="text-slate-600 dark:text-slate-300">You've successfully joined <span class="font-medium">{joinedOrgName}</span>.</p>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-2">You can now switch to this organization using the switcher in the sidebar.</p>
           </div>
         {:else}
           <form on:submit|preventDefault={handleJoinOrganization} class="p-6 space-y-4">
-            <p class="text-slate-600 text-sm">
+            <p class="text-slate-600 dark:text-slate-300 text-sm">
               Enter the invite code provided by your organization admin to join a new organization.
             </p>
 
             {#if joinError}
-              <div class="bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2 text-sm text-red-700">
+              <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 flex items-center gap-2 text-sm text-red-700 dark:text-red-400">
                 <AlertTriangle size={16} />
                 {joinError}
               </div>
             {/if}
 
             <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">
+              <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                 Invite Code
               </label>
               <input
                 type="text"
                 bind:value={inviteCode}
-                class="w-full px-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center text-xl font-mono uppercase tracking-widest"
+                class="w-full px-4 py-3 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center text-xl font-mono uppercase tracking-widest"
                 placeholder="ABC123"
                 maxlength="6"
                 disabled={joiningOrg}
               />
-              <p class="mt-1 text-xs text-slate-500">The 6-character code from your organization admin</p>
+              <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">The 6-character code from your organization admin</p>
             </div>
 
             <!-- Actions -->
-            <div class="flex justify-end gap-3 pt-4 border-t border-slate-200">
+            <div class="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
               <button
                 type="button"
                 on:click={closeJoinOrgModal}
-                class="px-4 py-2 border border-slate-200 rounded-lg font-medium text-slate-700 hover:bg-slate-50"
+                class="px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
                 disabled={joiningOrg}
               >
                 Cancel
@@ -637,18 +637,18 @@
         on:click={closePasswordModal}
       />
 
-      <div class="relative bg-white rounded-xl shadow-xl w-full max-w-md">
+      <div class="relative bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-md">
         <!-- Header -->
-        <div class="flex items-center justify-between p-6 border-b border-slate-200">
+        <div class="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-700">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
-              <Lock class="text-indigo-600" size={20} />
+            <div class="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg flex items-center justify-center">
+              <Lock class="text-indigo-600 dark:text-indigo-400" size={20} />
             </div>
-            <h2 class="text-lg font-semibold text-slate-900">Change Password</h2>
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-white">Change Password</h2>
           </div>
           <button
             on:click={closePasswordModal}
-            class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg"
+            class="p-2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg"
           >
             <X size={20} />
           </button>
@@ -657,14 +657,14 @@
         <!-- Form -->
         <form on:submit|preventDefault={handleChangePassword} class="p-6 space-y-4">
           {#if passwordError}
-            <div class="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
+            <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 text-sm text-red-700 dark:text-red-400">
               {passwordError}
             </div>
           {/if}
 
           <!-- Current Password -->
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">
+            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
               Current Password
             </label>
             <div class="relative">
@@ -672,7 +672,7 @@
                 <input
                   type="text"
                   bind:value={passwordForm.currentPassword}
-                  class="w-full px-4 py-2 pr-10 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  class="w-full px-4 py-2 pr-10 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   placeholder="Enter current password"
                   required
                 />
@@ -680,7 +680,7 @@
                 <input
                   type="password"
                   bind:value={passwordForm.currentPassword}
-                  class="w-full px-4 py-2 pr-10 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  class="w-full px-4 py-2 pr-10 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   placeholder="Enter current password"
                   required
                 />
@@ -688,7 +688,7 @@
               <button
                 type="button"
                 on:click={() => showCurrentPassword = !showCurrentPassword}
-                class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
               >
                 {#if showCurrentPassword}
                   <EyeOff size={18} />
@@ -701,7 +701,7 @@
 
           <!-- New Password -->
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">
+            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
               New Password
             </label>
             <div class="relative">
@@ -709,7 +709,7 @@
                 <input
                   type="text"
                   bind:value={passwordForm.newPassword}
-                  class="w-full px-4 py-2 pr-10 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  class="w-full px-4 py-2 pr-10 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   placeholder="Enter new password"
                   required
                   minlength="8"
@@ -718,7 +718,7 @@
                 <input
                   type="password"
                   bind:value={passwordForm.newPassword}
-                  class="w-full px-4 py-2 pr-10 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  class="w-full px-4 py-2 pr-10 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   placeholder="Enter new password"
                   required
                   minlength="8"
@@ -727,7 +727,7 @@
               <button
                 type="button"
                 on:click={() => showNewPassword = !showNewPassword}
-                class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
               >
                 {#if showNewPassword}
                   <EyeOff size={18} />
@@ -741,7 +741,7 @@
             {#if passwordForm.newPassword.length > 0}
               <div class="mt-2">
                 <div class="flex items-center gap-2 mb-1">
-                  <div class="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                  <div class="flex-1 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                     <div
                       class="h-full transition-all duration-300
                         {passwordStrength.score <= 1 ? 'bg-red-500' :
@@ -755,7 +755,7 @@
                     {passwordStrength.label}
                   </span>
                 </div>
-                <p class="text-xs text-slate-500">
+                <p class="text-xs text-slate-500 dark:text-slate-400">
                   Use 8+ characters with uppercase, lowercase, numbers, and symbols
                 </p>
               </div>
@@ -764,28 +764,28 @@
 
           <!-- Confirm Password -->
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">
+            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
               Confirm New Password
             </label>
             <input
               type="password"
               bind:value={passwordForm.confirmPassword}
-              class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500
-                {passwordForm.confirmPassword.length > 0 && !passwordsMatch ? 'border-red-300' : 'border-slate-200'}"
+              class="w-full px-4 py-2 border rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500
+                {passwordForm.confirmPassword.length > 0 && !passwordsMatch ? 'border-red-300 dark:border-red-700' : 'border-slate-200 dark:border-slate-600'}"
               placeholder="Confirm new password"
               required
             />
             {#if passwordForm.confirmPassword.length > 0 && !passwordsMatch}
-              <p class="mt-1 text-xs text-red-500">Passwords do not match</p>
+              <p class="mt-1 text-xs text-red-500 dark:text-red-400">Passwords do not match</p>
             {/if}
           </div>
 
           <!-- Actions -->
-          <div class="flex justify-end gap-3 pt-4 border-t border-slate-200">
+          <div class="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
             <button
               type="button"
               on:click={closePasswordModal}
-              class="px-4 py-2 border border-slate-200 rounded-lg font-medium text-slate-700 hover:bg-slate-50"
+              class="px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
             >
               Cancel
             </button>
