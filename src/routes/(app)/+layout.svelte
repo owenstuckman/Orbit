@@ -13,6 +13,7 @@
     currentOrgRole
   } from '$lib/stores/auth';
   import { theme } from '$lib/stores/theme';
+  import { storage } from '$lib/services/supabase';
   import NotificationDropdown from '$lib/components/common/NotificationDropdown.svelte';
   import OrganizationSwitcher from '$lib/components/common/OrganizationSwitcher.svelte';
   import Toast from '$lib/components/common/Toast.svelte';
@@ -362,11 +363,19 @@ Error: {errorDetails}</pre>
       <!-- User section at bottom -->
       <div class="p-4 border-t border-slate-800 flex-shrink-0">
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-            <span class="text-white font-semibold">
-              {$user.full_name?.charAt(0) || $user.email.charAt(0).toUpperCase()}
-            </span>
-          </div>
+          {#if $user.metadata?.avatar_path}
+            <img
+              src={storage.getPublicUrl('avatars', String($user.metadata.avatar_path))}
+              alt="Avatar"
+              class="w-10 h-10 rounded-full object-cover flex-shrink-0"
+            />
+          {:else}
+            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+              <span class="text-white font-semibold">
+                {$user.full_name?.charAt(0) || $user.email.charAt(0).toUpperCase()}
+              </span>
+            </div>
+          {/if}
           <div class="flex-1 min-w-0">
             <p class="text-white text-sm font-medium truncate">
               {$user.full_name || $user.email}
@@ -442,11 +451,19 @@ Error: {errorDetails}</pre>
                 class="flex items-center gap-2 p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg"
                 on:click|stopPropagation={() => userMenuOpen = !userMenuOpen}
               >
-                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-                  <span class="text-white text-sm font-semibold">
-                    {$user.full_name?.charAt(0) || $user.email.charAt(0).toUpperCase()}
-                  </span>
-                </div>
+                {#if $user.metadata?.avatar_path}
+                    <img
+                      src={storage.getPublicUrl('avatars', String($user.metadata.avatar_path))}
+                      alt="Avatar"
+                      class="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                    />
+                  {:else}
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+                      <span class="text-white text-sm font-semibold">
+                        {$user.full_name?.charAt(0) || $user.email.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                  {/if}
                 <ChevronDown size={16} class="text-slate-400" />
               </button>
 

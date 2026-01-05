@@ -95,6 +95,7 @@ export interface UserMetadata {
   qc_pass_rate?: number;
   avg_task_time?: number;
   badges?: string[];
+  avatar_path?: string;
   [key: string]: unknown;
 }
 
