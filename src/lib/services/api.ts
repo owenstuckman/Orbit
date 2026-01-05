@@ -860,7 +860,7 @@ export const contractsApi = {
 
   async sign(contractId: string, partyType: 'a' | 'b'): Promise<Contract | null> {
     const field = partyType === 'a' ? 'party_a_signed_at' : 'party_b_signed_at';
-    
+
     const { data, error } = await supabase
       .from('contracts')
       .update({ [field]: new Date().toISOString() })
@@ -879,6 +879,69 @@ export const contractsApi = {
         .from('contracts')
         .update({ status: 'active' })
         .eq('id', contractId);
+    }
+
+    return data;
+  },
+
+  /**
+   * Upload a PDF blob to storage and update the contract record
+   */
+  async uploadPdf(contractId: string, pdfBlob: Blob, filename: string): Promise<string | null> {
+    try {
+      // Upload to Supabase Storage
+      const pdfPath = `${contractId}/${filename}`;
+      const { error: uploadError } = await supabase.storage
+        .from('contracts')
+        .upload(pdfPath, pdfBlob, {
+          contentType: 'application/pdf',
+          upsert: true
+        });
+
+      if (uploadError) {
+        console.error('Error uploading PDF:', uploadError);
+        return null;
+      }
+
+      // Update contract record with pdf_path
+      const { error: updateError } = await supabase
+        .from('contracts')
+        .update({ pdf_path: pdfPath })
+        .eq('id', contractId);
+
+      if (updateError) {
+        console.error('Error updating contract pdf_path:', updateError);
+        return null;
+      }
+
+      return pdfPath;
+    } catch (error) {
+      console.error('Error in uploadPdf:', error);
+      return null;
+    }
+  },
+
+  /**
+   * Get the public URL for a contract PDF
+   */
+  getPdfUrl(pdfPath: string): string {
+    const { data } = supabase.storage
+      .from('contracts')
+      .getPublicUrl(pdfPath);
+    return data.publicUrl;
+  },
+
+  /**
+   * Download a contract PDF
+   */
+  async downloadPdf(pdfPath: string): Promise<Blob | null> {
+    const { data, error } = await supabase.storage
+      .from('contracts')
+      .download(pdfPath);
+
+    if (error) {
+      console.error('Error downloading PDF:', error);
+      return null;
     }
 
     return data;

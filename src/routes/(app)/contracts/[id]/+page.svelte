@@ -129,9 +129,9 @@
 
 <div class="max-w-4xl mx-auto">
   <!-- Back button -->
-  <a 
-    href="/contracts" 
-    class="inline-flex items-center gap-2 text-slate-600 hover:text-slate-900 mb-6 transition-colors"
+  <a
+    href="/contracts"
+    class="inline-flex items-center gap-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white mb-6 transition-colors"
   >
     <ArrowLeft size={18} />
     Back to contracts
@@ -142,11 +142,11 @@
       <div class="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
     </div>
   {:else if error}
-    <div class="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
-      <XCircle class="mx-auto text-red-500 mb-2" size={32} />
-      <p class="text-red-800">{error}</p>
-      <button 
-        class="mt-4 text-red-600 hover:text-red-800 underline"
+    <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-6 text-center">
+      <XCircle class="mx-auto text-red-500 dark:text-red-400 mb-2" size={32} />
+      <p class="text-red-800 dark:text-red-300">{error}</p>
+      <button
+        class="mt-4 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 underline"
         on:click={loadContract}
       >
         Try again
@@ -154,24 +154,24 @@
     </div>
   {:else if contract}
     <!-- Header -->
-    <div class="bg-white rounded-xl border border-slate-200 p-6 mb-6">
+    <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 mb-6">
       <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
           <div class="flex items-center gap-3 mb-2">
             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {getStatusBadge(contract.status).bg} {getStatusBadge(contract.status).text}">
               {getStatusBadge(contract.status).label}
             </span>
-            <span class="text-sm text-slate-500 capitalize">{contract.template_type} contract</span>
+            <span class="text-sm text-slate-500 dark:text-slate-400 capitalize">{contract.template_type} contract</span>
           </div>
-          <h1 class="text-2xl font-bold text-slate-900">Contract Agreement</h1>
-          <p class="text-slate-600 mt-1">ID: {contract.id.slice(0, 8)}...</p>
+          <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Contract Agreement</h1>
+          <p class="text-slate-600 dark:text-slate-400 mt-1">ID: {contract.id.slice(0, 8)}...</p>
         </div>
 
         <div class="flex flex-wrap gap-3">
           {#if contract.pdf_path}
             <button
               on:click={downloadPdf}
-              class="px-4 py-2 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors flex items-center gap-2"
+              class="px-4 py-2 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 font-medium rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center gap-2"
             >
               <Download size={18} />
               Download PDF
@@ -196,7 +196,7 @@
       </div>
 
       {#if signError}
-        <div class="mt-4 bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2 text-sm text-red-700">
+        <div class="mt-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 flex items-center gap-2 text-sm text-red-700 dark:text-red-400">
           <AlertCircle size={16} />
           {signError}
         </div>
@@ -207,81 +207,81 @@
       <!-- Contract details -->
       <div class="lg:col-span-2 space-y-6">
         <!-- Parties -->
-        <div class="bg-white rounded-xl border border-slate-200 p-6">
-          <h2 class="text-lg font-semibold text-slate-900 mb-4">Contract Parties</h2>
-          
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+          <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-4">Contract Parties</h2>
+
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <!-- Party A -->
-            <div class="p-4 bg-slate-50 rounded-lg">
+            <div class="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
               <div class="flex items-center justify-between mb-3">
-                <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Party A</span>
+                <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Party A</span>
                 {#if contract.party_a_signed_at}
-                  <span class="inline-flex items-center gap-1 text-xs text-green-600">
+                  <span class="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
                     <CheckCircle size={12} />
                     Signed
                   </span>
                 {:else}
-                  <span class="inline-flex items-center gap-1 text-xs text-slate-500">
+                  <span class="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
                     <Clock size={12} />
                     Pending
                   </span>
                 {/if}
               </div>
               <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center">
-                  <span class="text-sm font-semibold text-indigo-700">
+                <div class="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center">
+                  <span class="text-sm font-semibold text-indigo-700 dark:text-indigo-300">
                     {(contract.party_a?.full_name || contract.terms.party_a_name || 'A').charAt(0)}
                   </span>
                 </div>
                 <div>
-                  <p class="font-medium text-slate-900">
+                  <p class="font-medium text-slate-900 dark:text-white">
                     {contract.party_a?.full_name || contract.terms.party_a_name || 'Unknown'}
                   </p>
                   {#if contract.party_a?.email}
-                    <p class="text-sm text-slate-500">{contract.party_a.email}</p>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">{contract.party_a.email}</p>
                   {/if}
                 </div>
               </div>
               {#if contract.party_a_signed_at}
-                <p class="text-xs text-slate-500 mt-3">
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-3">
                   Signed on {formatDate(contract.party_a_signed_at)}
                 </p>
               {/if}
             </div>
 
             <!-- Party B -->
-            <div class="p-4 bg-slate-50 rounded-lg">
+            <div class="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
               <div class="flex items-center justify-between mb-3">
-                <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Party B</span>
+                <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Party B</span>
                 {#if contract.party_b_signed_at}
-                  <span class="inline-flex items-center gap-1 text-xs text-green-600">
+                  <span class="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
                     <CheckCircle size={12} />
                     Signed
                   </span>
                 {:else}
-                  <span class="inline-flex items-center gap-1 text-xs text-slate-500">
+                  <span class="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
                     <Clock size={12} />
                     Pending
                   </span>
                 {/if}
               </div>
               <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
-                  <span class="text-sm font-semibold text-purple-700">
+                <div class="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center">
+                  <span class="text-sm font-semibold text-purple-700 dark:text-purple-300">
                     {(contract.party_b?.full_name || contract.terms.party_b_name || contract.party_b_email || 'B').charAt(0)}
                   </span>
                 </div>
                 <div>
-                  <p class="font-medium text-slate-900">
+                  <p class="font-medium text-slate-900 dark:text-white">
                     {contract.party_b?.full_name || contract.terms.party_b_name || contract.party_b_email || 'Pending assignment'}
                   </p>
                   {#if contract.party_b?.email || contract.party_b_email}
-                    <p class="text-sm text-slate-500">{contract.party_b?.email || contract.party_b_email}</p>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">{contract.party_b?.email || contract.party_b_email}</p>
                   {/if}
                 </div>
               </div>
               {#if contract.party_b_signed_at}
-                <p class="text-xs text-slate-500 mt-3">
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-3">
                   Signed on {formatDate(contract.party_b_signed_at)}
                 </p>
               {/if}
@@ -290,61 +290,61 @@
         </div>
 
         <!-- Terms -->
-        <div class="bg-white rounded-xl border border-slate-200 p-6">
-          <h2 class="text-lg font-semibold text-slate-900 mb-4">Contract Terms</h2>
-          
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+          <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-4">Contract Terms</h2>
+
           {#if contract.terms.sections && contract.terms.sections.length > 0}
             <div class="space-y-4">
               {#each contract.terms.sections as section, i}
-                <div class="prose prose-slate max-w-none">
-                  <p class="text-slate-700">{section}</p>
+                <div class="prose prose-slate dark:prose-invert max-w-none">
+                  <p class="text-slate-700 dark:text-slate-300">{section}</p>
                 </div>
                 {#if i < contract.terms.sections.length - 1}
-                  <hr class="border-slate-100" />
+                  <hr class="border-slate-100 dark:border-slate-700" />
                 {/if}
               {/each}
             </div>
           {:else}
-            <div class="bg-slate-50 rounded-lg p-4">
-              <pre class="text-sm text-slate-700 whitespace-pre-wrap">{JSON.stringify(contract.terms, null, 2)}</pre>
+            <div class="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4">
+              <pre class="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{JSON.stringify(contract.terms, null, 2)}</pre>
             </div>
           {/if}
         </div>
 
         <!-- Related entities -->
         {#if contract.task || contract.project}
-          <div class="bg-white rounded-xl border border-slate-200 p-6">
-            <h2 class="text-lg font-semibold text-slate-900 mb-4">Related To</h2>
-            
+          <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-4">Related To</h2>
+
             {#if contract.task}
-              <a 
+              <a
                 href="/tasks/{contract.task.id}"
-                class="block p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors"
+                class="block p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
               >
                 <div class="flex items-center gap-3">
-                  <div class="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                    <FileText class="text-blue-600" size={20} />
+                  <div class="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
+                    <FileText class="text-blue-600 dark:text-blue-400" size={20} />
                   </div>
                   <div>
-                    <p class="text-xs text-slate-500 uppercase tracking-wider">Task</p>
-                    <p class="font-medium text-slate-900">{contract.task.title}</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Task</p>
+                    <p class="font-medium text-slate-900 dark:text-white">{contract.task.title}</p>
                   </div>
                 </div>
               </a>
             {/if}
 
             {#if contract.project}
-              <a 
+              <a
                 href="/projects/{contract.project.id}"
-                class="block p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors {contract.task ? 'mt-3' : ''}"
+                class="block p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors {contract.task ? 'mt-3' : ''}"
               >
                 <div class="flex items-center gap-3">
-                  <div class="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
-                    <FileText class="text-purple-600" size={20} />
+                  <div class="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center">
+                    <FileText class="text-purple-600 dark:text-purple-400" size={20} />
                   </div>
                   <div>
-                    <p class="text-xs text-slate-500 uppercase tracking-wider">Project</p>
-                    <p class="font-medium text-slate-900">{contract.project.name}</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Project</p>
+                    <p class="font-medium text-slate-900 dark:text-white">{contract.project.name}</p>
                   </div>
                 </div>
               </a>
@@ -356,17 +356,17 @@
       <!-- Sidebar -->
       <div class="space-y-6">
         <!-- Summary -->
-        <div class="bg-white rounded-xl border border-slate-200 p-6">
-          <h3 class="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Summary</h3>
-          
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+          <h3 class="text-sm font-semibold text-slate-900 dark:text-white uppercase tracking-wider mb-4">Summary</h3>
+
           <dl class="space-y-4">
             {#if contract.terms.compensation}
               <div>
-                <dt class="text-xs text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                <dt class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
                   <DollarSign size={12} />
                   Compensation
                 </dt>
-                <dd class="mt-1 text-lg font-semibold text-slate-900">
+                <dd class="mt-1 text-lg font-semibold text-slate-900 dark:text-white">
                   {formatCurrency(contract.terms.compensation)}
                 </dd>
               </div>
@@ -374,27 +374,27 @@
 
             {#if contract.terms.timeline}
               <div>
-                <dt class="text-xs text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                <dt class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
                   <Calendar size={12} />
                   Timeline
                 </dt>
-                <dd class="mt-1 text-slate-700">{contract.terms.timeline}</dd>
+                <dd class="mt-1 text-slate-700 dark:text-slate-300">{contract.terms.timeline}</dd>
               </div>
             {/if}
 
             <div>
-              <dt class="text-xs text-slate-500 uppercase tracking-wider">Template</dt>
-              <dd class="mt-1 text-slate-700 capitalize">{contract.template_type}</dd>
+              <dt class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Template</dt>
+              <dd class="mt-1 text-slate-700 dark:text-slate-300 capitalize">{contract.template_type}</dd>
             </div>
 
             <div>
-              <dt class="text-xs text-slate-500 uppercase tracking-wider">Created</dt>
-              <dd class="mt-1 text-slate-700">{formatDate(contract.created_at)}</dd>
+              <dt class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Created</dt>
+              <dd class="mt-1 text-slate-700 dark:text-slate-300">{formatDate(contract.created_at)}</dd>
             </div>
 
             <div>
-              <dt class="text-xs text-slate-500 uppercase tracking-wider">Last Updated</dt>
-              <dd class="mt-1 text-slate-700">{formatDate(contract.updated_at)}</dd>
+              <dt class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Last Updated</dt>
+              <dd class="mt-1 text-slate-700 dark:text-slate-300">{formatDate(contract.updated_at)}</dd>
             </div>
           </dl>
         </div>
