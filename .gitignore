@@ -41,3 +41,4 @@ coverage/
 
 # CLAUDE CODE 
 .claude
+.mcp.json
