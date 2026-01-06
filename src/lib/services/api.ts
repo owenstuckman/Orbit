@@ -636,10 +636,11 @@ export const tasksApi = {
 
   /**
    * Get task details by guest submission token (for external contractors)
+   * The RPC returns the task object directly as JSONB, not wrapped in a success object
    */
   async getBySubmissionToken(token: string): Promise<Task | null> {
     const { data, error } = await supabase.rpc('get_task_by_submission_token', {
-      p_submission_token: token
+      p_token: token
     });
 
     if (error) {
@@ -647,11 +648,12 @@ export const tasksApi = {
       return null;
     }
 
-    if (!data?.success) {
+    // RPC returns the task directly as JSONB, or null if not found
+    if (!data) {
       return null;
     }
 
-    return data.task;
+    return data as Task;
   },
 
   /**
