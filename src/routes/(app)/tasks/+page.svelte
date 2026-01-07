@@ -162,6 +162,7 @@
 
     // Load tasks based on role
     if ($currentOrgRole === 'employee' || $currentOrgRole === 'contractor') {
+      if (!$user) return;
       if (showAvailableOnly) {
         await tasks.loadAvailable($user.training_level);
       } else {
@@ -203,6 +204,7 @@
 
   async function refreshTasks() {
     if ($currentOrgRole === 'employee' || $currentOrgRole === 'contractor') {
+      if (!$user) return;
       if (showAvailableOnly) {
         await tasks.loadAvailable($user.training_level);
       } else {

@@ -82,7 +82,16 @@ CREATE TABLE tasks (
     submission_data JSONB,
     submission_files TEXT[],
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    -- External contractor fields
+    is_external BOOLEAN DEFAULT FALSE,
+    external_contractor_name TEXT,
+    external_contractor_email TEXT,
+    external_submission_token TEXT UNIQUE,
+    contract_id UUID REFERENCES contracts(id),
+    -- Organization fields
+    tags TEXT[] DEFAULT '{}',
+    sort_order INTEGER DEFAULT 0
 );
 
 -- QC Reviews
@@ -294,3 +303,153 @@ CREATE POLICY "Admins can view all payouts in their organization"
 CREATE POLICY "Admins and PMs can create payouts"
     ON payouts FOR INSERT
     WITH CHECK (org_id = get_my_org_id() AND get_my_role() IN ('admin', 'pm'));
+
+-- ============================================================================
+-- RPC FUNCTIONS FOR EXTERNAL WORK ASSIGNMENT
+-- ============================================================================
+
+-- Assign a task to an external contractor
+CREATE OR REPLACE FUNCTION assign_task_externally(
+    p_task_id UUID,
+    p_contractor_name TEXT,
+    p_contractor_email TEXT,
+    p_use_guest_link BOOLEAN DEFAULT TRUE
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_task RECORD;
+    v_contract_id UUID;
+    v_submission_token TEXT;
+    v_assigner_id UUID;
+BEGIN
+    -- Get the current user
+    SELECT id INTO v_assigner_id FROM users WHERE auth_id = auth.uid();
+    IF v_assigner_id IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'User not found');
+    END IF;
+
+    -- Get the task and verify it's available
+    SELECT * INTO v_task FROM tasks WHERE id = p_task_id;
+    IF v_task IS NULL OR v_task.status != 'open' THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Task not available');
+    END IF;
+
+    -- Generate submission token if using guest link
+    IF p_use_guest_link THEN
+        v_submission_token := encode(gen_random_bytes(16), 'hex');
+    END IF;
+
+    -- Create the contract
+    INSERT INTO contracts (org_id, task_id, template_type, status, party_a_id, party_b_email, terms)
+    VALUES (
+        v_task.org_id,
+        p_task_id,
+        'task_assignment',
+        'pending_signature',
+        v_assigner_id,
+        p_contractor_email,
+        jsonb_build_object(
+            'task_title', v_task.title,
+            'compensation', v_task.dollar_value,
+            'contractor_name', p_contractor_name
+        )
+    )
+    RETURNING id INTO v_contract_id;
+
+    -- Update the task with external assignment info
+    UPDATE tasks SET
+        is_external = true,
+        external_contractor_name = p_contractor_name,
+        external_contractor_email = p_contractor_email,
+        external_submission_token = v_submission_token,
+        contract_id = v_contract_id,
+        status = 'assigned',
+        assigned_at = NOW()
+    WHERE id = p_task_id;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'contract_id', v_contract_id,
+        'submission_token', v_submission_token,
+        'task_id', p_task_id
+    );
+EXCEPTION WHEN OTHERS THEN
+    RETURN jsonb_build_object('success', false, 'error', SQLERRM);
+END;
+$$;
+
+-- Get task details by submission token (for external contractors)
+CREATE OR REPLACE FUNCTION get_task_by_submission_token(p_token TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_task RECORD;
+BEGIN
+    SELECT t.*, p.name as project_name INTO v_task
+    FROM tasks t
+    LEFT JOIN projects p ON t.project_id = p.id
+    WHERE t.external_submission_token = p_token;
+
+    IF v_task IS NULL THEN
+        RETURN NULL;
+    END IF;
+
+    RETURN jsonb_build_object(
+        'id', v_task.id,
+        'title', v_task.title,
+        'description', v_task.description,
+        'status', v_task.status,
+        'dollar_value', v_task.dollar_value,
+        'deadline', v_task.deadline,
+        'story_points', v_task.story_points,
+        'tags', v_task.tags,
+        'external_contractor_email', v_task.external_contractor_email,
+        'project', CASE
+            WHEN v_task.project_name IS NOT NULL
+            THEN jsonb_build_object('name', v_task.project_name)
+            ELSE NULL
+        END
+    );
+END;
+$$;
+
+-- Submit work from external contractor
+CREATE OR REPLACE FUNCTION submit_external_work(
+    p_submission_token TEXT,
+    p_submission_data JSONB
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_task RECORD;
+BEGIN
+    -- Find task by submission token
+    SELECT * INTO v_task FROM tasks WHERE external_submission_token = p_submission_token;
+
+    IF v_task IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Invalid token');
+    END IF;
+
+    IF v_task.status NOT IN ('assigned', 'in_progress') THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Task not accepting submissions');
+    END IF;
+
+    -- Update task with submission data and set to under_review for QC workflow
+    UPDATE tasks SET
+        status = 'under_review',
+        completed_at = NOW(),
+        submission_data = p_submission_data
+    WHERE id = v_task.id;
+
+    RETURN jsonb_build_object('success', true, 'task_id', v_task.id);
+EXCEPTION WHEN OTHERS THEN
+    RETURN jsonb_build_object('success', false, 'error', SQLERRM);
+END;
+$$;

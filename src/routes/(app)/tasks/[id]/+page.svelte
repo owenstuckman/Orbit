@@ -683,7 +683,7 @@
           <div class="bg-white rounded-xl border border-slate-200 p-6">
             <h3 class="font-semibold text-slate-900 mb-4">Your Status</h3>
 
-            {#if task.assignee_id === $user.id}
+            {#if $user && task.assignee_id === $user.id}
               <div class="flex items-center gap-3 p-4 bg-green-50 rounded-lg">
                 <CheckCircle class="text-green-600" size={24} />
                 <div>

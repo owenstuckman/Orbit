@@ -61,8 +61,10 @@
     }
 
     if ($currentOrgRole === 'pm') {
+      if (!$user) return;
       await projects.loadByPM($user.id);
     } else if ($currentOrgRole === 'sales') {
+      if (!$user) return;
       await projects.loadBySales($user.id);
     } else {
       await projects.load();
