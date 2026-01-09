@@ -135,8 +135,8 @@
           <!-- Filter Content -->
           <div class="flex-1 overflow-y-auto p-6 space-y-6">
             <!-- Status Filter -->
-            <div>
-              <label class="block text-sm font-medium text-slate-900 mb-3">Status</label>
+            <div role="group" aria-labelledby="status-filter-label">
+              <span id="status-filter-label" class="block text-sm font-medium text-slate-900 mb-3">Status</span>
               <div class="flex flex-wrap gap-2">
                 {#each allStatuses as status}
                   <button
@@ -174,18 +174,19 @@
             </div>
 
             <!-- Urgency Range -->
-            <div>
-              <label class="block text-sm font-medium text-slate-900 mb-2">
-                <div class="flex items-center gap-2">
+            <fieldset>
+              <legend class="block text-sm font-medium text-slate-900 mb-2">
+                <span class="flex items-center gap-2">
                   <TrendingUp size={16} class="text-slate-400" />
                   Urgency Multiplier
-                </div>
-              </label>
+                </span>
+              </legend>
               <div class="grid grid-cols-2 gap-4">
                 <div>
-                  <label class="text-xs text-slate-500">Min</label>
+                  <label for="urgency-min" class="text-xs text-slate-500">Min</label>
                   <input
                     type="number"
+                    id="urgency-min"
                     bind:value={urgencyMin}
                     min="1"
                     max="2"
@@ -194,9 +195,10 @@
                   />
                 </div>
                 <div>
-                  <label class="text-xs text-slate-500">Max</label>
+                  <label for="urgency-max" class="text-xs text-slate-500">Max</label>
                   <input
                     type="number"
+                    id="urgency-max"
                     bind:value={urgencyMax}
                     min="1"
                     max="2"
@@ -209,21 +211,22 @@
                 <span>Normal (1.0x)</span>
                 <span>High Priority (2.0x)</span>
               </div>
-            </div>
+            </fieldset>
 
             <!-- Level Range -->
-            <div>
-              <label class="block text-sm font-medium text-slate-900 mb-2">
-                <div class="flex items-center gap-2">
+            <fieldset>
+              <legend class="block text-sm font-medium text-slate-900 mb-2">
+                <span class="flex items-center gap-2">
                   <Sparkles size={16} class="text-slate-400" />
                   Required Level
-                </div>
-              </label>
+                </span>
+              </legend>
               <div class="grid grid-cols-2 gap-4">
                 <div>
-                  <label class="text-xs text-slate-500">Min Level</label>
+                  <label for="level-min" class="text-xs text-slate-500">Min Level</label>
                   <input
                     type="number"
+                    id="level-min"
                     bind:value={levelMin}
                     min="1"
                     max="5"
@@ -231,9 +234,10 @@
                   />
                 </div>
                 <div>
-                  <label class="text-xs text-slate-500">Max Level</label>
+                  <label for="level-max" class="text-xs text-slate-500">Max Level</label>
                   <input
                     type="number"
+                    id="level-max"
                     bind:value={levelMax}
                     min="1"
                     max="5"
@@ -248,39 +252,41 @@
                   ></div>
                 {/each}
               </div>
-            </div>
+            </fieldset>
 
             <!-- Deadline Range -->
-            <div>
-              <label class="block text-sm font-medium text-slate-900 mb-2">
-                <div class="flex items-center gap-2">
+            <fieldset>
+              <legend class="block text-sm font-medium text-slate-900 mb-2">
+                <span class="flex items-center gap-2">
                   <Calendar size={16} class="text-slate-400" />
                   Deadline Range
-                </div>
-              </label>
+                </span>
+              </legend>
               <div class="grid grid-cols-2 gap-4">
                 <div>
-                  <label class="text-xs text-slate-500">From</label>
+                  <label for="deadline-from" class="text-xs text-slate-500">From</label>
                   <input
                     type="date"
+                    id="deadline-from"
                     bind:value={deadlineFrom}
                     class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   />
                 </div>
                 <div>
-                  <label class="text-xs text-slate-500">To</label>
+                  <label for="deadline-to" class="text-xs text-slate-500">To</label>
                   <input
                     type="date"
+                    id="deadline-to"
                     bind:value={deadlineTo}
                     class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   />
                 </div>
               </div>
-            </div>
+            </fieldset>
 
             <!-- Quick Filters -->
-            <div>
-              <label class="block text-sm font-medium text-slate-900 mb-3">Quick Filters</label>
+            <div role="group" aria-labelledby="quick-filters-label">
+              <span id="quick-filters-label" class="block text-sm font-medium text-slate-900 mb-3">Quick Filters</span>
               <div class="space-y-2">
                 <button
                   type="button"

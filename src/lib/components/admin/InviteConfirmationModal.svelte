@@ -62,11 +62,14 @@
 
     <!-- Modal -->
     <div class="flex min-h-full items-center justify-center p-4">
+      <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
       <div
         class="relative w-full max-w-md bg-white rounded-xl shadow-xl transform transition-all"
         on:click|stopPropagation
+        on:keydown|stopPropagation
         role="dialog"
         aria-modal="true"
+        aria-labelledby="invite-modal-title"
       >
         <!-- Header -->
         <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200">
@@ -75,7 +78,7 @@
               <Check class="text-green-600" size={20} />
             </div>
             <div>
-              <h2 class="text-lg font-semibold text-slate-900">Invitation Sent!</h2>
+              <h2 id="invite-modal-title" class="text-lg font-semibold text-slate-900">Invitation Sent!</h2>
               <p class="text-sm text-slate-500">Share the invite code below</p>
             </div>
           </div>

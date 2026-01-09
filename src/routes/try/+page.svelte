@@ -298,9 +298,10 @@
               </h4>
               <div class="space-y-4">
                 <div>
-                  <label class="block text-sm font-medium text-slate-300 mb-1">Title *</label>
+                  <label for="try-task-title" class="block text-sm font-medium text-slate-300 mb-1">Title *</label>
                   <input
                     type="text"
+                    id="try-task-title"
                     bind:value={taskTitle}
                     placeholder="Enter task title"
                     class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -308,8 +309,9 @@
                 </div>
 
                 <div>
-                  <label class="block text-sm font-medium text-slate-300 mb-1">Description</label>
+                  <label for="try-task-description" class="block text-sm font-medium text-slate-300 mb-1">Description</label>
                   <textarea
+                    id="try-task-description"
                     bind:value={taskDescription}
                     placeholder="Describe the task"
                     rows="2"
@@ -319,11 +321,12 @@
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label class="block text-sm font-medium text-slate-300 mb-1">Value ($)</label>
+                    <label for="try-task-value" class="block text-sm font-medium text-slate-300 mb-1">Value ($)</label>
                     <div class="relative">
                       <DollarSign class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                       <input
                         type="number"
+                        id="try-task-value"
                         bind:value={taskValue}
                         min="1"
                         class="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -332,7 +335,7 @@
                   </div>
 
                   <div>
-                    <label class="block text-sm font-medium text-slate-300 mb-1">Tags</label>
+                    <label for="try-task-tag-input" class="block text-sm font-medium text-slate-300 mb-1">Tags</label>
                     <div class="flex flex-wrap gap-2 mb-2">
                       {#each taskTags as tag}
                         <span class="inline-flex items-center gap-1 px-2 py-1 bg-indigo-500/30 text-indigo-300 rounded text-sm">
@@ -345,6 +348,7 @@
                     </div>
                     <input
                       type="text"
+                      id="try-task-tag-input"
                       bind:value={newTag}
                       on:keydown={handleTagKeydown}
                       placeholder="Add tag..."

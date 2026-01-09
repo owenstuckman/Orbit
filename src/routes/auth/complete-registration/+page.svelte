@@ -317,10 +317,10 @@
           </div>
 
           <!-- Organization choice -->
-          <div>
-            <label class="block text-sm font-medium text-indigo-200 mb-2">
+          <div role="group" aria-labelledby="org-choice-label">
+            <span id="org-choice-label" class="block text-sm font-medium text-indigo-200 mb-2">
               Organization
-            </label>
+            </span>
             <div class="flex gap-2 p-1 bg-white/5 rounded-xl">
               <button
                 type="button"

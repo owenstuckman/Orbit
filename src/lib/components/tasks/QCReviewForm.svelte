@@ -220,8 +220,8 @@
         <h4 class="text-sm font-medium text-slate-900 uppercase tracking-wider">Your Review</h4>
 
         <!-- Review Type -->
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-2">Review Type</label>
+        <div role="group" aria-labelledby="review-type-label">
+          <span id="review-type-label" class="block text-sm font-medium text-slate-700 mb-2">Review Type</span>
           <div class="flex gap-3">
             <button
               type="button"

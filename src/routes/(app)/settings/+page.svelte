@@ -237,18 +237,20 @@
     <div class="p-6 space-y-4">
       <div class="grid grid-cols-2 gap-4">
         <div>
-          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Full Name</label>
+          <label for="settings-fullname" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Full Name</label>
           <input
             type="text"
+            id="settings-fullname"
             value={$user?.full_name || ''}
             class="w-full px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
             disabled
           />
         </div>
         <div>
-          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Email</label>
+          <label for="settings-email" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Email</label>
           <input
             type="email"
+            id="settings-email"
             value={$user?.email || ''}
             class="w-full px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white"
             disabled
@@ -257,18 +259,20 @@
       </div>
       <div class="grid grid-cols-2 gap-4">
         <div>
-          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Role</label>
+          <label for="settings-role" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Role</label>
           <input
             type="text"
+            id="settings-role"
             value={$currentOrgRole || ''}
             class="w-full px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white capitalize"
             disabled
           />
         </div>
         <div>
-          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Level</label>
+          <label for="settings-level" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Level</label>
           <input
             type="text"
+            id="settings-level"
             value="Level {$user?.level || 1} (Training Level {$user?.training_level || 1})"
             class="w-full px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white"
             disabled
@@ -303,7 +307,7 @@
         <!-- The Slider -->
         <div class="space-y-4">
           <div class="flex items-center justify-between">
-            <label class="text-sm font-medium text-slate-700 dark:text-slate-300">
+            <label for="salary-ratio-slider" class="text-sm font-medium text-slate-700 dark:text-slate-300">
               Base Salary Ratio (r)
             </label>
             <span class="text-2xl font-bold text-slate-900 dark:text-white">
@@ -313,6 +317,7 @@
 
           <input
             type="range"
+            id="salary-ratio-slider"
             min={rBounds.min * 100}
             max={rBounds.max * 100}
             step="5"
@@ -584,11 +589,12 @@
             {/if}
 
             <div>
-              <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              <label for="invite-code-input" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                 Invite Code
               </label>
               <input
                 type="text"
+                id="invite-code-input"
                 bind:value={inviteCode}
                 class="w-full px-4 py-3 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center text-xl font-mono uppercase tracking-widest"
                 placeholder="ABC123"
@@ -664,13 +670,14 @@
 
           <!-- Current Password -->
           <div>
-            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+            <label for="current-password" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
               Current Password
             </label>
             <div class="relative">
               {#if showCurrentPassword}
                 <input
                   type="text"
+                  id="current-password"
                   bind:value={passwordForm.currentPassword}
                   class="w-full px-4 py-2 pr-10 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   placeholder="Enter current password"
@@ -679,6 +686,7 @@
               {:else}
                 <input
                   type="password"
+                  id="current-password"
                   bind:value={passwordForm.currentPassword}
                   class="w-full px-4 py-2 pr-10 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   placeholder="Enter current password"
@@ -701,13 +709,14 @@
 
           <!-- New Password -->
           <div>
-            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+            <label for="new-password" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
               New Password
             </label>
             <div class="relative">
               {#if showNewPassword}
                 <input
                   type="text"
+                  id="new-password"
                   bind:value={passwordForm.newPassword}
                   class="w-full px-4 py-2 pr-10 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   placeholder="Enter new password"
@@ -717,6 +726,7 @@
               {:else}
                 <input
                   type="password"
+                  id="new-password"
                   bind:value={passwordForm.newPassword}
                   class="w-full px-4 py-2 pr-10 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   placeholder="Enter new password"
@@ -764,11 +774,12 @@
 
           <!-- Confirm Password -->
           <div>
-            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+            <label for="confirm-password" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
               Confirm New Password
             </label>
             <input
               type="password"
+              id="confirm-password"
               bind:value={passwordForm.confirmPassword}
               class="w-full px-4 py-2 border rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500
                 {passwordForm.confirmPassword.length > 0 && !passwordsMatch ? 'border-red-300 dark:border-red-700' : 'border-slate-200 dark:border-slate-600'}"

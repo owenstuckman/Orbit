@@ -261,12 +261,12 @@
 
           <!-- Tags -->
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">
-              <div class="flex items-center gap-2">
+            <span id="edit-tags-label" class="block text-sm font-medium text-slate-700 mb-1">
+              <span class="flex items-center gap-2">
                 <Tag size={16} class="text-slate-400" />
                 Tags
-              </div>
-            </label>
+              </span>
+            </span>
             <TagInput
               bind:tags
               suggestions={tagSuggestions}
@@ -298,10 +298,10 @@
             </div>
 
             <!-- Story Points -->
-            <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">
+            <div role="group" aria-labelledby="edit-story-points-label">
+              <span id="edit-story-points-label" class="block text-sm font-medium text-slate-700 mb-1">
                 Story Points (T-Shirt Size)
-              </label>
+              </span>
               <div class="flex flex-wrap gap-2">
                 {#each storyPointPresets as preset}
                   <button
@@ -321,10 +321,10 @@
           </div>
 
           <!-- Urgency Multiplier -->
-          <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">
+          <div role="group" aria-labelledby="edit-urgency-label">
+            <span id="edit-urgency-label" class="block text-sm font-medium text-slate-700 mb-1">
               Urgency Bonus
-            </label>
+            </span>
             <div class="flex flex-wrap gap-2">
               {#each urgencyPresets as preset}
                 <button
@@ -344,12 +344,13 @@
 
           <!-- Required Level -->
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">
+            <label for="edit-requiredLevel" class="block text-sm font-medium text-slate-700 mb-1">
               Required Level
             </label>
             <div class="flex items-center gap-4">
               <input
                 type="range"
+                id="edit-requiredLevel"
                 bind:value={requiredLevel}
                 disabled={!canEdit}
                 min="1"

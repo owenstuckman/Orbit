@@ -315,8 +315,8 @@
 
       <!-- Review Form -->
       <div class="px-6 py-4 border-t border-slate-200 space-y-4">
-        <div>
-          <label class="text-sm font-medium text-slate-700 mb-2 block">Your Decision</label>
+        <div role="group" aria-labelledby="decision-label">
+          <span id="decision-label" class="text-sm font-medium text-slate-700 mb-2 block">Your Decision</span>
           <div class="flex gap-4">
             <button
               class="flex-1 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2
@@ -338,10 +338,11 @@
         </div>
 
         <div>
-          <label class="text-sm font-medium text-slate-700 mb-2 block">
+          <label for="qc-feedback-input" class="text-sm font-medium text-slate-700 mb-2 block">
             Feedback {!reviewPassed ? '(required)' : '(optional)'}
           </label>
           <textarea
+            id="qc-feedback-input"
             bind:value={feedback}
             rows="3"
             class="w-full px-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"

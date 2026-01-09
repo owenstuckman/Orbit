@@ -39,17 +39,28 @@
     try {
       users = await usersApi.list();
 
-      // Calculate leaderboard based on XP and tasks
+      // Calculate leaderboard based on real user data
+      // Uses xp, tasks_completed, and streak_days from user table
       leaderboard = users
-        .map((u, index) => ({
-          user: u,
-          rank: 0,
-          xp: (u.metadata?.total_xp as number) || u.level * 100 + Math.floor(Math.random() * 500),
-          tasksCompleted: (u.metadata?.total_tasks_completed as number) || Math.floor(Math.random() * 50),
-          streak: (u.metadata?.current_streak as number) || Math.floor(Math.random() * 10),
-          earnings: Math.floor(Math.random() * 5000) + 1000
-        }))
-        .sort((a, b) => b.xp - a.xp)
+        .map((u) => {
+          // Use actual database fields with sensible defaults
+          const xp = (u as any).xp || (u.metadata?.total_xp as number) || u.level * 50;
+          const tasksCompleted = (u as any).tasks_completed || (u.metadata?.total_tasks_completed as number) || 0;
+          const streak = (u as any).streak_days || (u.metadata?.current_streak as number) || 0;
+          // Earnings would come from payouts - for now use calculated estimate based on tasks
+          const earnings = tasksCompleted * 75; // Average $75 per task estimate
+
+          return {
+            user: u,
+            rank: 0,
+            xp,
+            tasksCompleted,
+            streak,
+            earnings
+          };
+        })
+        .filter(entry => entry.xp > 0 || entry.tasksCompleted > 0) // Only show users with activity
+        .sort((a, b) => b.xp - a.xp || b.tasksCompleted - a.tasksCompleted)
         .map((entry, index) => ({ ...entry, rank: index + 1 }));
     } catch (error) {
       console.error('Failed to load leaderboard:', error);

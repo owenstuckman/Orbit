@@ -222,9 +222,9 @@
             <!-- Artifacts -->
             <div class="mb-6">
               <div class="flex items-center justify-between mb-3">
-                <label class="block text-sm font-medium text-slate-700">
+                <span class="block text-sm font-medium text-slate-700">
                   Artifacts ({artifacts.length})
-                </label>
+                </span>
                 <button
                   type="button"
                   on:click={() => showAddArtifact = true}

@@ -314,13 +314,14 @@
 
             <!-- Contractor Name -->
             <div>
-              <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              <label for="contractor-name" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                 Contractor Name
               </label>
               <div class="relative">
                 <UserPlus class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                 <input
                   type="text"
+                  id="contractor-name"
                   bind:value={contractorName}
                   placeholder="John Smith"
                   class="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -331,13 +332,14 @@
 
             <!-- Contractor Email -->
             <div>
-              <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              <label for="contractor-email" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                 Contractor Email
               </label>
               <div class="relative">
                 <Mail class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                 <input
                   type="email"
+                  id="contractor-email"
                   bind:value={contractorEmail}
                   placeholder="contractor@example.com"
                   class="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -347,10 +349,10 @@
             </div>
 
             <!-- Assignment Type Toggle -->
-            <div>
-              <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+            <div role="group" aria-labelledby="submission-method-label">
+              <span id="submission-method-label" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                 Submission Method
-              </label>
+              </span>
               <div class="grid grid-cols-2 gap-3">
                 <button
                   type="button"
