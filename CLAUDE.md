@@ -13,6 +13,7 @@ Built with SvelteKit + Supabase, it supports multiple user roles (admin, sales, 
 **Additional Docs** (`xtraDocs/`):
 - `TECHNICAL_ARCHITECTURE.md` - Detailed architecture decisions and rationale
 - `FORMULAS.md` - Payout calculation formulas (employee, QC, PM, sales)
+- `ML_INTEGRATION.md` - ML model integration points and API schemas
 - `SUPABASE_STORAGE.md` - Storage bucket conventions and usage patterns
 
 ## Development Commands

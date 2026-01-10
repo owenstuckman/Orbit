@@ -74,12 +74,10 @@ orbit-frontend/
 
 ## Development
 
-
 ### Installation
 
 1. **Clone and install dependencies**
    ```bash
-   cd orbit-frontend
    npm install
    ```
 
@@ -87,14 +85,14 @@ orbit-frontend/
    ```bash
    cp .env.example .env
    ```
-   
+
    Add Supabase credentials:
    ```
    VITE_SUPABASE_URL=https://your-project.supabase.co
    VITE_SUPABASE_ANON_KEY=your-anon-key
    ```
 
-4. **Run dev server**
+3. **Run dev server**
    ```bash
    npm run dev
    ```
@@ -102,11 +100,9 @@ orbit-frontend/
 
 ## Roadmap
 
-- [ ] Web version (Svelte)
+- [ ] Web version (Svelte) - in progress
 - [ ] Mobile app (Capacitor)
-- [ ] Slack integration
-- [ ] Advanced ML model for QC
+- [ ] Slack/Teams integrations
+- [x] Advanced ML model for QC - complete (external repo)
 - [ ] Team analytics dashboard
-- [ ] Slack/Teams/Project Management Tools integrations
 - [ ] Custom contract templates
-
