@@ -155,66 +155,66 @@
     {#if $currentOrgRole === 'employee' || $currentOrgRole === 'contractor'}
       <!-- Stats Grid -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium text-slate-600 dark:text-slate-400">Tasks Completed</p>
-              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1">{stats.tasksCompleted}</p>
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 overflow-hidden">
+          <div class="flex items-center justify-between gap-4">
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-medium text-slate-600 dark:text-slate-400 truncate">Tasks Completed</p>
+              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1 truncate">{stats.tasksCompleted}</p>
             </div>
-            <div class="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center">
+            <div class="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
               <CheckCircle class="text-green-600 dark:text-green-400" size={24} />
             </div>
           </div>
           <div class="mt-4 flex items-center text-sm">
-            <ArrowUpRight class="text-green-500" size={16} />
+            <ArrowUpRight class="text-green-500 flex-shrink-0" size={16} />
             <span class="text-green-600 dark:text-green-400 font-medium ml-1">12%</span>
-            <span class="text-slate-500 dark:text-slate-400 ml-2">vs last month</span>
+            <span class="text-slate-500 dark:text-slate-400 ml-2 truncate">vs last month</span>
           </div>
         </div>
 
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium text-slate-600 dark:text-slate-400">In Progress</p>
-              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1">{stats.tasksInProgress}</p>
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 overflow-hidden">
+          <div class="flex items-center justify-between gap-4">
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-medium text-slate-600 dark:text-slate-400 truncate">In Progress</p>
+              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1 truncate">{stats.tasksInProgress}</p>
             </div>
-            <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
+            <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
               <Clock class="text-blue-600 dark:text-blue-400" size={24} />
             </div>
           </div>
           <div class="mt-4 flex items-center text-sm">
-            <span class="text-slate-500 dark:text-slate-400">Active tasks</span>
+            <span class="text-slate-500 dark:text-slate-400 truncate">Active tasks</span>
           </div>
         </div>
 
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium text-slate-600 dark:text-slate-400">Monthly Earnings</p>
-              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1">{formatCurrency(stats.totalEarnings)}</p>
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 overflow-hidden">
+          <div class="flex items-center justify-between gap-4">
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-medium text-slate-600 dark:text-slate-400 truncate">Monthly Earnings</p>
+              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1 truncate">{formatCurrency(stats.totalEarnings)}</p>
             </div>
-            <div class="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center">
+            <div class="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
               <DollarSign class="text-indigo-600 dark:text-indigo-400" size={24} />
             </div>
           </div>
           <div class="mt-4 flex items-center text-sm">
-            <span class="text-amber-600 dark:text-amber-400 font-medium">{formatCurrency(stats.pendingPayouts)}</span>
-            <span class="text-slate-500 dark:text-slate-400 ml-2">pending</span>
+            <span class="text-amber-600 dark:text-amber-400 font-medium truncate">{formatCurrency(stats.pendingPayouts)}</span>
+            <span class="text-slate-500 dark:text-slate-400 ml-2 truncate">pending</span>
           </div>
         </div>
 
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium text-slate-600 dark:text-slate-400">QC Pass Rate</p>
-              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1">{stats.qcPassRate.toFixed(0)}%</p>
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 overflow-hidden">
+          <div class="flex items-center justify-between gap-4">
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-medium text-slate-600 dark:text-slate-400 truncate">QC Pass Rate</p>
+              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1 truncate">{stats.qcPassRate.toFixed(0)}%</p>
             </div>
-            <div class="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center">
+            <div class="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
               <Target class="text-purple-600 dark:text-purple-400" size={24} />
             </div>
           </div>
           <div class="mt-4 flex items-center text-sm">
-            <span class="text-slate-500 dark:text-slate-400">🔥 {stats.currentStreak} day streak</span>
+            <span class="text-slate-500 dark:text-slate-400 truncate">🔥 {stats.currentStreak} day streak</span>
           </div>
         </div>
       </div>
@@ -289,53 +289,53 @@
     <!-- PM Dashboard -->
     {#if $currentOrgRole === 'pm'}
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium text-slate-600 dark:text-slate-400">Active Projects</p>
-              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1">{pmStats.projectsManaged}</p>
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 overflow-hidden">
+          <div class="flex items-center justify-between gap-4">
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-medium text-slate-600 dark:text-slate-400 truncate">Active Projects</p>
+              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1 truncate">{pmStats.projectsManaged}</p>
             </div>
-            <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
+            <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
               <FolderKanban class="text-blue-600 dark:text-blue-400" size={24} />
             </div>
           </div>
         </div>
 
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium text-slate-600 dark:text-slate-400">Avg Budget Used</p>
-              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1">{pmStats.budgetUtilization.toFixed(0)}%</p>
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 overflow-hidden">
+          <div class="flex items-center justify-between gap-4">
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-medium text-slate-600 dark:text-slate-400 truncate">Avg Budget Used</p>
+              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1 truncate">{pmStats.budgetUtilization.toFixed(0)}%</p>
             </div>
-            <div class="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center">
+            <div class="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
               <TrendingUp class="text-green-600 dark:text-green-400" size={24} />
             </div>
           </div>
         </div>
 
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium text-slate-600 dark:text-slate-400">Potential Profit</p>
-              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1">{formatCurrency(stats.totalEarnings)}</p>
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 overflow-hidden">
+          <div class="flex items-center justify-between gap-4">
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-medium text-slate-600 dark:text-slate-400 truncate">Potential Profit</p>
+              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1 truncate">{formatCurrency(stats.totalEarnings)}</p>
             </div>
-            <div class="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center">
+            <div class="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
               <DollarSign class="text-indigo-600 dark:text-indigo-400" size={24} />
             </div>
           </div>
         </div>
 
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium text-slate-600 dark:text-slate-400">Overdraft Risk</p>
-              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1">{pmStats.overdraftRisk}</p>
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 overflow-hidden">
+          <div class="flex items-center justify-between gap-4">
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-medium text-slate-600 dark:text-slate-400 truncate">Overdraft Risk</p>
+              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1 truncate">{pmStats.overdraftRisk}</p>
             </div>
-            <div class="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-xl flex items-center justify-center">
+            <div class="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
               <AlertTriangle class="text-red-600 dark:text-red-400" size={24} />
             </div>
           </div>
-          <p class="text-sm text-slate-500 dark:text-slate-400 mt-2">projects near budget limit</p>
+          <p class="text-sm text-slate-500 dark:text-slate-400 mt-2 truncate">projects near budget limit</p>
         </div>
       </div>
 
@@ -382,49 +382,49 @@
     <!-- QC Dashboard -->
     {#if $currentOrgRole === 'qc'}
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium text-slate-600 dark:text-slate-400">Reviews Completed</p>
-              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1">{qcStats.reviewsCompleted}</p>
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 overflow-hidden">
+          <div class="flex items-center justify-between gap-4">
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-medium text-slate-600 dark:text-slate-400 truncate">Reviews Completed</p>
+              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1 truncate">{qcStats.reviewsCompleted}</p>
             </div>
-            <div class="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center">
+            <div class="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
               <CheckCircle class="text-green-600 dark:text-green-400" size={24} />
             </div>
           </div>
         </div>
 
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium text-slate-600 dark:text-slate-400">Avg Confidence</p>
-              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1">{qcStats.avgConfidence.toFixed(0)}%</p>
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 overflow-hidden">
+          <div class="flex items-center justify-between gap-4">
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-medium text-slate-600 dark:text-slate-400 truncate">Avg Confidence</p>
+              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1 truncate">{qcStats.avgConfidence.toFixed(0)}%</p>
             </div>
-            <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
+            <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
               <Target class="text-blue-600 dark:text-blue-400" size={24} />
             </div>
           </div>
         </div>
 
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium text-slate-600 dark:text-slate-400">Issues Found</p>
-              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1">{qcStats.issuesFound}</p>
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 overflow-hidden">
+          <div class="flex items-center justify-between gap-4">
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-medium text-slate-600 dark:text-slate-400 truncate">Issues Found</p>
+              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1 truncate">{qcStats.issuesFound}</p>
             </div>
-            <div class="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-xl flex items-center justify-center">
+            <div class="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
               <Shield class="text-orange-600 dark:text-orange-400" size={24} />
             </div>
           </div>
         </div>
 
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium text-slate-600 dark:text-slate-400">QC Earnings</p>
-              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1">{formatCurrency(stats.totalEarnings)}</p>
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 overflow-hidden">
+          <div class="flex items-center justify-between gap-4">
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-medium text-slate-600 dark:text-slate-400 truncate">QC Earnings</p>
+              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1 truncate">{formatCurrency(stats.totalEarnings)}</p>
             </div>
-            <div class="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center">
+            <div class="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
               <DollarSign class="text-indigo-600 dark:text-indigo-400" size={24} />
             </div>
           </div>
@@ -451,50 +451,50 @@
     <!-- Sales Dashboard -->
     {#if $currentOrgRole === 'sales'}
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium text-slate-600 dark:text-slate-400">Projects Sold</p>
-              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1">{salesStats.projectsSold}</p>
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 overflow-hidden">
+          <div class="flex items-center justify-between gap-4">
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-medium text-slate-600 dark:text-slate-400 truncate">Projects Sold</p>
+              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1 truncate">{salesStats.projectsSold}</p>
             </div>
-            <div class="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center">
+            <div class="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
               <FolderKanban class="text-green-600 dark:text-green-400" size={24} />
             </div>
           </div>
         </div>
 
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium text-slate-600 dark:text-slate-400">Total Sales Value</p>
-              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1">{formatCurrency(salesStats.totalSalesValue)}</p>
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 overflow-hidden">
+          <div class="flex items-center justify-between gap-4">
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-medium text-slate-600 dark:text-slate-400 truncate">Total Sales Value</p>
+              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1 truncate">{formatCurrency(salesStats.totalSalesValue)}</p>
             </div>
-            <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
+            <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
               <TrendingUp class="text-blue-600 dark:text-blue-400" size={24} />
             </div>
           </div>
         </div>
 
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium text-slate-600 dark:text-slate-400">Pending Pickup</p>
-              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1">{salesStats.pendingProjects}</p>
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 overflow-hidden">
+          <div class="flex items-center justify-between gap-4">
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-medium text-slate-600 dark:text-slate-400 truncate">Pending Pickup</p>
+              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1 truncate">{salesStats.pendingProjects}</p>
             </div>
-            <div class="w-12 h-12 bg-amber-100 dark:bg-amber-900/30 rounded-xl flex items-center justify-center">
+            <div class="w-12 h-12 bg-amber-100 dark:bg-amber-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
               <Clock class="text-amber-600 dark:text-amber-400" size={24} />
             </div>
           </div>
-          <p class="text-sm text-slate-500 dark:text-slate-400 mt-2">awaiting PM assignment</p>
+          <p class="text-sm text-slate-500 dark:text-slate-400 mt-2 truncate">awaiting PM assignment</p>
         </div>
 
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium text-slate-600 dark:text-slate-400">Commission Earned</p>
-              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1">{formatCurrency(salesStats.commissionEarned)}</p>
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 overflow-hidden">
+          <div class="flex items-center justify-between gap-4">
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-medium text-slate-600 dark:text-slate-400 truncate">Commission Earned</p>
+              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1 truncate">{formatCurrency(salesStats.commissionEarned)}</p>
             </div>
-            <div class="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center">
+            <div class="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
               <DollarSign class="text-indigo-600 dark:text-indigo-400" size={24} />
             </div>
           </div>
@@ -505,55 +505,55 @@
     <!-- Admin Dashboard -->
     {#if $currentOrgRole === 'admin'}
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium text-slate-600 dark:text-slate-400">Total Tasks</p>
-              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1">{$tasks.items.length}</p>
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 overflow-hidden">
+          <div class="flex items-center justify-between gap-4">
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-medium text-slate-600 dark:text-slate-400 truncate">Total Tasks</p>
+              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1 truncate">{$tasks.items.length}</p>
             </div>
-            <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
+            <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
               <CheckCircle class="text-blue-600 dark:text-blue-400" size={24} />
             </div>
           </div>
         </div>
 
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium text-slate-600 dark:text-slate-400">Active Projects</p>
-              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1">
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 overflow-hidden">
+          <div class="flex items-center justify-between gap-4">
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-medium text-slate-600 dark:text-slate-400 truncate">Active Projects</p>
+              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1 truncate">
                 {$projects.items.filter(p => p.status === 'active').length}
               </p>
             </div>
-            <div class="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center">
+            <div class="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
               <FolderKanban class="text-green-600 dark:text-green-400" size={24} />
             </div>
           </div>
         </div>
 
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium text-slate-600 dark:text-slate-400">Total Value</p>
-              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1">
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 overflow-hidden">
+          <div class="flex items-center justify-between gap-4">
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-medium text-slate-600 dark:text-slate-400 truncate">Total Value</p>
+              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1 truncate">
                 {formatCurrency($projects.items.reduce((sum, p) => sum + p.total_value, 0))}
               </p>
             </div>
-            <div class="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center">
+            <div class="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
               <DollarSign class="text-indigo-600 dark:text-indigo-400" size={24} />
             </div>
           </div>
         </div>
 
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium text-slate-600 dark:text-slate-400">QC Pending</p>
-              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1">
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 overflow-hidden">
+          <div class="flex items-center justify-between gap-4">
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-medium text-slate-600 dark:text-slate-400 truncate">QC Pending</p>
+              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1 truncate">
                 {$tasks.items.filter(t => t.status === 'under_review').length}
               </p>
             </div>
-            <div class="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-xl flex items-center justify-center">
+            <div class="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
               <Shield class="text-orange-600 dark:text-orange-400" size={24} />
             </div>
           </div>
