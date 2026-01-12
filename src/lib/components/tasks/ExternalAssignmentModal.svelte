@@ -45,6 +45,10 @@
 
   function close() {
     if (!loading && !generatingPdf) {
+      // If we had a successful assignment, notify the parent before closing
+      if (result) {
+        dispatch('assigned', result);
+      }
       // Reset state
       contractorName = '';
       contractorEmail = '';
@@ -129,7 +133,8 @@
       }
 
       toasts.success('Task assigned to external contractor');
-      dispatch('assigned', assignResult);
+      // Don't dispatch 'assigned' here - wait until user clicks "Done"
+      // so they can see and copy the guest link first
     } catch (err) {
       error = err instanceof Error ? err.message : 'An error occurred';
     } finally {
