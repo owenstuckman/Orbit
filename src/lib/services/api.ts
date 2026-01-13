@@ -888,11 +888,24 @@ export const contractsApi = {
 
   /**
    * Upload a PDF blob to storage and update the contract record
+   * Storage path: org_id/contract_id/filename (matches RLS policy)
    */
   async uploadPdf(contractId: string, pdfBlob: Blob, filename: string): Promise<string | null> {
     try {
-      // Upload to Supabase Storage
-      const pdfPath = `${contractId}/${filename}`;
+      // Get org_id from contract for storage path (RLS policy requires org_id prefix)
+      const { data: contract, error: fetchError } = await supabase
+        .from('contracts')
+        .select('org_id')
+        .eq('id', contractId)
+        .single();
+
+      if (fetchError || !contract?.org_id) {
+        console.error('Error fetching contract org_id:', fetchError);
+        return null;
+      }
+
+      // Upload to Supabase Storage with org_id prefix
+      const pdfPath = `${contract.org_id}/${contractId}/${filename}`;
       const { error: uploadError } = await supabase.storage
         .from('contracts')
         .upload(pdfPath, pdfBlob, {
