@@ -12,7 +12,8 @@
     Percent,
     AlertTriangle,
     Check,
-    Info
+    Info,
+    UserPlus
   } from 'lucide-svelte';
 
   let org: Organization | null = null;
@@ -29,7 +30,8 @@
     qc_beta: 0.25,
     qc_gamma: 0.4,
     pm_x: 0.5,
-    pm_overdraft_penalty: 1.5
+    pm_overdraft_penalty: 1.5,
+    allow_external_assignment: true
   };
 
   let originalForm = { ...form };
@@ -58,7 +60,8 @@
           qc_beta: org.qc_beta,
           qc_gamma: org.qc_gamma,
           pm_x: org.pm_x,
-          pm_overdraft_penalty: org.pm_overdraft_penalty
+          pm_overdraft_penalty: org.pm_overdraft_penalty,
+          allow_external_assignment: org.allow_external_assignment ?? true
         };
         originalForm = { ...form };
       }
@@ -82,7 +85,8 @@
         qc_beta: form.qc_beta,
         qc_gamma: form.qc_gamma,
         pm_x: form.pm_x,
-        pm_overdraft_penalty: form.pm_overdraft_penalty
+        pm_overdraft_penalty: form.pm_overdraft_penalty,
+        allow_external_assignment: form.allow_external_assignment
       });
       originalForm = { ...form };
       saved = true;
@@ -163,6 +167,34 @@
             class="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
           />
         </div>
+      </div>
+    </div>
+
+    <!-- External Assignment Settings -->
+    <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+      <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+        <UserPlus size={20} class="text-slate-400 dark:text-slate-500" />
+        External Contractors
+      </h2>
+
+      <div class="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+        <div>
+          <p class="font-medium text-slate-900 dark:text-white">Allow External Task Assignment</p>
+          <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            When enabled, PMs and admins can assign tasks to external contractors via guest links and auto-generated contracts.
+          </p>
+        </div>
+        <button
+          type="button"
+          on:click={() => form.allow_external_assignment = !form.allow_external_assignment}
+          class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 {form.allow_external_assignment ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-600'}"
+          role="switch"
+          aria-checked={form.allow_external_assignment}
+        >
+          <span
+            class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out {form.allow_external_assignment ? 'translate-x-5' : 'translate-x-0'}"
+          />
+        </button>
       </div>
     </div>
 

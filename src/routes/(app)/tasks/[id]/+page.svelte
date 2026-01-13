@@ -2,7 +2,7 @@
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
   import { onMount, onDestroy } from 'svelte';
-  import { user, capabilities, currentOrgRole } from '$lib/stores/auth';
+  import { user, capabilities, currentOrgRole, organization } from '$lib/stores/auth';
   import { currentTask, tasks } from '$lib/stores/tasks';
   import { artifactStore, artifactCount } from '$lib/stores/artifacts';
   import { tasksApi } from '$lib/services/api';
@@ -106,8 +106,8 @@
   // Can edit task (PM/Admin)
   $: canEdit = $capabilities.canCreateTasks || $currentOrgRole === 'admin';
 
-  // Can assign externally (PM/Admin and task is open)
-  $: canAssignExternal = canEdit && $currentTask.task?.status === 'open';
+  // Can assign externally (PM/Admin, task is open, and org allows external assignment)
+  $: canAssignExternal = canEdit && $currentTask.task?.status === 'open' && ($organization?.allow_external_assignment ?? true);
 
   // Get submission URL for external tasks
   $: submissionUrl = $currentTask.task?.external_submission_token

@@ -67,6 +67,7 @@ export interface Organization {
   qc_gamma: number;
   pm_x: number;
   pm_overdraft_penalty: number;
+  allow_external_assignment: boolean;
   created_at: string;
   updated_at: string;
 }

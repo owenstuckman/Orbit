@@ -79,6 +79,12 @@
       return;
     }
 
+    // Check if organization allows external assignment
+    if (!($organization.allow_external_assignment ?? true)) {
+      error = 'External assignment is disabled for this organization';
+      return;
+    }
+
     loading = true;
     error = '';
 
