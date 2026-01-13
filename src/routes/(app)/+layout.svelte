@@ -35,7 +35,8 @@
     Users,
     User,
     Moon,
-    Sun
+    Sun,
+    Bell
   } from 'lucide-svelte';
 
   let sidebarOpen = true;
@@ -129,6 +130,12 @@
       icon: Users,
       // Only Admin
       show: $currentOrgRole === 'admin'
+    },
+    {
+      href: '/notifications',
+      label: 'Notifications',
+      icon: Bell,
+      show: true
     },
     {
       href: '/settings',
