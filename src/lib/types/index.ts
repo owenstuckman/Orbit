@@ -56,11 +56,65 @@ export type ProjectStatus = 'draft' | 'pending_pm' | 'active' | 'completed' | 'c
 export type QCReviewType = 'ai' | 'peer' | 'independent';
 export type ContractStatus = 'draft' | 'pending_signature' | 'active' | 'completed' | 'disputed';
 
+// ============================================================================
+// Feature Flags Types
+// ============================================================================
+
+export type FeatureFlag =
+  | 'tasks'                    // Task board and task management
+  | 'projects'                 // Project management
+  | 'qc_reviews'               // Quality control system
+  | 'contracts'                // Contract generation/signing
+  | 'payouts'                  // Payout tracking
+  | 'achievements'             // Gamification badges
+  | 'leaderboard'              // User rankings
+  | 'analytics'                // Org-wide analytics
+  | 'notifications_page'       // Dedicated notifications page
+  | 'external_assignments'     // Assign to external contractors
+  | 'salary_mixer'             // User-configurable r value
+  | 'file_uploads'             // Submission artifacts/files
+  | 'realtime_updates'         // WebSocket subscriptions
+  | 'story_points'             // Story point tracking
+  | 'urgency_multipliers'      // Task urgency bonuses
+  | 'ai_qc_review'             // AI-powered QC confidence scoring
+  | 'multi_org';               // Multiple organization support
+
+export interface FeatureFlags {
+  tasks: boolean;
+  projects: boolean;
+  qc_reviews: boolean;
+  contracts: boolean;
+  payouts: boolean;
+  achievements: boolean;
+  leaderboard: boolean;
+  analytics: boolean;
+  notifications_page: boolean;
+  external_assignments: boolean;
+  salary_mixer: boolean;
+  file_uploads: boolean;
+  realtime_updates: boolean;
+  story_points: boolean;
+  urgency_multipliers: boolean;
+  ai_qc_review: boolean;
+  multi_org: boolean;
+}
+
+export type FeatureFlagPreset = 'all_features' | 'standard' | 'minimal' | 'none';
+
+export interface OrganizationSettings {
+  feature_flags?: Partial<FeatureFlags>;
+  [key: string]: unknown;
+}
+
+// ============================================================================
+// Organization
+// ============================================================================
+
 export interface Organization {
   id: string;
   name: string;
   owner_id: string | null;
-  settings: Record<string, unknown>;
+  settings: OrganizationSettings;
   default_r: number;
   r_bounds: { min: number; max: number };
   qc_beta: number;

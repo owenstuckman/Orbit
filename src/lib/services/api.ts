@@ -7,6 +7,9 @@ import type {
   Contract,
   Payout,
   Organization,
+  OrganizationSettings,
+  FeatureFlags,
+  FeatureFlagPreset,
   TaskStatus,
   ProjectStatus,
   UserRole,
@@ -18,6 +21,7 @@ import type {
   GuestProject,
   GuestTask
 } from '$lib/types';
+import { getPreset } from '$lib/config/featureFlags';
 
 // Generic query builder helpers
 type QueryFilters = {
@@ -1085,6 +1089,54 @@ export const organizationsApi = {
       return null;
     }
     return data;
+  },
+
+  /**
+   * Update feature flags for an organization
+   * Merges the provided flags with existing settings
+   */
+  async updateFeatureFlags(orgId: string, flags: Partial<FeatureFlags>): Promise<Organization | null> {
+    // Get current settings first
+    const { data: current, error: fetchError } = await supabase
+      .from('organizations')
+      .select('settings')
+      .eq('id', orgId)
+      .single();
+
+    if (fetchError) {
+      console.error('Error fetching organization settings:', fetchError);
+      return null;
+    }
+
+    const currentSettings = (current?.settings || {}) as OrganizationSettings;
+    const updatedSettings: OrganizationSettings = {
+      ...currentSettings,
+      feature_flags: {
+        ...currentSettings.feature_flags,
+        ...flags
+      }
+    };
+
+    const { data, error } = await supabase
+      .from('organizations')
+      .update({ settings: updatedSettings })
+      .eq('id', orgId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating feature flags:', error);
+      return null;
+    }
+    return data;
+  },
+
+  /**
+   * Apply a feature flag preset to an organization
+   */
+  async applyFeatureFlagPreset(orgId: string, preset: FeatureFlagPreset): Promise<Organization | null> {
+    const presetFlags = getPreset(preset);
+    return this.updateFeatureFlags(orgId, presetFlags);
   }
 };
 

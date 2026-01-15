@@ -3,6 +3,7 @@
   import { goto } from '$app/navigation';
   import { user, organization, currentOrgRole } from '$lib/stores/auth';
   import { organizationsApi } from '$lib/services/api';
+  import { FeatureFlagsPanel } from '$lib/components/admin';
   import type { Organization } from '$lib/types';
   import {
     Settings,
@@ -13,7 +14,8 @@
     AlertTriangle,
     Check,
     Info,
-    UserPlus
+    UserPlus,
+    Sliders
   } from 'lucide-svelte';
 
   let org: Organization | null = null;
@@ -370,15 +372,24 @@
     </div>
 
     <!-- Warning -->
-    <div class="p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
+    <div class="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl flex items-start gap-3">
       <AlertTriangle class="text-amber-500 flex-shrink-0 mt-0.5" size={20} />
       <div>
-        <p class="font-medium text-amber-800">Changes affect all calculations</p>
-        <p class="text-sm text-amber-700 mt-1">
+        <p class="font-medium text-amber-800 dark:text-amber-300">Changes affect all calculations</p>
+        <p class="text-sm text-amber-700 dark:text-amber-400 mt-1">
           Modifying these settings will affect future payout calculations for all users.
           Existing payouts will not be retroactively changed.
         </p>
       </div>
+    </div>
+
+    <!-- Feature Flags Section -->
+    <div class="mt-8 pt-8 border-t border-slate-200 dark:border-slate-700">
+      <div class="flex items-center gap-2 mb-6">
+        <Sliders size={24} class="text-slate-400" />
+        <h2 class="text-xl font-bold text-slate-900 dark:text-white">Feature Management</h2>
+      </div>
+      <FeatureFlagsPanel />
     </div>
   {/if}
 </div>

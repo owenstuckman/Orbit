@@ -12,6 +12,7 @@
     capabilities,
     currentOrgRole
   } from '$lib/stores/auth';
+  import { featureFlags } from '$lib/stores/featureFlags';
   import { theme } from '$lib/stores/theme';
   import { storage } from '$lib/services/supabase';
   import NotificationDropdown from '$lib/components/common/NotificationDropdown.svelte';
@@ -63,12 +64,8 @@
     return ROLE_DISPLAY[role] || { label: role, description: role };
   }
 
-  // Navigation items - strictly role-based access (using org-specific role)
-  // Employee/Contractor: Dashboard, Pick Up Tasks, My Payouts, Achievements, Settings
-  // QC: Dashboard, Tasks (for review queue), QC Reviews, My Payouts, Settings
-  // PM: Dashboard, Tasks, Projects, My Payouts, Analytics, Settings
-  // Sales: Dashboard, Projects, Contracts, My Payouts, Settings
-  // Admin: Everything
+  // Navigation items - role-based access combined with feature flags
+  // Feature flags can disable features org-wide, role determines who can access enabled features
   $: navItems = [
     {
       href: '/dashboard',
@@ -80,62 +77,64 @@
       href: '/tasks',
       label: $currentOrgRole === 'employee' || $currentOrgRole === 'contractor' ? 'Pick Up Tasks' : 'Tasks',
       icon: CheckSquare,
-      // Employees/contractors pick up tasks, PM/Admin manage tasks, QC views for review
-      show: ['employee', 'contractor', 'pm', 'admin', 'qc'].includes($currentOrgRole)
+      // Feature: tasks - Employees/contractors pick up tasks, PM/Admin manage tasks, QC views for review
+      show: $featureFlags.tasks && ['employee', 'contractor', 'pm', 'admin', 'qc'].includes($currentOrgRole)
     },
     {
       href: '/projects',
       label: 'Projects',
       icon: FolderKanban,
-      // Only PM, Sales, and Admin can see projects
-      show: ['pm', 'sales', 'admin'].includes($currentOrgRole)
+      // Feature: projects - Only PM, Sales, and Admin can see projects
+      show: $featureFlags.projects && ['pm', 'sales', 'admin'].includes($currentOrgRole)
     },
     {
       href: '/qc',
       label: 'QC Reviews',
       icon: Shield,
-      // Only QC and Admin can review
-      show: ['qc', 'admin'].includes($currentOrgRole)
+      // Feature: qc_reviews - Only QC and Admin can review
+      show: $featureFlags.qc_reviews && ['qc', 'admin'].includes($currentOrgRole)
     },
     {
       href: '/contracts',
       label: 'Contracts',
       icon: FileText,
-      // PM, Sales, and Admin manage contracts
-      show: ['pm', 'sales', 'admin'].includes($currentOrgRole)
+      // Feature: contracts - PM, Sales, and Admin manage contracts
+      show: $featureFlags.contracts && ['pm', 'sales', 'admin'].includes($currentOrgRole)
     },
     {
       href: '/payouts',
       label: 'My Payouts',
       icon: DollarSign,
-      show: true
+      // Feature: payouts
+      show: $featureFlags.payouts
     },
     {
       href: '/achievements',
       label: 'Achievements',
       icon: Trophy,
-      // Only employees and contractors have gamification
-      show: ['employee', 'contractor'].includes($currentOrgRole)
+      // Feature: achievements - Only employees and contractors have gamification
+      show: $featureFlags.achievements && ['employee', 'contractor'].includes($currentOrgRole)
     },
     {
       href: '/analytics',
       label: 'Analytics',
       icon: BarChart3,
-      // Only Admin and PM see analytics
-      show: ['admin', 'pm'].includes($currentOrgRole)
+      // Feature: analytics - Only Admin and PM see analytics
+      show: $featureFlags.analytics && ['admin', 'pm'].includes($currentOrgRole)
     },
     {
       href: '/admin',
       label: 'Admin Panel',
       icon: Users,
-      // Only Admin
+      // Admin panel always available to admins (not feature-gated)
       show: $currentOrgRole === 'admin'
     },
     {
       href: '/notifications',
       label: 'Notifications',
       icon: Bell,
-      show: true
+      // Feature: notifications_page
+      show: $featureFlags.notifications_page
     },
     {
       href: '/settings',
