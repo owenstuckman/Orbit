@@ -73,13 +73,13 @@
 
   function getStatusBadge(status: string) {
     const badges: Record<string, { bg: string; text: string; icon: any }> = {
-      draft: { bg: 'bg-slate-100', text: 'text-slate-800', icon: FileText },
-      pending_signature: { bg: 'bg-yellow-100', text: 'text-yellow-800', icon: PenTool },
-      active: { bg: 'bg-green-100', text: 'text-green-800', icon: CheckCircle },
-      completed: { bg: 'bg-blue-100', text: 'text-blue-800', icon: CheckCircle },
-      disputed: { bg: 'bg-red-100', text: 'text-red-800', icon: AlertCircle }
+      draft: { bg: 'bg-slate-100 dark:bg-slate-700', text: 'text-slate-800 dark:text-slate-200', icon: FileText },
+      pending_signature: { bg: 'bg-yellow-100 dark:bg-yellow-900/30', text: 'text-yellow-800 dark:text-yellow-400', icon: PenTool },
+      active: { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-800 dark:text-green-400', icon: CheckCircle },
+      completed: { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-800 dark:text-blue-400', icon: CheckCircle },
+      disputed: { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-800 dark:text-red-400', icon: AlertCircle }
     };
-    return badges[status] || { bg: 'bg-gray-100', text: 'text-gray-800', icon: FileText };
+    return badges[status] || { bg: 'bg-gray-100 dark:bg-gray-700', text: 'text-gray-800 dark:text-gray-200', icon: FileText };
   }
 
   function formatDate(date: string | null) {
@@ -120,64 +120,64 @@
   <!-- Header -->
   <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
     <div>
-      <h1 class="text-2xl font-bold text-slate-900">Contracts</h1>
-      <p class="text-slate-600 mt-1">Manage your contracts and agreements</p>
+      <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Contracts</h1>
+      <p class="text-slate-600 dark:text-slate-400 mt-1">Manage your contracts and agreements</p>
     </div>
   </div>
 
   <!-- Stats -->
   <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-    <div class="bg-white rounded-xl border border-slate-200 p-4">
+    <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
-          <FileText class="text-slate-600" size={20} />
+        <div class="w-10 h-10 bg-slate-100 dark:bg-slate-700 rounded-lg flex items-center justify-center">
+          <FileText class="text-slate-600 dark:text-slate-400" size={20} />
         </div>
         <div>
-          <p class="text-xs text-slate-500 uppercase tracking-wider">Total</p>
-          <p class="text-xl font-bold text-slate-900">{stats.total}</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total</p>
+          <p class="text-xl font-bold text-slate-900 dark:text-white">{stats.total}</p>
         </div>
       </div>
     </div>
 
-    <div class="bg-white rounded-xl border border-slate-200 p-4">
+    <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
-          <Clock class="text-yellow-600" size={20} />
+        <div class="w-10 h-10 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg flex items-center justify-center">
+          <Clock class="text-yellow-600 dark:text-yellow-400" size={20} />
         </div>
         <div>
-          <p class="text-xs text-slate-500 uppercase tracking-wider">Pending</p>
-          <p class="text-xl font-bold text-slate-900">{stats.pending}</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Pending</p>
+          <p class="text-xl font-bold text-slate-900 dark:text-white">{stats.pending}</p>
         </div>
       </div>
     </div>
 
-    <div class="bg-white rounded-xl border border-slate-200 p-4">
+    <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-          <CheckCircle class="text-green-600" size={20} />
+        <div class="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+          <CheckCircle class="text-green-600 dark:text-green-400" size={20} />
         </div>
         <div>
-          <p class="text-xs text-slate-500 uppercase tracking-wider">Active</p>
-          <p class="text-xl font-bold text-slate-900">{stats.active}</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Active</p>
+          <p class="text-xl font-bold text-slate-900 dark:text-white">{stats.active}</p>
         </div>
       </div>
     </div>
 
-    <div class="bg-white rounded-xl border border-slate-200 p-4">
+    <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
-          <PenTool class="text-amber-600" size={20} />
+        <div class="w-10 h-10 bg-amber-100 dark:bg-amber-900/30 rounded-lg flex items-center justify-center">
+          <PenTool class="text-amber-600 dark:text-amber-400" size={20} />
         </div>
         <div>
-          <p class="text-xs text-slate-500 uppercase tracking-wider">Needs Signature</p>
-          <p class="text-xl font-bold text-slate-900">{stats.needsSignature}</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Needs Signature</p>
+          <p class="text-xl font-bold text-slate-900 dark:text-white">{stats.needsSignature}</p>
         </div>
       </div>
     </div>
   </div>
 
   <!-- Filters -->
-  <div class="bg-white rounded-xl border border-slate-200 p-4 mb-6">
+  <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 mb-6">
     <div class="flex flex-col sm:flex-row gap-4">
       <div class="flex-1 relative">
         <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
@@ -185,7 +185,7 @@
           type="text"
           bind:value={searchQuery}
           placeholder="Search contracts..."
-          class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+          class="w-full pl-10 pr-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
         />
       </div>
 
@@ -193,7 +193,7 @@
         <Filter size={18} class="text-slate-400" />
         <select
           bind:value={statusFilter}
-          class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+          class="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
         >
           <option value="all">All statuses</option>
           <option value="draft">Draft</option>
@@ -212,21 +212,21 @@
       <div class="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
     </div>
   {:else if error}
-    <div class="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
-      <AlertCircle class="mx-auto text-red-500 mb-2" size={32} />
-      <p class="text-red-800">{error}</p>
-      <button 
-        class="mt-4 text-red-600 hover:text-red-800 underline"
+    <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-6 text-center">
+      <AlertCircle class="mx-auto text-red-500 dark:text-red-400 mb-2" size={32} />
+      <p class="text-red-800 dark:text-red-300">{error}</p>
+      <button
+        class="mt-4 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 underline"
         on:click={loadContracts}
       >
         Try again
       </button>
     </div>
   {:else if filteredContracts.length === 0}
-    <div class="bg-white rounded-xl border border-slate-200 p-12 text-center">
-      <FileText class="mx-auto text-slate-300 mb-4" size={64} />
-      <h3 class="text-lg font-medium text-slate-900 mb-2">No contracts found</h3>
-      <p class="text-slate-500">
+    <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-12 text-center">
+      <FileText class="mx-auto text-slate-300 dark:text-slate-600 mb-4" size={64} />
+      <h3 class="text-lg font-medium text-slate-900 dark:text-white mb-2">No contracts found</h3>
+      <p class="text-slate-500 dark:text-slate-400">
         {#if searchQuery || statusFilter !== 'all'}
           Try adjusting your filters
         {:else}
@@ -235,33 +235,33 @@
       </p>
     </div>
   {:else}
-    <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+    <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full">
-          <thead class="bg-slate-50 border-b border-slate-200">
+          <thead class="bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700">
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Contract</th>
-              <th class="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Parties</th>
-              <th class="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Status</th>
-              <th class="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Created</th>
-              <th class="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Signatures</th>
-              <th class="px-6 py-3 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">Actions</th>
+              <th class="px-6 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Contract</th>
+              <th class="px-6 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Parties</th>
+              <th class="px-6 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Status</th>
+              <th class="px-6 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Created</th>
+              <th class="px-6 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Signatures</th>
+              <th class="px-6 py-3 text-right text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-slate-100">
+          <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
             {#each filteredContracts as contract}
               {@const badge = getStatusBadge(contract.status)}
-              <tr class="hover:bg-slate-50 transition-colors">
+              <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
                 <td class="px-6 py-4">
                   <div>
-                    <p class="font-medium text-slate-900">{getContractTitle(contract)}</p>
-                    <p class="text-sm text-slate-500 capitalize">{contract.template_type} contract</p>
+                    <p class="font-medium text-slate-900 dark:text-white">{getContractTitle(contract)}</p>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 capitalize">{contract.template_type} contract</p>
                   </div>
                 </td>
                 <td class="px-6 py-4">
                   <div class="text-sm">
-                    <p class="text-slate-900">{contract.terms.party_a_name || contract.party_a?.full_name || 'Unknown'}</p>
-                    <p class="text-slate-500">& {contract.terms.party_b_name || contract.party_b?.full_name || contract.party_b_email || 'Pending'}</p>
+                    <p class="text-slate-900 dark:text-white">{contract.terms.party_a_name || contract.party_a?.full_name || 'Unknown'}</p>
+                    <p class="text-slate-500 dark:text-slate-400">& {contract.terms.party_b_name || contract.party_b?.full_name || contract.party_b_email || 'Pending'}</p>
                   </div>
                 </td>
                 <td class="px-6 py-4">
@@ -270,33 +270,33 @@
                     {contract.status.replace('_', ' ')}
                   </span>
                 </td>
-                <td class="px-6 py-4 text-sm text-slate-600">
+                <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">
                   {formatDate(contract.created_at)}
                 </td>
                 <td class="px-6 py-4">
                   <div class="flex items-center gap-2">
                     <div class="flex items-center gap-1">
                       {#if contract.party_a_signed_at}
-                        <CheckCircle class="text-green-500" size={16} />
+                        <CheckCircle class="text-green-500 dark:text-green-400" size={16} />
                       {:else}
-                        <Clock class="text-slate-400" size={16} />
+                        <Clock class="text-slate-400 dark:text-slate-500" size={16} />
                       {/if}
-                      <span class="text-xs text-slate-500">A</span>
+                      <span class="text-xs text-slate-500 dark:text-slate-400">A</span>
                     </div>
                     <div class="flex items-center gap-1">
                       {#if contract.party_b_signed_at}
-                        <CheckCircle class="text-green-500" size={16} />
+                        <CheckCircle class="text-green-500 dark:text-green-400" size={16} />
                       {:else}
-                        <Clock class="text-slate-400" size={16} />
+                        <Clock class="text-slate-400 dark:text-slate-500" size={16} />
                       {/if}
-                      <span class="text-xs text-slate-500">B</span>
+                      <span class="text-xs text-slate-500 dark:text-slate-400">B</span>
                     </div>
                   </div>
                 </td>
                 <td class="px-6 py-4 text-right">
                   <a
                     href="/contracts/{contract.id}"
-                    class="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-medium text-sm"
+                    class="inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium text-sm"
                   >
                     View
                     <ExternalLink size={14} />

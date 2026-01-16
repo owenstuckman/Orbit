@@ -267,16 +267,16 @@
     </div>
 
     <!-- QC Shapley Settings -->
-    <div class="bg-white rounded-xl border border-slate-200 p-6">
-      <h2 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
-        <Percent size={20} class="text-slate-400" />
+    <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+      <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+        <Percent size={20} class="text-slate-400 dark:text-slate-500" />
         QC Shapley Parameters
       </h2>
 
-      <div class="p-4 bg-purple-50 rounded-lg mb-6">
+      <div class="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg mb-6">
         <div class="flex gap-3">
-          <Info class="text-purple-500 flex-shrink-0 mt-0.5" size={18} />
-          <div class="text-sm text-purple-700">
+          <Info class="text-purple-500 dark:text-purple-400 flex-shrink-0 mt-0.5" size={18} />
+          <div class="text-sm text-purple-700 dark:text-purple-300">
             <p class="font-medium">d₁ = β × p₀ × V (first pass marginal)</p>
             <p class="font-medium">dₖ = d₁ × γ^(k-1) (geometric decay)</p>
             <p class="mt-1">These control how much QC reviewers earn per review pass</p>
@@ -286,7 +286,7 @@
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1" for="qc-beta">
+          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1" for="qc-beta">
             Beta (β) - Confidence Scaling
           </label>
           <input
@@ -296,13 +296,13 @@
             min="0.1"
             max="0.5"
             step="0.05"
-            class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            class="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
           />
-          <p class="mt-1 text-xs text-slate-500">Recommended: 0.15 - 0.35</p>
+          <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Recommended: 0.15 - 0.35</p>
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1" for="qc-gamma">
+          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1" for="qc-gamma">
             Gamma (γ) - Decay Factor
           </label>
           <input
@@ -312,24 +312,24 @@
             min="0.2"
             max="0.8"
             step="0.05"
-            class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            class="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
           />
-          <p class="mt-1 text-xs text-slate-500">Recommended: 0.3 - 0.6</p>
+          <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Recommended: 0.3 - 0.6</p>
         </div>
       </div>
     </div>
 
     <!-- PM Settings -->
-    <div class="bg-white rounded-xl border border-slate-200 p-6">
-      <h2 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
-        <DollarSign size={20} class="text-slate-400" />
+    <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+      <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+        <DollarSign size={20} class="text-slate-400 dark:text-slate-500" />
         Project Manager Payout
       </h2>
 
-      <div class="p-4 bg-green-50 rounded-lg mb-6">
+      <div class="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg mb-6">
         <div class="flex gap-3">
-          <Info class="text-green-500 flex-shrink-0 mt-0.5" size={18} />
-          <div class="text-sm text-green-700">
+          <Info class="text-green-500 dark:text-green-400 flex-shrink-0 mt-0.5" size={18} />
+          <div class="text-sm text-green-700 dark:text-green-300">
             <p class="font-medium">payout = (budget - spent) × X - overdraft × (penalty × X) + bonus</p>
             <p class="mt-1">PMs earn a share of budget savings, penalized for overdrafts</p>
           </div>
@@ -338,7 +338,7 @@
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1" for="pm-x">
+          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1" for="pm-x">
             Profit Share Rate (X)
           </label>
           <input
@@ -348,13 +348,13 @@
             min="0.1"
             max="1"
             step="0.05"
-            class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            class="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
           />
-          <p class="mt-1 text-xs text-slate-500">Share of savings PM receives</p>
+          <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Share of savings PM receives</p>
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1" for="pm-penalty">
+          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1" for="pm-penalty">
             Overdraft Penalty Multiplier
           </label>
           <input
@@ -364,9 +364,9 @@
             min="1"
             max="3"
             step="0.1"
-            class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            class="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
           />
-          <p class="mt-1 text-xs text-slate-500">Penalty multiplier for budget overruns</p>
+          <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Penalty multiplier for budget overruns</p>
         </div>
       </div>
     </div>

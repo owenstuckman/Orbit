@@ -40,12 +40,12 @@
 
   function getRoleBadgeColor(role: string): string {
     const colors: Record<string, string> = {
-      admin: 'bg-purple-100 text-purple-800',
-      sales: 'bg-green-100 text-green-800',
-      pm: 'bg-blue-100 text-blue-800',
-      qc: 'bg-orange-100 text-orange-800',
-      employee: 'bg-gray-100 text-gray-800',
-      contractor: 'bg-yellow-100 text-yellow-800'
+      admin: 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300',
+      sales: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300',
+      pm: 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300',
+      qc: 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300',
+      employee: 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300',
+      contractor: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300'
     };
     return colors[role] || colors.employee;
   }
@@ -64,7 +64,7 @@
     <div class="flex min-h-full items-center justify-center p-4">
       <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
       <div
-        class="relative w-full max-w-md bg-white rounded-xl shadow-xl transform transition-all"
+        class="relative w-full max-w-md bg-white dark:bg-slate-800 rounded-xl shadow-xl transform transition-all"
         on:click|stopPropagation
         on:keydown|stopPropagation
         role="dialog"
@@ -72,19 +72,19 @@
         aria-labelledby="invite-modal-title"
       >
         <!-- Header -->
-        <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
           <div class="flex items-center gap-2">
-            <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-              <Check class="text-green-600" size={20} />
+            <div class="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
+              <Check class="text-green-600 dark:text-green-400" size={20} />
             </div>
             <div>
-              <h2 id="invite-modal-title" class="text-lg font-semibold text-slate-900">Invitation Sent!</h2>
-              <p class="text-sm text-slate-500">Share the invite code below</p>
+              <h2 id="invite-modal-title" class="text-lg font-semibold text-slate-900 dark:text-white">Invitation Sent!</h2>
+              <p class="text-sm text-slate-500 dark:text-slate-400">Share the invite code below</p>
             </div>
           </div>
           <button
             on:click={close}
-            class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+            class="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
           >
             <X size={20} />
           </button>
@@ -93,71 +93,71 @@
         <!-- Content -->
         <div class="p-6 space-y-6">
           <!-- Invite Code -->
-          <div class="bg-slate-50 rounded-xl p-6 text-center">
-            <p class="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">Invite Code</p>
+          <div class="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-6 text-center">
+            <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Invite Code</p>
             <div class="flex items-center justify-center gap-3">
-              <span class="text-4xl font-mono font-bold text-slate-900 tracking-widest">
+              <span class="text-4xl font-mono font-bold text-slate-900 dark:text-white tracking-widest">
                 {invitation.token}
               </span>
               <button
                 on:click={copyToClipboard}
-                class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                class="p-2 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors"
                 title="Copy to clipboard"
               >
                 {#if copied}
-                  <Check size={20} class="text-green-600" />
+                  <Check size={20} class="text-green-600 dark:text-green-400" />
                 {:else}
                   <Copy size={20} />
                 {/if}
               </button>
             </div>
             {#if copied}
-              <p class="text-sm text-green-600 mt-2">Copied to clipboard!</p>
+              <p class="text-sm text-green-600 dark:text-green-400 mt-2">Copied to clipboard!</p>
             {/if}
           </div>
 
           <!-- Invitation Details -->
           <div class="space-y-4">
-            <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
-              <Mail size={18} class="text-slate-400" />
+            <div class="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+              <Mail size={18} class="text-slate-400 dark:text-slate-500" />
               <div>
-                <p class="text-xs text-slate-500">Email</p>
-                <p class="text-sm font-medium text-slate-900">{invitation.email}</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400">Email</p>
+                <p class="text-sm font-medium text-slate-900 dark:text-white">{invitation.email}</p>
               </div>
             </div>
 
-            <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
-              <UserPlus size={18} class="text-slate-400" />
+            <div class="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+              <UserPlus size={18} class="text-slate-400 dark:text-slate-500" />
               <div>
-                <p class="text-xs text-slate-500">Role</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400">Role</p>
                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {getRoleBadgeColor(invitation.role)}">
                   {invitation.role}
                 </span>
               </div>
             </div>
 
-            <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
-              <Clock size={18} class="text-slate-400" />
+            <div class="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+              <Clock size={18} class="text-slate-400 dark:text-slate-500" />
               <div>
-                <p class="text-xs text-slate-500">Expires</p>
-                <p class="text-sm font-medium text-slate-900">{formatDate(invitation.expires_at)}</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400">Expires</p>
+                <p class="text-sm font-medium text-slate-900 dark:text-white">{formatDate(invitation.expires_at)}</p>
               </div>
             </div>
           </div>
 
           <!-- Instructions -->
-          <div class="bg-indigo-50 border border-indigo-100 rounded-lg p-4">
-            <p class="text-sm text-indigo-800">
+          <div class="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 rounded-lg p-4">
+            <p class="text-sm text-indigo-800 dark:text-indigo-300">
               Share this code with <strong>{invitation.email}</strong>. They can use it during registration to join your organization.
             </p>
           </div>
         </div>
 
         <!-- Footer -->
-        <div class="flex gap-3 px-6 py-4 border-t border-slate-200 bg-slate-50 rounded-b-xl">
+        <div class="flex gap-3 px-6 py-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/30 rounded-b-xl">
           <button
             on:click={sendAnother}
-            class="flex-1 px-4 py-2.5 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-white transition-colors"
+            class="flex-1 px-4 py-2.5 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 font-medium rounded-lg hover:bg-white dark:hover:bg-slate-700 transition-colors"
           >
             Send Another
           </button>

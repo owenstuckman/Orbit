@@ -116,27 +116,27 @@
 
   function getStatusBadge(status: string) {
     const badges: Record<string, { bg: string; text: string; label: string }> = {
-      draft: { bg: 'bg-slate-100', text: 'text-slate-800', label: 'Draft' },
-      pending_pm: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Awaiting PM' },
-      active: { bg: 'bg-green-100', text: 'text-green-800', label: 'Active' },
-      completed: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Completed' },
-      cancelled: { bg: 'bg-red-100', text: 'text-red-800', label: 'Cancelled' }
+      draft: { bg: 'bg-slate-100 dark:bg-slate-700', text: 'text-slate-800 dark:text-slate-200', label: 'Draft' },
+      pending_pm: { bg: 'bg-yellow-100 dark:bg-yellow-900/30', text: 'text-yellow-800 dark:text-yellow-400', label: 'Awaiting PM' },
+      active: { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-800 dark:text-green-400', label: 'Active' },
+      completed: { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-800 dark:text-blue-400', label: 'Completed' },
+      cancelled: { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-800 dark:text-red-400', label: 'Cancelled' }
     };
-    return badges[status] || { bg: 'bg-gray-100', text: 'text-gray-800', label: status };
+    return badges[status] || { bg: 'bg-gray-100 dark:bg-gray-700', text: 'text-gray-800 dark:text-gray-200', label: status };
   }
 
   function getTaskStatusBadge(status: string) {
     const badges: Record<string, { bg: string; text: string }> = {
-      open: { bg: 'bg-blue-100', text: 'text-blue-800' },
-      assigned: { bg: 'bg-yellow-100', text: 'text-yellow-800' },
-      in_progress: { bg: 'bg-purple-100', text: 'text-purple-800' },
-      completed: { bg: 'bg-indigo-100', text: 'text-indigo-800' },
-      under_review: { bg: 'bg-orange-100', text: 'text-orange-800' },
-      approved: { bg: 'bg-green-100', text: 'text-green-800' },
-      rejected: { bg: 'bg-red-100', text: 'text-red-800' },
-      paid: { bg: 'bg-emerald-100', text: 'text-emerald-800' }
+      open: { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-800 dark:text-blue-400' },
+      assigned: { bg: 'bg-yellow-100 dark:bg-yellow-900/30', text: 'text-yellow-800 dark:text-yellow-400' },
+      in_progress: { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-800 dark:text-purple-400' },
+      completed: { bg: 'bg-indigo-100 dark:bg-indigo-900/30', text: 'text-indigo-800 dark:text-indigo-400' },
+      under_review: { bg: 'bg-orange-100 dark:bg-orange-900/30', text: 'text-orange-800 dark:text-orange-400' },
+      approved: { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-800 dark:text-green-400' },
+      rejected: { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-800 dark:text-red-400' },
+      paid: { bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-800 dark:text-emerald-400' }
     };
-    return badges[status] || { bg: 'bg-gray-100', text: 'text-gray-800' };
+    return badges[status] || { bg: 'bg-gray-100 dark:bg-gray-700', text: 'text-gray-800 dark:text-gray-200' };
   }
 
   function formatDate(date: string | null) {
@@ -171,9 +171,9 @@
 
 <div class="max-w-6xl mx-auto">
   <!-- Back button -->
-  <a 
-    href="/projects" 
-    class="inline-flex items-center gap-2 text-slate-600 hover:text-slate-900 mb-6 transition-colors"
+  <a
+    href="/projects"
+    class="inline-flex items-center gap-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white mb-6 transition-colors"
   >
     <ArrowLeft size={18} />
     Back to projects
@@ -184,11 +184,11 @@
       <div class="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
     </div>
   {:else if error}
-    <div class="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
-      <XCircle class="mx-auto text-red-500 mb-2" size={32} />
-      <p class="text-red-800">{error}</p>
-      <button 
-        class="mt-4 text-red-600 hover:text-red-800 underline"
+    <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-6 text-center">
+      <XCircle class="mx-auto text-red-500 dark:text-red-400 mb-2" size={32} />
+      <p class="text-red-800 dark:text-red-300">{error}</p>
+      <button
+        class="mt-4 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 underline"
         on:click={loadProject}
       >
         Try again
@@ -196,7 +196,7 @@
     </div>
   {:else if project}
     <!-- Header -->
-    <div class="bg-white rounded-xl border border-slate-200 p-6 mb-6">
+    <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 mb-6">
       <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
         <div>
           <div class="flex items-center gap-3 mb-2">
@@ -204,15 +204,15 @@
               {getStatusBadge(project.status).label}
             </span>
             {#if project.pm_bonus > 0}
-              <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+              <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-400">
                 <TrendingUp size={12} />
                 Bonus available
               </span>
             {/if}
           </div>
-          <h1 class="text-2xl font-bold text-slate-900">{project.name}</h1>
+          <h1 class="text-2xl font-bold text-slate-900 dark:text-white">{project.name}</h1>
           {#if project.description}
-            <p class="text-slate-600 mt-2">{project.description}</p>
+            <p class="text-slate-600 dark:text-slate-400 mt-2">{project.description}</p>
           {/if}
         </div>
 
@@ -245,50 +245,50 @@
 
     <!-- Stats grid -->
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-      <div class="bg-white rounded-xl border border-slate-200 p-4">
+      <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-            <DollarSign class="text-green-600" size={20} />
+          <div class="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+            <DollarSign class="text-green-600 dark:text-green-400" size={20} />
           </div>
           <div>
-            <p class="text-xs text-slate-500 uppercase tracking-wider">Budget</p>
-            <p class="text-xl font-bold text-slate-900">{formatCurrency(project.total_value)}</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Budget</p>
+            <p class="text-xl font-bold text-slate-900 dark:text-white">{formatCurrency(project.total_value)}</p>
           </div>
         </div>
       </div>
 
-      <div class="bg-white rounded-xl border border-slate-200 p-4">
+      <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 bg-{budgetColor}-100 rounded-lg flex items-center justify-center">
-            <BarChart3 class="text-{budgetColor}-600" size={20} />
+          <div class="w-10 h-10 bg-{budgetColor}-100 dark:bg-{budgetColor}-900/30 rounded-lg flex items-center justify-center">
+            <BarChart3 class="text-{budgetColor}-600 dark:text-{budgetColor}-400" size={20} />
           </div>
           <div>
-            <p class="text-xs text-slate-500 uppercase tracking-wider">Spent</p>
-            <p class="text-xl font-bold text-slate-900">{formatCurrency(project.spent)}</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Spent</p>
+            <p class="text-xl font-bold text-slate-900 dark:text-white">{formatCurrency(project.spent)}</p>
           </div>
         </div>
       </div>
 
-      <div class="bg-white rounded-xl border border-slate-200 p-4">
+      <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-            <Target class="text-blue-600" size={20} />
+          <div class="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+            <Target class="text-blue-600 dark:text-blue-400" size={20} />
           </div>
           <div>
-            <p class="text-xs text-slate-500 uppercase tracking-wider">Tasks</p>
-            <p class="text-xl font-bold text-slate-900">{taskStats.completed}/{taskStats.total}</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Tasks</p>
+            <p class="text-xl font-bold text-slate-900 dark:text-white">{taskStats.completed}/{taskStats.total}</p>
           </div>
         </div>
       </div>
 
-      <div class="bg-white rounded-xl border border-slate-200 p-4">
+      <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-            <Clock class="text-purple-600" size={20} />
+          <div class="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
+            <Clock class="text-purple-600 dark:text-purple-400" size={20} />
           </div>
           <div>
-            <p class="text-xs text-slate-500 uppercase tracking-wider">Days Left</p>
-            <p class="text-xl font-bold text-slate-900 {project.days_left <= 7 ? 'text-red-600' : ''}">
+            <p class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Days Left</p>
+            <p class="text-xl font-bold text-slate-900 dark:text-white {project.days_left <= 7 ? 'text-red-600 dark:text-red-400' : ''}">
               {project.days_left > 0 ? project.days_left : 'Overdue'}
             </p>
           </div>
@@ -299,10 +299,10 @@
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <!-- Tasks list -->
       <div class="lg:col-span-2">
-        <div class="bg-white rounded-xl border border-slate-200">
-          <div class="p-4 border-b border-slate-200 flex items-center justify-between">
-            <h2 class="text-lg font-semibold text-slate-900">Tasks</h2>
-            <div class="flex items-center gap-2 text-sm text-slate-500">
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+          <div class="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-white">Tasks</h2>
+            <div class="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
               <span class="flex items-center gap-1">
                 <span class="w-2 h-2 rounded-full bg-blue-500"></span>
                 {taskStats.open} open
@@ -320,23 +320,23 @@
 
           {#if tasks.length === 0}
             <div class="p-8 text-center">
-              <FileText class="mx-auto text-slate-300 mb-3" size={48} />
-              <p class="text-slate-500">No tasks yet</p>
+              <FileText class="mx-auto text-slate-300 dark:text-slate-600 mb-3" size={48} />
+              <p class="text-slate-500 dark:text-slate-400">No tasks yet</p>
               {#if canCreateTasks}
                 <button
                   on:click={() => showCreateTask = true}
-                  class="mt-4 text-indigo-600 hover:text-indigo-800 font-medium"
+                  class="mt-4 text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium"
                 >
                   Create the first task
                 </button>
               {/if}
             </div>
           {:else}
-            <div class="divide-y divide-slate-100">
+            <div class="divide-y divide-slate-100 dark:divide-slate-700">
               {#each tasks as task}
-                <a 
-                  href="/tasks/{task.id}" 
-                  class="block p-4 hover:bg-slate-50 transition-colors"
+                <a
+                  href="/tasks/{task.id}"
+                  class="block p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
                 >
                   <div class="flex items-start justify-between">
                     <div class="flex-1 min-w-0">
@@ -345,22 +345,22 @@
                           {task.status.replace('_', ' ')}
                         </span>
                         {#if task.urgency_multiplier > 1}
-                          <span class="text-xs text-amber-600 font-medium">
+                          <span class="text-xs text-amber-600 dark:text-amber-400 font-medium">
                             {task.urgency_multiplier.toFixed(1)}x
                           </span>
                         {/if}
                       </div>
-                      <h3 class="font-medium text-slate-900 truncate">{task.title}</h3>
+                      <h3 class="font-medium text-slate-900 dark:text-white truncate">{task.title}</h3>
                       {#if task.assignee}
-                        <p class="text-sm text-slate-500 mt-1">
+                        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
                           Assigned to {task.assignee.full_name}
                         </p>
                       {/if}
                     </div>
                     <div class="text-right ml-4">
-                      <p class="font-semibold text-green-600">${task.dollar_value}</p>
+                      <p class="font-semibold text-green-600 dark:text-green-400">${task.dollar_value}</p>
                       {#if task.deadline}
-                        <p class="text-xs text-slate-400 mt-1">
+                        <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">
                           {formatDate(task.deadline)}
                         </p>
                       {/if}
@@ -376,16 +376,16 @@
       <!-- Sidebar -->
       <div class="space-y-6">
         <!-- Budget breakdown -->
-        <div class="bg-white rounded-xl border border-slate-200 p-6">
-          <h3 class="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Budget Usage</h3>
-          
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+          <h3 class="text-sm font-semibold text-slate-900 dark:text-white uppercase tracking-wider mb-4">Budget Usage</h3>
+
           <div class="mb-4">
             <div class="flex justify-between text-sm mb-2">
-              <span class="text-slate-600">Used</span>
-              <span class="font-medium text-slate-900">{budgetUsed.toFixed(1)}%</span>
+              <span class="text-slate-600 dark:text-slate-400">Used</span>
+              <span class="font-medium text-slate-900 dark:text-white">{budgetUsed.toFixed(1)}%</span>
             </div>
-            <div class="w-full bg-slate-200 rounded-full h-3">
-              <div 
+            <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3">
+              <div
                 class="h-3 rounded-full transition-all duration-500 {budgetUsed > 100 ? 'bg-red-500' : budgetUsed > 90 ? 'bg-red-500' : budgetUsed > 70 ? 'bg-amber-500' : 'bg-green-500'}"
                 style="width: {Math.min(budgetUsed, 100)}%"
               ></div>
@@ -394,23 +394,23 @@
 
           <dl class="space-y-3 text-sm">
             <div class="flex justify-between">
-              <dt class="text-slate-500">Total budget</dt>
-              <dd class="font-medium text-slate-900">{formatCurrency(project.total_value)}</dd>
+              <dt class="text-slate-500 dark:text-slate-400">Total budget</dt>
+              <dd class="font-medium text-slate-900 dark:text-white">{formatCurrency(project.total_value)}</dd>
             </div>
             <div class="flex justify-between">
-              <dt class="text-slate-500">Spent</dt>
-              <dd class="font-medium text-slate-900">{formatCurrency(project.spent)}</dd>
+              <dt class="text-slate-500 dark:text-slate-400">Spent</dt>
+              <dd class="font-medium text-slate-900 dark:text-white">{formatCurrency(project.spent)}</dd>
             </div>
-            <div class="flex justify-between border-t border-slate-100 pt-3">
-              <dt class="text-slate-500">Remaining</dt>
-              <dd class="font-medium {project.total_value - project.spent < 0 ? 'text-red-600' : 'text-green-600'}">
+            <div class="flex justify-between border-t border-slate-100 dark:border-slate-700 pt-3">
+              <dt class="text-slate-500 dark:text-slate-400">Remaining</dt>
+              <dd class="font-medium {project.total_value - project.spent < 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}">
                 {formatCurrency(project.total_value - project.spent)}
               </dd>
             </div>
           </dl>
 
           {#if project.total_value - project.spent < 0}
-            <div class="mt-4 p-3 bg-red-50 rounded-lg flex items-center gap-2 text-sm text-red-700">
+            <div class="mt-4 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg flex items-center gap-2 text-sm text-red-700 dark:text-red-400">
               <AlertTriangle size={16} />
               <span>Budget overdraft!</span>
             </div>
@@ -418,38 +418,38 @@
         </div>
 
         <!-- Team -->
-        <div class="bg-white rounded-xl border border-slate-200 p-6">
-          <h3 class="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Team</h3>
-          
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+          <h3 class="text-sm font-semibold text-slate-900 dark:text-white uppercase tracking-wider mb-4">Team</h3>
+
           <dl class="space-y-4">
             <div>
-              <dt class="text-xs text-slate-500 uppercase tracking-wider">Sales</dt>
+              <dt class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Sales</dt>
               <dd class="mt-1 flex items-center gap-2">
                 {#if project.sales}
-                  <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-                    <span class="text-sm font-medium text-green-700">
+                  <div class="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                    <span class="text-sm font-medium text-green-700 dark:text-green-400">
                       {project.sales.full_name?.charAt(0) || '?'}
                     </span>
                   </div>
-                  <span class="text-slate-700">{project.sales.full_name}</span>
+                  <span class="text-slate-700 dark:text-slate-300">{project.sales.full_name}</span>
                 {:else}
-                  <span class="text-slate-400">Not assigned</span>
+                  <span class="text-slate-400 dark:text-slate-500">Not assigned</span>
                 {/if}
               </dd>
             </div>
 
             <div>
-              <dt class="text-xs text-slate-500 uppercase tracking-wider">Project Manager</dt>
+              <dt class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Project Manager</dt>
               <dd class="mt-1 flex items-center gap-2">
                 {#if project.pm}
-                  <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                    <span class="text-sm font-medium text-blue-700">
+                  <div class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                    <span class="text-sm font-medium text-blue-700 dark:text-blue-400">
                       {project.pm.full_name?.charAt(0) || '?'}
                     </span>
                   </div>
-                  <span class="text-slate-700">{project.pm.full_name}</span>
+                  <span class="text-slate-700 dark:text-slate-300">{project.pm.full_name}</span>
                 {:else}
-                  <span class="text-slate-400">Awaiting PM</span>
+                  <span class="text-slate-400 dark:text-slate-500">Awaiting PM</span>
                 {/if}
               </dd>
             </div>
@@ -457,23 +457,23 @@
         </div>
 
         <!-- Timeline -->
-        <div class="bg-white rounded-xl border border-slate-200 p-6">
-          <h3 class="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Timeline</h3>
-          
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+          <h3 class="text-sm font-semibold text-slate-900 dark:text-white uppercase tracking-wider mb-4">Timeline</h3>
+
           <dl class="space-y-3 text-sm">
             <div class="flex justify-between">
-              <dt class="text-slate-500">Created</dt>
-              <dd class="text-slate-900">{formatDate(project.created_at)}</dd>
+              <dt class="text-slate-500 dark:text-slate-400">Created</dt>
+              <dd class="text-slate-900 dark:text-white">{formatDate(project.created_at)}</dd>
             </div>
             {#if project.picked_up_at}
               <div class="flex justify-between">
-                <dt class="text-slate-500">PM assigned</dt>
-                <dd class="text-slate-900">{formatDate(project.picked_up_at)}</dd>
+                <dt class="text-slate-500 dark:text-slate-400">PM assigned</dt>
+                <dd class="text-slate-900 dark:text-white">{formatDate(project.picked_up_at)}</dd>
               </div>
             {/if}
             <div class="flex justify-between">
-              <dt class="text-slate-500">Deadline</dt>
-              <dd class="text-slate-900 {project.days_left <= 7 ? 'text-red-600 font-medium' : ''}">
+              <dt class="text-slate-500 dark:text-slate-400">Deadline</dt>
+              <dd class="text-slate-900 dark:text-white {project.days_left <= 7 ? 'text-red-600 dark:text-red-400 font-medium' : ''}">
                 {formatDate(project.deadline)}
               </dd>
             </div>
@@ -487,17 +487,17 @@
 <!-- Create task modal -->
 {#if showCreateTask}
   <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
-    <button 
+    <button
       class="absolute inset-0 bg-black/50"
       on:click={() => showCreateTask = false}
     ></button>
-    
-    <div class="relative bg-white rounded-xl shadow-xl max-w-lg w-full p-6">
-      <h2 class="text-xl font-bold text-slate-900 mb-6">Create New Task</h2>
-      
+
+    <div class="relative bg-white dark:bg-slate-800 rounded-xl shadow-xl max-w-lg w-full p-6">
+      <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-6">Create New Task</h2>
+
       <form on:submit|preventDefault={createTask} class="space-y-4">
         <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1" for="task-title">
+          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1" for="task-title">
             Title
           </label>
           <input
@@ -505,13 +505,13 @@
             type="text"
             bind:value={newTask.title}
             placeholder="Task title"
-            class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            class="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             required
           />
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1" for="task-desc">
+          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1" for="task-desc">
             Description
           </label>
           <textarea
@@ -519,13 +519,13 @@
             bind:value={newTask.description}
             rows="3"
             placeholder="Task description..."
-            class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none"
+            class="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none"
           ></textarea>
         </div>
 
         <div class="grid grid-cols-2 gap-4">
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1" for="task-value">
+            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1" for="task-value">
               Value ($)
             </label>
             <input
@@ -533,13 +533,13 @@
               type="number"
               bind:value={newTask.dollar_value}
               min="1"
-              class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              class="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               required
             />
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1" for="task-level">
+            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1" for="task-level">
               Required Level
             </label>
             <input
@@ -548,21 +548,21 @@
               bind:value={newTask.required_level}
               min="1"
               max="10"
-              class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              class="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               required
             />
           </div>
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1" for="task-deadline">
+          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1" for="task-deadline">
             Deadline (optional)
           </label>
           <input
             id="task-deadline"
             type="datetime-local"
             bind:value={newTask.deadline}
-            class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            class="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
           />
         </div>
 
@@ -570,7 +570,7 @@
           <button
             type="button"
             on:click={() => showCreateTask = false}
-            class="px-4 py-2 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+            class="px-4 py-2 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
           >
             Cancel
           </button>
