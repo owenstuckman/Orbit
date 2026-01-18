@@ -43,6 +43,10 @@
     ? `${window.location.origin}/submit/${result.submission_token}`
     : '';
 
+  $: contractUrl = result?.submission_token
+    ? `${window.location.origin}/contract/${result.submission_token}`
+    : '';
+
   function close() {
     if (!loading && !generatingPdf) {
       // If we had a successful assignment, notify the parent before closing
@@ -217,6 +221,7 @@
             </div>
 
             {#if submissionUrl}
+              <!-- Guest Link Mode: Show submission and contract links -->
               <div class="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 space-y-3">
                 <div class="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
                   <Link size={16} />
@@ -248,16 +253,58 @@
                 <!-- Email and Copy buttons -->
                 <div class="flex gap-2 pt-2">
                   <a
-                    href="mailto:{contractorEmail}?subject=Task Assignment: {encodeURIComponent(task.title)}&body={encodeURIComponent(`Hi ${contractorName},\n\nYou have been assigned to work on the following task:\n\n${task.title}\n\nValue: ${formatCurrency(task.dollar_value)}\n${task.deadline ? `Deadline: ${new Date(task.deadline).toLocaleDateString()}\n` : ''}\nPlease submit your work using this link:\n${submissionUrl}\n\nThank you!`)}"
+                    href="mailto:{contractorEmail}?subject=Task Assignment: {encodeURIComponent(task.title)}&body={encodeURIComponent(`Hi ${contractorName},\n\nYou have been assigned to work on the following task:\n\n${task.title}\n\nValue: ${formatCurrency(task.dollar_value)}\n${task.deadline ? `Deadline: ${new Date(task.deadline).toLocaleDateString()}\n` : ''}\n1. Review and sign your contract:\n${contractUrl}\n\n2. Submit your completed work:\n${submissionUrl}\n\nPlease sign the contract before beginning work.\n\nThank you!`)}"
                     class="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors"
                   >
                     <Mail size={16} />
-                    Email Link to Contractor
+                    Email Links to Contractor
                   </a>
                 </div>
 
                 <p class="text-xs text-slate-500 dark:text-slate-400">
-                  Share this link with the contractor. They can submit their work without creating an account.
+                  Share these links with the contractor. They can review their contract and submit work without creating an account.
+                </p>
+              </div>
+
+              <!-- Contract Link Section -->
+              <div class="bg-purple-50 dark:bg-purple-900/20 rounded-xl p-4 space-y-3">
+                <div class="flex items-center gap-2 text-sm font-medium text-purple-700 dark:text-purple-200">
+                  <FileText size={16} />
+                  Contract Review Link
+                </div>
+                <p class="text-xs text-purple-600 dark:text-purple-300">
+                  The contractor can view and sign their contract at:
+                </p>
+                <div class="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={contractUrl}
+                    readonly
+                    class="flex-1 px-3 py-2 bg-white dark:bg-slate-800 border border-purple-200 dark:border-purple-700 rounded-lg text-sm text-slate-600 dark:text-slate-300 font-mono"
+                  />
+                </div>
+              </div>
+            {:else if !useGuestLink && result?.contract_id}
+              <!-- Org Invite Mode: Show invitation info -->
+              <div class="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 space-y-3">
+                <div class="flex items-center gap-2 text-sm font-medium text-blue-700 dark:text-blue-200">
+                  <Users size={16} />
+                  Organization Invite Mode
+                </div>
+                <p class="text-sm text-blue-600 dark:text-blue-300">
+                  The contractor will need to be invited to your organization to view and work on this task.
+                </p>
+                <div class="flex gap-2 pt-2">
+                  <a
+                    href="mailto:{contractorEmail}?subject=You're invited to join {$organization?.name || 'our organization'}&body={encodeURIComponent(`Hi ${contractorName},\n\nYou have been assigned to work on a task for ${$organization?.name || 'our organization'}.\n\nTask: ${task.title}\nValue: ${formatCurrency(task.dollar_value)}\n\nPlease accept the organization invitation to view your contract and submit your work.\n\nThank you!`)}"
+                    class="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <Mail size={16} />
+                    Email Invitation Info
+                  </a>
+                </div>
+                <p class="text-xs text-blue-500 dark:text-blue-400">
+                  You can manage this contract from the Contracts page.
                 </p>
               </div>
             {/if}

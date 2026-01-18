@@ -5,17 +5,19 @@
   import { contractsApi } from '$lib/services/api';
   import { toasts } from '$lib/stores/notifications';
   import type { Contract } from '$lib/types';
-  import { 
-    FileText, 
-    Search, 
+  import {
+    FileText,
+    Search,
     Filter,
     Clock,
     CheckCircle,
     AlertCircle,
     PenTool,
     ExternalLink,
-    Plus
+    Plus,
+    Download
   } from 'lucide-svelte';
+  import { storage } from '$lib/services/supabase';
 
   let contracts: Contract[] = [];
   let loading = true;
@@ -82,6 +84,29 @@
     return badges[status] || { bg: 'bg-gray-100 dark:bg-gray-700', text: 'text-gray-800 dark:text-gray-200', icon: FileText };
   }
 
+  async function downloadPdf(contract: Contract) {
+    if (!contract.pdf_path) {
+      toasts.error('No PDF available for this contract');
+      return;
+    }
+
+    try {
+      const { data, error: downloadError } = await storage.downloadFile('contracts', contract.pdf_path);
+      if (downloadError) throw downloadError;
+      if (!data) throw new Error('No data received');
+
+      const url = URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `contract-${contract.id.slice(0, 8)}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Download failed:', err);
+      toasts.error('Failed to download PDF');
+    }
+  }
+
   function formatDate(date: string | null) {
     if (!date) return '—';
     return new Date(date).toLocaleDateString('en-US', {
@@ -92,12 +117,14 @@
   }
 
   function getContractTitle(contract: Contract) {
-    if (contract.template_type === 'task') {
-      return `Task Contract - ${contract.task?.title || 'Unknown'}`;
-    } else if (contract.template_type === 'project') {
+    if (contract.template_type === 'task' || contract.template_type === 'task_assignment') {
+      return `Task Contract - ${contract.task?.title || contract.terms?.task_title || 'Unknown'}`;
+    } else if (contract.template_type === 'project' || contract.template_type === 'project_pm') {
       return `Project Contract - ${contract.project?.name || 'Unknown'}`;
+    } else if (contract.template_type === 'contractor') {
+      return `Contractor Agreement - ${contract.terms?.party_b_name || 'Unknown'}`;
     }
-    return `${contract.template_type} Contract`;
+    return `${contract.template_type.replace('_', ' ')} Contract`;
   }
 
   $: stats = {
@@ -294,13 +321,24 @@
                   </div>
                 </td>
                 <td class="px-6 py-4 text-right">
-                  <a
-                    href="/contracts/{contract.id}"
-                    class="inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium text-sm"
-                  >
-                    View
-                    <ExternalLink size={14} />
-                  </a>
+                  <div class="flex items-center justify-end gap-2">
+                    {#if contract.pdf_path}
+                      <button
+                        on:click={() => downloadPdf(contract)}
+                        class="p-1.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors"
+                        title="Download PDF"
+                      >
+                        <Download size={16} />
+                      </button>
+                    {/if}
+                    <a
+                      href="/contracts/{contract.id}"
+                      class="inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium text-sm"
+                    >
+                      View
+                      <ExternalLink size={14} />
+                    </a>
+                  </div>
                 </td>
               </tr>
             {/each}

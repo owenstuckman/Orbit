@@ -827,8 +827,10 @@ export const contractsApi = {
       .from('contracts')
       .select(`
         *,
-        party_a:users!contracts_party_a_id_fkey(id, full_name),
-        party_b:users!contracts_party_b_id_fkey(id, full_name)
+        party_a:users!contracts_party_a_id_fkey(id, full_name, email),
+        party_b:users!contracts_party_b_id_fkey(id, full_name, email),
+        task:tasks(id, title),
+        project:projects(id, name)
       `);
 
     query = applyFilters(query, filters);
@@ -964,6 +966,48 @@ export const contractsApi = {
     }
 
     return data;
+  },
+
+  /**
+   * Get contract by submission token (for external contractors)
+   * No authentication required - uses the token for authorization
+   */
+  async getBySubmissionToken(token: string): Promise<Contract | null> {
+    const { data, error } = await supabase.rpc('get_contract_by_submission_token', {
+      p_token: token
+    });
+
+    if (error) {
+      console.error('Error fetching contract by token:', error);
+      return null;
+    }
+
+    return data as Contract | null;
+  },
+
+  /**
+   * Sign contract as external contractor using submission token
+   * No authentication required - uses the token for authorization
+   */
+  async signExternal(token: string): Promise<{ success: boolean; error?: string; contract_id?: string; is_active?: boolean }> {
+    const { data, error } = await supabase.rpc('sign_contract_external', {
+      p_token: token
+    });
+
+    if (error) {
+      console.error('Error signing contract externally:', error);
+      return { success: false, error: error.message };
+    }
+
+    if (!data?.success) {
+      return { success: false, error: data?.error || 'Failed to sign contract' };
+    }
+
+    return {
+      success: true,
+      contract_id: data.contract_id,
+      is_active: data.is_active
+    };
   }
 };
 

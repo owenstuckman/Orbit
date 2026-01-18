@@ -1,7 +1,8 @@
 <script lang="ts">
   import type { PageData } from './$types';
-  import { tasksApi } from '$lib/services/api';
-  import type { Artifact, URLArtifact, GitHubPRArtifact } from '$lib/types';
+  import { tasksApi, contractsApi } from '$lib/services/api';
+  import type { Artifact, URLArtifact, GitHubPRArtifact, Contract } from '$lib/types';
+  import { onMount } from 'svelte';
   import {
     FileText,
     Calendar,
@@ -16,12 +17,26 @@
     CheckCircle,
     AlertTriangle,
     Loader,
-    ExternalLink
+    ExternalLink,
+    PenTool
   } from 'lucide-svelte';
 
   export let data: PageData;
   $: task = data.task;
   $: token = data.token;
+
+  let contract: Contract | null = null;
+  let loadingContract = true;
+
+  onMount(async () => {
+    // Load contract details if the task has a contract
+    if (task.contract_id) {
+      contract = await contractsApi.getBySubmissionToken(token);
+    }
+    loadingContract = false;
+  });
+
+  $: contractNeedsSigning = contract && contract.status === 'pending_signature' && !contract.party_b_signed_at;
 
   let notes = '';
   let submitting = false;
@@ -176,6 +191,36 @@
         </div>
       </div>
     {:else}
+      <!-- Contract Signing Reminder -->
+      {#if contractNeedsSigning}
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 flex items-start gap-4">
+          <PenTool class="text-amber-600 flex-shrink-0 mt-0.5" size={24} />
+          <div class="flex-1">
+            <h3 class="font-semibold text-amber-900">Contract Signature Required</h3>
+            <p class="text-amber-800 text-sm mt-1">
+              Please review and sign your contract before submitting work.
+            </p>
+            <a
+              href="/contract/{token}"
+              class="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-amber-600 text-white font-medium rounded-lg hover:bg-amber-700 transition-colors"
+            >
+              <PenTool size={16} />
+              Review & Sign Contract
+            </a>
+          </div>
+        </div>
+      {:else if contract && contract.party_b_signed_at}
+        <div class="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 flex items-start gap-4">
+          <CheckCircle class="text-green-600 flex-shrink-0 mt-0.5" size={24} />
+          <div>
+            <h3 class="font-semibold text-green-900">Contract Signed</h3>
+            <p class="text-green-800 text-sm mt-1">
+              Your contract has been signed. You can now submit your work.
+            </p>
+          </div>
+        </div>
+      {/if}
+
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Main Content -->
         <div class="lg:col-span-2 space-y-6">
