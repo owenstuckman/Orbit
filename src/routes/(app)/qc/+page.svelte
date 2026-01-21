@@ -150,9 +150,9 @@
   }
 </script>
 
-<div class="h-[calc(100vh-8rem)] flex gap-6">
+<div class="h-[calc(100vh-8rem)] flex flex-col lg:flex-row gap-4 lg:gap-6">
   <!-- Task Queue -->
-  <div class="w-96 flex-shrink-0 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col">
+  <div class="w-full lg:w-96 flex-shrink-0 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col max-h-64 lg:max-h-full">
     <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700">
       <div class="flex items-center justify-between">
         <h2 class="font-semibold text-slate-900 dark:text-white">Review Queue</h2>
@@ -214,10 +214,10 @@
   </div>
 
   <!-- Review Panel -->
-  <div class="flex-1 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col">
+  <div class="flex-1 min-h-0 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden">
     {#if selectedTask}
       <!-- Task Header -->
-      <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700">
+      <div class="flex-shrink-0 px-6 py-4 border-b border-slate-200 dark:border-slate-700">
         <div class="flex items-start justify-between">
           <div>
             <h2 class="text-xl font-bold text-slate-900 dark:text-white">{selectedTask.title}</h2>
@@ -233,7 +233,7 @@
       </div>
 
       <!-- Task Content -->
-      <div class="flex-1 overflow-y-auto p-6 space-y-6">
+      <div class="flex-1 min-h-0 overflow-y-auto p-6 space-y-6">
         <!-- Description -->
         <div>
           <h3 class="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Task Description</h3>
@@ -314,7 +314,7 @@
       </div>
 
       <!-- Review Form -->
-      <div class="px-6 py-4 border-t border-slate-200 dark:border-slate-700 space-y-4">
+      <div class="flex-shrink-0 px-6 py-4 border-t border-slate-200 dark:border-slate-700 space-y-4">
         <div role="group" aria-labelledby="decision-label">
           <span id="decision-label" class="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">Your Decision</span>
           <div class="flex gap-4">
