@@ -1,32 +1,22 @@
 /**
  * QC AI Review Edge Function
  *
- * PURPOSE:
  * Called after task submission to get ML confidence score (p0).
  * Creates an AI review record used in Shapley payout calculations.
  *
  * FLOW:
- * 1. Receives task_id from tasksApi.submit()
- * 2. Fetches task + submission data from database
- * 3. Calls ML model API for confidence scoring
- * 4. Creates qc_reviews record with review_type='ai'
+ *   Task Submit → This Function → ML API → qc_reviews table
  *
- * ML MODEL STORAGE:
- * If hosting the joblib model file in Supabase:
- *   - Upload to: Supabase Storage > "ml-models" bucket > "qc-model.joblib"
- *   - Path: storage/ml-models/qc-model.joblib
- *   - Set bucket to private, access via service role key
- *
- * If using external ML API (recommended):
- *   - Set ML_API_URL secret to your model endpoint
- *   - Set ML_API_KEY secret for authentication
- *
- * SECRETS REQUIRED:
+ * SECRETS:
  *   supabase secrets set ML_API_URL=https://your-ml-api.com
  *   supabase secrets set ML_API_KEY=your-api-key
  *
  * DEPLOY:
  *   supabase functions deploy qc-ai-review
+ *
+ * DOCS:
+ *   xtraDocs/ML_INTEGRATION.md     - Integration overview
+ *   xtraDocs/ML_MODEL_HOSTING.md   - How to host the ML model
  */
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";

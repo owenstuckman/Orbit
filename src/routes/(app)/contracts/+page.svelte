@@ -25,14 +25,29 @@
   let searchQuery = '';
   let statusFilter: string = 'all';
 
+  // Helper to get party names from terms (handles both party_b_name and contractor_name)
+  function getPartyBName(contract: Contract): string | null {
+    return contract.terms?.party_b_name || contract.terms?.contractor_name || contract.party_b?.full_name || contract.party_b_email || null;
+  }
+
+  function getPartyAName(contract: Contract): string | null {
+    return contract.terms?.party_a_name || contract.party_a?.full_name || null;
+  }
+
   $: filteredContracts = contracts.filter(contract => {
-    const matchesSearch = !searchQuery || 
-      contract.terms.party_a_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      contract.terms.party_b_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      contract.template_type.toLowerCase().includes(searchQuery.toLowerCase());
-    
+    const searchLower = searchQuery.toLowerCase();
+    const partyAName = getPartyAName(contract)?.toLowerCase() || '';
+    const partyBName = getPartyBName(contract)?.toLowerCase() || '';
+    const taskTitle = (contract.terms?.task_title as string)?.toLowerCase() || '';
+
+    const matchesSearch = !searchQuery ||
+      partyAName.includes(searchLower) ||
+      partyBName.includes(searchLower) ||
+      taskTitle.includes(searchLower) ||
+      contract.template_type.toLowerCase().includes(searchLower);
+
     const matchesStatus = statusFilter === 'all' || contract.status === statusFilter;
-    
+
     return matchesSearch && matchesStatus;
   });
 
@@ -122,7 +137,7 @@
     } else if (contract.template_type === 'project' || contract.template_type === 'project_pm') {
       return `Project Contract - ${contract.project?.name || 'Unknown'}`;
     } else if (contract.template_type === 'contractor') {
-      return `Contractor Agreement - ${contract.terms?.party_b_name || 'Unknown'}`;
+      return `Contractor Agreement - ${getPartyBName(contract) || 'Unknown'}`;
     }
     return `${contract.template_type.replace('_', ' ')} Contract`;
   }
@@ -287,8 +302,8 @@
                 </td>
                 <td class="px-6 py-4">
                   <div class="text-sm">
-                    <p class="text-slate-900 dark:text-white">{contract.terms.party_a_name || contract.party_a?.full_name || 'Unknown'}</p>
-                    <p class="text-slate-500 dark:text-slate-400">& {contract.terms.party_b_name || contract.party_b?.full_name || contract.party_b_email || 'Pending'}</p>
+                    <p class="text-slate-900 dark:text-white">{getPartyAName(contract) || 'Unknown'}</p>
+                    <p class="text-slate-500 dark:text-slate-400">& {getPartyBName(contract) || 'Pending'}</p>
                   </div>
                 </td>
                 <td class="px-6 py-4">

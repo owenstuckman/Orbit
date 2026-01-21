@@ -294,7 +294,7 @@ export interface Contract {
   party_a_id: string;
   party_b_id: string | null;
   party_b_email: string | null;
-  terms: ContractTerms;
+  terms: ContractTerms | null;
   party_a_signed_at: string | null;
   party_b_signed_at: string | null;
   pdf_path: string | null;
@@ -308,10 +308,13 @@ export interface Contract {
 }
 
 export interface ContractTerms {
-  template: string;
-  sections: string[];
-  party_a_name: string;
-  party_b_name: string;
+  template?: string;
+  sections?: string[];
+  party_a_name?: string;
+  party_b_name?: string;
+  contractor_name?: string;  // Alternative to party_b_name
+  task_title?: string;
+  task_description?: string;
   compensation?: number;
   timeline?: string;
   [key: string]: unknown;

@@ -31,6 +31,15 @@
   $: canSign = (isPartyA && !contract?.party_a_signed_at) || (isPartyB && !contract?.party_b_signed_at);
   $: mySignature = isPartyA ? contract?.party_a_signed_at : (isPartyB ? contract?.party_b_signed_at : null);
 
+  // Helper to get party names (handles both party_b_name and contractor_name)
+  function getPartyBName(c: Contract | null): string {
+    return c?.terms?.party_b_name || c?.terms?.contractor_name || c?.party_b?.full_name || c?.party_b_email || 'Pending';
+  }
+
+  function getPartyAName(c: Contract | null): string {
+    return c?.terms?.party_a_name || c?.party_a?.full_name || 'Unknown';
+  }
+
   onMount(async () => {
     await loadContract();
   });
@@ -230,12 +239,12 @@
               <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center">
                   <span class="text-sm font-semibold text-indigo-700 dark:text-indigo-300">
-                    {(contract.party_a?.full_name || contract.terms.party_a_name || 'A').charAt(0)}
+                    {getPartyAName(contract).charAt(0)}
                   </span>
                 </div>
                 <div>
                   <p class="font-medium text-slate-900 dark:text-white">
-                    {contract.party_a?.full_name || contract.terms.party_a_name || 'Unknown'}
+                    {getPartyAName(contract)}
                   </p>
                   {#if contract.party_a?.email}
                     <p class="text-sm text-slate-500 dark:text-slate-400">{contract.party_a.email}</p>
@@ -268,12 +277,12 @@
               <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center">
                   <span class="text-sm font-semibold text-purple-700 dark:text-purple-300">
-                    {(contract.party_b?.full_name || contract.terms.party_b_name || contract.party_b_email || 'B').charAt(0)}
+                    {getPartyBName(contract).charAt(0)}
                   </span>
                 </div>
                 <div>
                   <p class="font-medium text-slate-900 dark:text-white">
-                    {contract.party_b?.full_name || contract.terms.party_b_name || contract.party_b_email || 'Pending assignment'}
+                    {getPartyBName(contract)}
                   </p>
                   {#if contract.party_b?.email || contract.party_b_email}
                     <p class="text-sm text-slate-500 dark:text-slate-400">{contract.party_b?.email || contract.party_b_email}</p>
@@ -293,7 +302,7 @@
         <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
           <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-4">Contract Terms</h2>
 
-          {#if contract.terms.sections && contract.terms.sections.length > 0}
+          {#if contract.terms?.sections && contract.terms.sections.length > 0}
             <div class="space-y-4">
               {#each contract.terms.sections as section, i}
                 <div class="prose prose-slate dark:prose-invert max-w-none">
@@ -304,10 +313,12 @@
                 {/if}
               {/each}
             </div>
-          {:else}
+          {:else if contract.terms}
             <div class="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4">
               <pre class="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{JSON.stringify(contract.terms, null, 2)}</pre>
             </div>
+          {:else}
+            <p class="text-slate-500 dark:text-slate-400">No contract terms available.</p>
           {/if}
         </div>
 
@@ -360,7 +371,7 @@
           <h3 class="text-sm font-semibold text-slate-900 dark:text-white uppercase tracking-wider mb-4">Summary</h3>
 
           <dl class="space-y-4">
-            {#if contract.terms.compensation}
+            {#if contract.terms?.compensation}
               <div>
                 <dt class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
                   <DollarSign size={12} />
@@ -372,7 +383,7 @@
               </div>
             {/if}
 
-            {#if contract.terms.timeline}
+            {#if contract.terms?.timeline}
               <div>
                 <dt class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
                   <Calendar size={12} />

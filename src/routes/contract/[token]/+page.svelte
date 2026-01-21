@@ -100,10 +100,19 @@
 
   $: canSign = contract?.status === 'pending_signature' && !contract?.party_b_signed_at;
   $: alreadySigned = !!contract?.party_b_signed_at;
+
+  // Helper to get party names (handles both party_b_name and contractor_name)
+  function getPartyBName(): string {
+    return contract?.terms?.party_b_name || contract?.terms?.contractor_name || 'Contractor';
+  }
+
+  function getPartyAName(): string {
+    return contract?.party_a?.full_name || contract?.terms?.party_a_name || 'Client';
+  }
 </script>
 
 <svelte:head>
-  <title>Contract - {contract.terms.party_b_name || 'External Contractor'}</title>
+  <title>Contract - {getPartyBName()}</title>
 </svelte:head>
 
 <div class="min-h-screen bg-slate-50">
@@ -217,7 +226,7 @@
                 </div>
                 <div>
                   <p class="font-medium text-slate-900">
-                    {contract.party_a?.full_name || contract.terms.party_a_name || 'Client'}
+                    {getPartyAName()}
                   </p>
                   {#if contract.party_a?.email}
                     <p class="text-sm text-slate-500">{contract.party_a.email}</p>
@@ -253,7 +262,7 @@
                 </div>
                 <div>
                   <p class="font-medium text-slate-900">
-                    {contract.terms.party_b_name || 'Contractor'}
+                    {getPartyBName()}
                   </p>
                   {#if contract.party_b_email}
                     <p class="text-sm text-slate-500">{contract.party_b_email}</p>
@@ -277,13 +286,13 @@
             <div class="mb-6 p-4 bg-blue-50 border border-blue-100 rounded-lg">
               <h4 class="font-medium text-blue-900 mb-2">Task Details</h4>
               <p class="text-blue-800 font-semibold">{contract.task.title}</p>
-              {#if contract.terms.task_description}
+              {#if contract.terms?.task_description}
                 <p class="text-sm text-blue-700 mt-2">{contract.terms.task_description}</p>
               {/if}
             </div>
           {/if}
 
-          {#if contract.terms.sections && contract.terms.sections.length > 0}
+          {#if contract.terms?.sections && contract.terms.sections.length > 0}
             <div class="space-y-4">
               {#each contract.terms.sections as section, i}
                 <div class="flex gap-3">
@@ -341,14 +350,14 @@
             <DollarSign size={16} />
             Compensation
           </div>
-          <p class="text-3xl font-bold">{formatCurrency(contract.terms.compensation)}</p>
+          <p class="text-3xl font-bold">{formatCurrency(contract.terms?.compensation)}</p>
         </div>
 
         <!-- Details -->
         <div class="bg-white rounded-xl border border-slate-200 p-6">
           <h3 class="font-semibold text-slate-900 mb-4">Details</h3>
           <div class="space-y-4">
-            {#if contract.terms.timeline}
+            {#if contract.terms?.timeline}
               <div class="flex items-start gap-3">
                 <Calendar size={18} class="text-slate-400 flex-shrink-0 mt-0.5" />
                 <div>
