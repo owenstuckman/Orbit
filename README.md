@@ -41,29 +41,29 @@ Otherwise, the concept for this is it could act as wide as a full business wide 
 ## Project Structure
 
 ```
-orbit-frontend/
-├── src/
-│   ├── lib/
-│   │   ├── components/     # Reusable UI components
-│   │   ├── stores/         # Svelte stores for state management
-│   │   ├── services/       # API and Supabase services
-│   │   ├── utils/          # Payout calculations, formatters
-│   │   └── types/          # TypeScript type definitions
-│   ├── routes/
-│   │   ├── auth/           # Login, register pages
-│   │   └── (app)/          # Authenticated app routes
-│   │       ├── dashboard/  # Role-aware dashboard
-│   │       ├── tasks/      # Task board and details
-│   │       ├── projects/   # Project management
-│   │       ├── qc/         # Quality control review
-│   │       ├── contracts/  # Contract management
-│   │       ├── payouts/    # Payout history
-│   │       └── settings/   # User settings, salary mixer
-│   └── app.css            # Tailwind + custom styles
-├── supabase/
-│   ├── migrations/        # Database schema
-│   └── functions/         # Edge functions for payouts
-└── static/               # Static assets
+src/
+├── lib/
+│   ├── components/     # Reusable UI components
+│   ├── stores/         # Svelte stores for state management
+│   ├── services/       # API and Supabase services
+│   ├── utils/          # Payout calculations, formatters
+│   └── types/          # TypeScript type definitions
+├── routes/
+│   ├── auth/           # Login, register pages
+│   └── (app)/          # Authenticated app routes
+│       ├── dashboard/  # Role-aware dashboard
+│       ├── tasks/      # Task board and details
+│       ├── projects/   # Project management
+│       ├── qc/         # Quality control review
+│       ├── contracts/  # Contract management
+│       ├── payouts/    # Payout history
+│       └── settings/   # User settings, salary mixer
+└── app.css             # Tailwind + custom styles
+supabase/
+├── migrations/         # Database schema
+└── functions/          # Edge functions for payouts
+static/                 # Static assets
+xtraDocs/               # Technical documentation
 ```
 
 ## Tech Stack

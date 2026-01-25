@@ -14,6 +14,7 @@ Built with SvelteKit + Supabase, it supports multiple user roles (admin, sales, 
 - `TECHNICAL_ARCHITECTURE.md` - Detailed architecture decisions and rationale
 - `FORMULAS.md` - Payout calculation formulas (employee, QC, PM, sales)
 - `ML_INTEGRATION.md` - ML model integration points and API schemas
+- `ML_MODEL_HOSTING.md` - Guide for deploying the QC ML model as an API
 - `SUPABASE_STORAGE.md` - Storage bucket conventions and usage patterns
 
 ## Development Commands
@@ -167,12 +168,3 @@ Use types from `$lib/types` - they mirror the database schema and include joined
 - `(app)/` routes require authentication (protected by layout)
 - `auth/` routes are public
 - Dashboards are role-aware - check `user.role` to render appropriate views
-
-## Roadmap
-
-- [ ] Web version (Svelte) - in progress
-- [ ] Mobile app (Capacitor)
-- [ ] Slack/Teams integrations
-- [x] Advanced ML model for QC - complete (external repo)
-- [ ] Team analytics dashboard
-- [ ] Custom contract templates

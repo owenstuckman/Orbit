@@ -2,59 +2,11 @@
 
 This document contains the detailed technical architecture, database schema, and implementation patterns for the Orbit platform.
 
-## Executive Summary
+## Overview
 
-Orbit is a gamified project management and digital workplace platform that incentivizes quality work through a sophisticated payout system. The platform supports multiple roles (Sales, PM, QC, Employee, 3rd Party) with role-based views and payout mechanisms driven by task completion, quality control, and Shapley value calculations.
+Orbit is a gamified project management and digital workplace platform that incentivizes quality work through a sophisticated payout system. The platform supports multiple roles (Sales, PM, QC, Employee, Contractor) with role-based views and payout mechanisms driven by task completion, quality control, and Shapley value calculations.
 
----
-
-## Framework Decision: Svelte vs Kotlin Multiplatform
-
-### Recommendation: **SvelteKit**
-
-After analyzing both options against your requirements, SvelteKit is the superior choice for this project.
-
-#### Decision Matrix
-
-| Criteria | SvelteKit | Kotlin Multiplatform |
-|----------|-----------|---------------------|
-| Web Performance | ⭐⭐⭐⭐⭐ Excellent (tiny bundles, no virtual DOM) | ⭐⭐⭐ Good (larger runtime) |
-| Supabase Integration | ⭐⭐⭐⭐⭐ Native JS SDK, real-time subscriptions | ⭐⭐⭐ Requires wrappers, less idiomatic |
-| Development Speed | ⭐⭐⭐⭐⭐ Fast iteration, hot reload | ⭐⭐⭐ Slower compile times |
-| Learning Curve | ⭐⭐⭐⭐ Simple, intuitive | ⭐⭐ Steeper, multiplatform complexity |
-| Role-based UI | ⭐⭐⭐⭐⭐ Reactive stores, easy conditionals | ⭐⭐⭐⭐ Compose works well |
-| Real-time Features | ⭐⭐⭐⭐⭐ Native WebSocket/SSE support | ⭐⭐⭐ More boilerplate needed |
-| Mobile (Future) | ⭐⭐⭐ PWA/Capacitor | ⭐⭐⭐⭐⭐ Native Android/iOS |
-| Math/Calculations | ⭐⭐⭐⭐ JS math libs work fine | ⭐⭐⭐⭐ Strong typing helps |
-| Community/Ecosystem | ⭐⭐⭐⭐⭐ Large, active | ⭐⭐⭐ Growing but smaller |
-
-#### Key Reasons for SvelteKit:
-
-1. **Supabase is JavaScript-first**: The Supabase client SDK is designed for JS/TS. Real-time subscriptions, RLS, and Edge Functions integrate seamlessly with SvelteKit.
-
-2. **Serverless Architecture**: SvelteKit's server routes work perfectly with Supabase Edge Functions for the ML/calculation services you need.
-
-3. **Reactive Stores**: Svelte's store system is ideal for managing complex state like:
-   - User role/permissions
-   - Task boards with real-time updates
-   - Payout calculations
-   - QC review states
-
-4. **Performance**: Your payout calculations (Shapley values, Monte Carlo) can run client-side or in Edge Functions. Svelte's small bundle size means faster load times.
-
-5. **Single Codebase, Multiple Views**: SvelteKit's layout system makes role-based views trivial:
-   ```
-   src/routes/
-   ├── (auth)/           # Auth-required routes
-   │   ├── +layout.svelte
-   │   ├── dashboard/
-   │   │   └── +page.svelte  # Role-aware dashboard
-   │   ├── tasks/
-   │   ├── projects/
-   │   └── admin/
-   ```
-
-6. **Future Mobile**: Capacitor or Tauri can wrap SvelteKit for mobile/desktop when needed. Kotlin Multiplatform's mobile advantage only matters if you need native features today.
+**Tech Stack**: SvelteKit + Supabase (PostgreSQL, Auth, Storage, Edge Functions, Realtime)
 
 ---
 
@@ -1137,18 +1089,6 @@ export const emitter = createNanoEvents<Events>()
 //   await sendSlackNotification(task)
 // })
 ```
-
----
-
-## Next Steps
-
-1. **Immediate**: Set up SvelteKit project with Supabase integration
-2. **Phase 1**: Implement core task board and user authentication
-3. **Phase 2**: Build QC review system with AI integration hooks
-4. **Phase 3**: Implement payout calculations and contract generation
-5. **Phase 4**: Add real-time features and notifications
-6. **Phase 5**: Build PM and Sales specific views
-7. **Phase 6**: Integrate external contractor flow
 
 ---
 
