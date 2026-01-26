@@ -127,6 +127,85 @@ Auto-generated contracts using PDF templates with e-signature workflow (documens
 3. Party B review and signature
 4. Contract activation on dual signature
 
+## Feature Flags System
+
+Organizations can enable/disable features via the feature flags system. Flags are stored in `organizations.settings.feature_flags` as JSON.
+
+### Feature Categories
+
+**Core Features** (6):
+- `tasks` - Task board and management
+- `projects` - Project management
+- `qc_reviews` - Quality control workflow
+- `contracts` - Contract generation/e-signatures
+- `payouts` - Payout tracking
+- `file_uploads` - File attachments for submissions
+
+**Gamification** (2):
+- `achievements` - Badges and achievement tracking
+- `leaderboard` - User rankings
+
+**Advanced** (6):
+- `analytics` - Organization-wide analytics dashboard
+- `notifications_page` - Dedicated notifications page
+- `external_assignments` - Assign tasks to external contractors
+- `salary_mixer` - Employee-configurable salary/task ratio
+- `story_points` - Story point estimation
+- `urgency_multipliers` - Time-based reward modifiers
+
+**Integrations** (3):
+- `realtime_updates` - WebSocket-based live updates
+- `ai_qc_review` - AI-powered QC scoring (requires ML setup)
+- `multi_org` - Multiple organization support
+
+### Presets
+
+- **all_features** - Everything enabled (17/17)
+- **standard** - Recommended default, all except AI QC and multi-org (15/17)
+- **minimal** - Basic task/project management only (7/17)
+- **none** - Start from scratch (0/17)
+
+### Key Files
+
+- `src/lib/types/index.ts` - `FeatureFlags`, `FeatureFlagPreset` types
+- `src/lib/config/featureFlags.ts` - Presets, metadata, helpers
+- `src/lib/stores/featureFlags.ts` - Reactive store derived from organization
+- `src/lib/components/admin/FeatureFlagsPanel.svelte` - Admin toggle UI
+- `src/lib/components/auth/FeaturePresetSelector.svelte` - Registration preset picker
+
+### Usage in Components
+
+```svelte
+<script>
+  import { featureFlags, features } from '$lib/stores/featureFlags';
+
+  // Reactive individual feature check
+  $: showAnalytics = $features.analytics;
+
+  // Or check full flags object
+  $: if ($featureFlags.salary_mixer) { /* ... */ }
+</script>
+
+{#if $features.achievements}
+  <AchievementsBadge />
+{/if}
+```
+
+### Database Integration
+
+Registration RPC accepts `p_feature_preset` parameter:
+```typescript
+await supabase.rpc('register_user_and_org', {
+  p_auth_id: authUser.id,
+  p_email: authUser.email,
+  p_full_name: fullName,
+  p_org_name: organizationName,
+  p_feature_preset: 'standard' // or 'all_features', 'minimal', 'none'
+});
+```
+
+Admin updates via `organizationsApi.updateFeatureFlags(orgId, flags)`.
+
 ## Gamification Features
 
 - XP, levels, and badges for task completion

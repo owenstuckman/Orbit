@@ -5,6 +5,8 @@
   import { user as userStore, organization as orgStore, auth } from '$lib/stores/auth';
   import { guestProjectsApi } from '$lib/services/api';
   import { User, Building, ArrowRight, AlertCircle, Check, Loader, FolderInput } from 'lucide-svelte';
+  import FeaturePresetSelector from '$lib/components/auth/FeaturePresetSelector.svelte';
+  import type { FeatureFlagPreset } from '$lib/types';
 
   let fullName = '';
   let organizationName = '';
@@ -18,6 +20,7 @@
   let hasGuestProject = false;
   let guestProjectImported = false;
   let importingProject = false;
+  let selectedPreset: FeatureFlagPreset = 'standard';
 
   onMount(async () => {
     // Check if user is authenticated
@@ -139,12 +142,13 @@
         regResult = result.data;
         regError = result.error;
       } else {
-        // Create a new organization
+        // Create a new organization with selected feature preset
         const result = await supabase.rpc('register_user_and_org', {
           p_auth_id: authUser.id,
           p_email: authUser.email,
           p_full_name: fullName,
-          p_org_name: organizationName
+          p_org_name: organizationName,
+          p_feature_preset: selectedPreset
         });
         regResult = result.data;
         regError = result.error;
@@ -357,6 +361,9 @@
               </div>
               <p class="mt-1 text-xs text-slate-400">You'll be the admin of this organization</p>
             </div>
+
+            <!-- Feature selection -->
+            <FeaturePresetSelector bind:selectedPreset />
           {:else}
             <div>
               <label class="block text-sm font-medium text-indigo-200 mb-2" for="organizationCode">

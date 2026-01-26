@@ -30,7 +30,8 @@ Otherwise, the concept for this is it could act as wide as a full business wide 
 - **Salary Mixer**: Employees choose their base/task compensation ratio
 - **QC System**: AI-first review with Shapley value-based payouts
 - **Quick Contracts**: Auto-generated contracts with e-signatures
-- **Real-time Updates**: Live task and project status changes, akin to other products 
+- **Real-time Updates**: Live task and project status changes, akin to other products
+- **Customizable Features**: 17 toggleable features across 4 categories - admins choose what's enabled per organization 
 
 ### Payout System
 - Employee: `salary = s * r + Σ γ_i * (1 - r)`

@@ -976,6 +976,169 @@ export function expectedQCPayout(
 
 ---
 
+## Feature Flags System
+
+The platform supports organization-level feature flags, allowing admins to enable/disable functionality per organization. This enables tiered offerings and gradual feature rollouts.
+
+### Database Schema
+
+Feature flags are stored in the `organizations.settings` JSONB column under the `feature_flags` key:
+
+```sql
+-- Example settings structure
+{
+  "feature_flags": {
+    "tasks": true,
+    "projects": true,
+    "qc_reviews": true,
+    "contracts": true,
+    "payouts": true,
+    "achievements": true,
+    "leaderboard": true,
+    "analytics": true,
+    "notifications_page": true,
+    "external_assignments": true,
+    "salary_mixer": true,
+    "file_uploads": true,
+    "realtime_updates": true,
+    "story_points": true,
+    "urgency_multipliers": true,
+    "ai_qc_review": false,
+    "multi_org": false
+  }
+}
+```
+
+### Database Functions
+
+```sql
+-- Get feature flag preset (used during registration)
+CREATE OR REPLACE FUNCTION get_feature_flag_preset(p_preset text)
+RETURNS jsonb AS $$
+BEGIN
+  RETURN CASE p_preset
+    WHEN 'all_features' THEN jsonb_build_object(
+      'tasks', true, 'projects', true, 'qc_reviews', true, 'contracts', true,
+      'payouts', true, 'achievements', true, 'leaderboard', true, 'analytics', true,
+      'notifications_page', true, 'external_assignments', true, 'salary_mixer', true,
+      'file_uploads', true, 'realtime_updates', true, 'story_points', true,
+      'urgency_multipliers', true, 'ai_qc_review', true, 'multi_org', true
+    )
+    WHEN 'minimal' THEN jsonb_build_object(
+      'tasks', true, 'projects', true, 'qc_reviews', false, 'contracts', false,
+      'payouts', true, 'achievements', false, 'leaderboard', false, 'analytics', false,
+      'notifications_page', false, 'external_assignments', false, 'salary_mixer', false,
+      'file_uploads', true, 'realtime_updates', false, 'story_points', false,
+      'urgency_multipliers', false, 'ai_qc_review', false, 'multi_org', false
+    )
+    WHEN 'none' THEN jsonb_build_object(
+      'tasks', false, 'projects', false, ... -- all false
+    )
+    ELSE -- 'standard' default
+      jsonb_build_object(
+        'tasks', true, 'projects', true, 'qc_reviews', true, 'contracts', true,
+        'payouts', true, 'achievements', true, 'leaderboard', true, 'analytics', true,
+        'notifications_page', true, 'external_assignments', true, 'salary_mixer', true,
+        'file_uploads', true, 'realtime_updates', true, 'story_points', true,
+        'urgency_multipliers', true, 'ai_qc_review', false, 'multi_org', false
+      )
+  END;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Registration with preset selection
+CREATE OR REPLACE FUNCTION register_user_and_org(
+  p_auth_id uuid,
+  p_email text,
+  p_full_name text,
+  p_org_name text,
+  p_feature_preset text DEFAULT 'standard'
+) RETURNS jsonb AS $$
+DECLARE
+  v_feature_flags jsonb;
+BEGIN
+  v_feature_flags := get_feature_flag_preset(p_feature_preset);
+
+  INSERT INTO organizations (name, settings)
+  VALUES (p_org_name, jsonb_build_object('feature_flags', v_feature_flags))
+  ...
+END;
+$$ LANGUAGE plpgsql;
+```
+
+### Frontend Architecture
+
+```
+src/lib/
+├── config/
+│   └── featureFlags.ts       # Presets, metadata, helper functions
+├── stores/
+│   └── featureFlags.ts       # Reactive store derived from organization
+├── components/
+│   ├── admin/
+│   │   └── FeatureFlagsPanel.svelte  # Admin toggle interface
+│   └── auth/
+│       └── FeaturePresetSelector.svelte  # Registration preset picker
+└── types/
+    └── index.ts              # FeatureFlags, FeatureFlagPreset types
+```
+
+### Feature Flag Store
+
+```typescript
+// src/lib/stores/featureFlags.ts
+import { derived } from 'svelte/store';
+import { organization } from './auth';
+
+export const featureFlags = derived(
+  organization,
+  ($org): FeatureFlags => {
+    if (!$org) return DEFAULT_FEATURE_FLAGS;
+    return resolveFeatureFlags($org.settings?.feature_flags);
+  }
+);
+
+// Individual feature stores for reactive checks
+export const features = {
+  tasks: derived(featureFlags, ($f) => $f.tasks),
+  projects: derived(featureFlags, ($f) => $f.projects),
+  // ... all 17 features
+};
+```
+
+### Navigation Integration
+
+The app layout conditionally renders navigation items based on feature flags combined with role permissions:
+
+```svelte
+$: navItems = [
+  {
+    href: '/tasks',
+    label: 'Tasks',
+    icon: CheckSquare,
+    show: $featureFlags.tasks && ['employee', 'contractor', 'pm', 'admin'].includes($currentOrgRole)
+  },
+  {
+    href: '/analytics',
+    label: 'Analytics',
+    icon: BarChart3,
+    show: $featureFlags.analytics && ['admin', 'pm'].includes($currentOrgRole)
+  },
+  // ...
+].filter(item => item.show);
+```
+
+### Feature Categories
+
+| Category | Features | Description |
+|----------|----------|-------------|
+| Core | tasks, projects, qc_reviews, contracts, payouts, file_uploads | Essential platform functionality |
+| Gamification | achievements, leaderboard | Employee engagement features |
+| Advanced | analytics, notifications_page, external_assignments, salary_mixer, story_points, urgency_multipliers | Enhanced capabilities |
+| Integrations | realtime_updates, ai_qc_review, multi_org | External service integrations |
+
+---
+
 ## Extensibility Patterns
 
 ### 1. Plugin System for Custom Payout Rules
