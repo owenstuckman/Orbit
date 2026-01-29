@@ -1,18 +1,58 @@
+/**
+ * @fileoverview Authentication and User State Management
+ *
+ * This module provides Svelte stores for managing authentication state,
+ * user profiles, organization context, and role-based capabilities.
+ *
+ * @module stores/auth
+ *
+ * Exported Stores:
+ * - auth - Authentication session state
+ * - user - Current user profile
+ * - organization - Current organization
+ * - userOrganizations - Multi-org memberships
+ * - currentOrgRole - Derived role for current org
+ * - capabilities - Derived role permissions
+ * - isAuthenticated - Derived auth check
+ * - isLoading - Derived loading state
+ *
+ * @example
+ * ```svelte
+ * <script>
+ *   import { user, capabilities, isAuthenticated } from '$lib/stores/auth';
+ *
+ *   $: if ($isAuthenticated && $capabilities.canCreateTasks) {
+ *     // Show create task button
+ *   }
+ * </script>
+ * ```
+ */
+
 import { writable, derived, get } from 'svelte/store';
 import type { User, Organization, RoleCapabilities, UserOrgMembership } from '$lib/types';
 import { supabase } from '$lib/services/supabase';
 import { usersApi, organizationsApi } from '$lib/services/api';
 
 // ============================================================================
-// Auth Store
+// Auth Store - Session Management
 // ============================================================================
 
+/**
+ * Authentication state interface.
+ * Tracks session initialization and loading state.
+ */
 interface AuthState {
   initialized: boolean;
   session: unknown | null;
   loading: boolean;
 }
 
+/**
+ * Creates the auth store for session management.
+ * Handles Supabase Auth initialization and state changes.
+ *
+ * @returns Auth store with initialize, setLoading, and signOut methods
+ */
 function createAuthStore() {
   const { subscribe, set, update } = writable<AuthState>({
     initialized: false,
@@ -22,7 +62,12 @@ function createAuthStore() {
 
   return {
     subscribe,
-    
+
+    /**
+     * Initializes auth state from Supabase session.
+     * Sets up listener for auth state changes (sign in/out, token refresh).
+     * Should be called once on app startup.
+     */
     async initialize() {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
@@ -67,15 +112,26 @@ function createAuthStore() {
 export const auth = createAuthStore();
 
 // ============================================================================
-// User Store
+// User Store - Current User Profile
 // ============================================================================
 
+/**
+ * Creates the user store for current user profile management.
+ * Stores the authenticated user's profile data from the database.
+ *
+ * @returns User store with load, updateR, and clear methods
+ */
 function createUserStore() {
   const { subscribe, set, update } = writable<User | null>(null);
 
   return {
     subscribe,
-    
+
+    /**
+     * Loads the current user's profile from the database.
+     * Called after successful authentication.
+     * @returns Loaded user or null if not found
+     */
     async load() {
       const user = await usersApi.getCurrent();
       set(user);
@@ -86,6 +142,10 @@ function createUserStore() {
 
     update,
 
+    /**
+     * Updates the user's salary/task ratio (Salary Mixer feature).
+     * @param newR - New ratio value (typically 0.5-0.9)
+     */
     async updateR(newR: number) {
       const currentUser = get({ subscribe });
       if (!currentUser) return;
@@ -96,6 +156,7 @@ function createUserStore() {
       }
     },
 
+    /** Clears the user store (e.g., on sign out) */
     clear() {
       set(null);
     }
@@ -105,15 +166,25 @@ function createUserStore() {
 export const user = createUserStore();
 
 // ============================================================================
-// Organization Store
+// Organization Store - Current Organization
 // ============================================================================
 
+/**
+ * Creates the organization store for current org context.
+ * Stores the user's active organization data including settings.
+ *
+ * @returns Organization store with load and clear methods
+ */
 function createOrgStore() {
   const { subscribe, set } = writable<Organization | null>(null);
 
   return {
     subscribe,
 
+    /**
+     * Loads the current user's active organization.
+     * @returns Loaded organization or null
+     */
     async load() {
       const org = await organizationsApi.getCurrent();
       set(org);
@@ -122,6 +193,7 @@ function createOrgStore() {
 
     set,
 
+    /** Clears the organization store */
     clear() {
       set(null);
     }
@@ -131,15 +203,26 @@ function createOrgStore() {
 export const organization = createOrgStore();
 
 // ============================================================================
-// User Organizations Store (for multi-org support)
+// User Organizations Store (Multi-org Support)
 // ============================================================================
 
+/**
+ * Creates the user organizations store for multi-org membership.
+ * Tracks all organizations a user belongs to with their role in each.
+ * Enables organization switching for users in multiple orgs.
+ *
+ * @returns UserOrgs store with load, switchOrg, and clear methods
+ */
 function createUserOrgsStore() {
   const { subscribe, set, update } = writable<UserOrgMembership[]>([]);
 
   return {
     subscribe,
 
+    /**
+     * Loads all organization memberships for the current user.
+     * @returns Array of memberships with organization details
+     */
     async load() {
       const memberships = await usersApi.listUserOrganizations();
       set(memberships);
@@ -148,14 +231,18 @@ function createUserOrgsStore() {
 
     set,
 
+    /** Clears all memberships */
     clear() {
       set([]);
     },
 
     /**
-     * Switch to a different organization
-     * Updates the user's active org_id and reloads the organization store
-     * Also reloads memberships so the role updates properly
+     * Switches to a different organization.
+     * Updates user's active org_id and reloads all related stores
+     * to ensure role and permissions are current.
+     *
+     * @param orgId - Organization UUID to switch to
+     * @returns true if switch was successful
      */
     async switchOrg(orgId: string): Promise<boolean> {
       const success = await usersApi.switchOrganization(orgId);
@@ -203,9 +290,24 @@ export const currentOrgRole = derived(
 );
 
 // ============================================================================
-// Role Capabilities
+// Role Capabilities Configuration
 // ============================================================================
 
+/**
+ * Role-based capability matrix defining permissions for each user role.
+ *
+ * Capability Types:
+ * - Boolean: true/false for simple permissions
+ * - String: 'all', 'team', 'self', 'own', 'org' for scoped access
+ *
+ * Roles:
+ * - admin: Full access to organization features
+ * - sales: Project creation, own payouts/contracts
+ * - pm: Task/project management, team visibility
+ * - qc: Quality control reviews, task viewing
+ * - employee: Task acceptance, own data access
+ * - contractor: Same as employee, external workers
+ */
 const ROLE_CAPABILITIES: Record<string, RoleCapabilities> = {
   admin: {
     canViewTasks: true,
@@ -287,7 +389,11 @@ const ROLE_CAPABILITIES: Record<string, RoleCapabilities> = {
   }
 };
 
-// Derived store for current user's capabilities (based on org-specific role)
+/**
+ * Derived store for current user's role-based capabilities.
+ * Uses the org-specific role from currentOrgRole for permission lookup.
+ * Returns default restricted capabilities if user is not authenticated.
+ */
 export const capabilities = derived(
   [user, currentOrgRole],
   ([$user, $currentOrgRole]): RoleCapabilities => {
@@ -311,10 +417,16 @@ export const capabilities = derived(
   }
 );
 
-// Derived store for checking if user is authenticated
+/**
+ * Derived store for checking if user is authenticated.
+ * True when a valid session exists.
+ */
 export const isAuthenticated = derived(auth, ($auth) => !!$auth.session);
 
-// Derived store for loading state
+/**
+ * Derived store for combined loading state.
+ * True when auth is loading OR when session exists but user profile not yet loaded.
+ */
 export const isLoading = derived(
   [auth, user],
   ([$auth, $user]) => $auth.loading || ($auth.session && !$user)

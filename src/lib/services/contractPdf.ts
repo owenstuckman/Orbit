@@ -1,6 +1,50 @@
+/**
+ * @fileoverview Contract PDF Generation Service
+ *
+ * This module provides client-side PDF generation for contractor agreements
+ * and work orders using jsPDF. PDFs are generated in-browser and can be
+ * uploaded to Supabase Storage or downloaded directly.
+ *
+ * @module services/contractPdf
+ *
+ * Document Types:
+ * - Contractor Agreement: Full legal contract with terms and conditions
+ * - Work Order: Simple task-based work order (shorter format)
+ *
+ * Features:
+ * - Professional styling with brand colors
+ * - Automatic page breaks
+ * - Signature blocks for both parties
+ * - Currency and date formatting
+ *
+ * @example
+ * ```typescript
+ * import { generateContractorAgreement, downloadPdf } from '$lib/services/contractPdf';
+ *
+ * const contract = generateContractorAgreement({
+ *   contractId: uuid,
+ *   contractorName: 'John Doe',
+ *   contractorEmail: 'john@example.com',
+ *   task,
+ *   organization,
+ *   assignedBy: currentUser,
+ *   createdAt: new Date()
+ * });
+ *
+ * // Download locally
+ * downloadPdf(contract);
+ *
+ * // Or upload to storage
+ * await contractsApi.uploadPdf(contractId, contract.pdf, contract.filename);
+ * ```
+ */
+
 import { jsPDF } from 'jspdf';
 import type { Task, Organization, User } from '$lib/types';
 
+/**
+ * Input data required for generating contract PDFs.
+ */
 export interface ContractData {
   contractId: string;
   contractorName: string;
@@ -11,13 +55,31 @@ export interface ContractData {
   createdAt: Date;
 }
 
+/**
+ * Output from PDF generation functions.
+ */
 export interface GeneratedContract {
+  /** PDF file as a Blob for upload or download */
   pdf: Blob;
+  /** Suggested filename with contract ID and contractor name */
   filename: string;
 }
 
 /**
- * Generate a professional contractor agreement PDF
+ * Generates a professional contractor agreement PDF.
+ *
+ * Creates a multi-page A4 document with:
+ * - Header with contract ID and date
+ * - Parties section (Client and Contractor)
+ * - Scope of work (task details)
+ * - Compensation section
+ * - Timeline/deadline
+ * - Standard terms and conditions
+ * - Signature blocks for both parties
+ * - Footer with generation info
+ *
+ * @param data - Contract data including task, organization, and parties
+ * @returns Generated PDF blob and filename
  */
 export function generateContractorAgreement(data: ContractData): GeneratedContract {
   const doc = new jsPDF({
@@ -318,7 +380,18 @@ Payment will be processed through ${data.organization.name}'s standard payment s
 }
 
 /**
- * Generate a simple task-based work order PDF
+ * Generates a simple work order PDF.
+ *
+ * Creates a single-page A4 document with:
+ * - Header with work order number
+ * - Client and contractor info
+ * - Task details box
+ * - Compensation and deadline
+ *
+ * Suitable for quick assignments without full contract terms.
+ *
+ * @param data - Contract data including task and parties
+ * @returns Generated PDF blob and filename
  */
 export function generateWorkOrder(data: ContractData): GeneratedContract {
   const doc = new jsPDF({
@@ -424,7 +497,10 @@ export function generateWorkOrder(data: ContractData): GeneratedContract {
 }
 
 /**
- * Download a generated contract PDF
+ * Downloads a generated contract PDF to the user's device.
+ * Creates a temporary object URL and triggers browser download.
+ *
+ * @param contract - Generated contract with PDF blob and filename
  */
 export function downloadPdf(contract: GeneratedContract) {
   const url = URL.createObjectURL(contract.pdf);

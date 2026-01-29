@@ -1,10 +1,55 @@
+/**
+ * @fileoverview Gamification State Management
+ *
+ * This module provides stores and utilities for the gamification system,
+ * including XP, levels, badges, streaks, and leaderboards.
+ *
+ * @module stores/gamification
+ *
+ * Exported Stores:
+ * - gamification - Main store with user progress and badges
+ * - userLevel - Derived current level
+ * - userXp - Derived current XP
+ * - earnedBadgesCount - Derived badge count
+ *
+ * Exported Functions:
+ * - calculateLevel - Calculate level from XP
+ * - xpForLevel - Get XP threshold for a level
+ * - xpToNextLevel - Get progress to next level
+ *
+ * Badge Categories:
+ * - Tasks: Completion milestones (1, 10, 50, 100, 500)
+ * - Quality: First-pass approvals
+ * - Streaks: Daily activity streaks
+ * - Levels: Level milestones
+ * - Earnings: Total payout milestones
+ *
+ * Badge Tiers: bronze, silver, gold, platinum
+ *
+ * @example
+ * ```svelte
+ * <script>
+ *   import { gamification, userLevel, xpToNextLevel } from '$lib/stores/gamification';
+ *
+ *   onMount(() => gamification.load(userId));
+ *
+ *   $: progress = xpToNextLevel($gamification.userProgress?.xp || 0);
+ * </script>
+ *
+ * <ProgressBar value={progress.progress} />
+ * ```
+ */
+
 import { writable, derived } from 'svelte/store';
 import { supabase } from '$lib/services/supabase';
 
 // ============================================================================
-// Types
+// Types - Gamification Data Structures
 // ============================================================================
 
+/**
+ * Badge definition with requirements and rewards.
+ */
 export interface Badge {
   id: string;
   name: string;
@@ -286,6 +331,15 @@ export const BADGE_DEFINITIONS: Badge[] = [
 // XP & Level Calculations
 // ============================================================================
 
+/**
+ * Calculates user level from total XP.
+ * Uses quadratic formula: XP for level n = 50 * n * (n - 1)
+ *
+ * Level thresholds: 1=0, 2=100, 3=300, 4=600, 5=1000, ...
+ *
+ * @param xp - Total XP accumulated
+ * @returns Current level (minimum 1)
+ */
 export function calculateLevel(xp: number): number {
   // Each level requires progressively more XP
   // Level 1: 0 XP, Level 2: 100 XP, Level 3: 300 XP, Level 4: 600 XP, etc.
@@ -301,10 +355,21 @@ export function calculateLevel(xp: number): number {
   return level - 1;
 }
 
+/**
+ * Gets the XP threshold for a specific level.
+ * @param level - Target level
+ * @returns Total XP needed to reach that level
+ */
 export function xpForLevel(level: number): number {
   return 50 * level * (level - 1);
 }
 
+/**
+ * Calculates progress towards the next level.
+ *
+ * @param currentXp - User's current total XP
+ * @returns Object with current XP in level, XP needed, and percentage progress
+ */
 export function xpToNextLevel(currentXp: number): { current: number; needed: number; progress: number } {
   const currentLevel = calculateLevel(currentXp);
   const currentLevelXp = xpForLevel(currentLevel);

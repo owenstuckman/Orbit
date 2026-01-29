@@ -1,8 +1,46 @@
+/**
+ * @fileoverview Theme State Management
+ *
+ * This module provides the theme store for light/dark mode support.
+ * Supports user preference, system preference, and manual toggle.
+ *
+ * @module stores/theme
+ *
+ * Exported Stores:
+ * - theme - Current theme setting ('light', 'dark', 'system')
+ *
+ * Exported Functions:
+ * - getEffectiveTheme - Resolves 'system' to actual theme
+ *
+ * Features:
+ * - Persists preference to localStorage
+ * - Listens for system theme changes
+ * - Applies 'dark' class to document for Tailwind
+ *
+ * @example
+ * ```svelte
+ * <script>
+ *   import { theme, getEffectiveTheme } from '$lib/stores/theme';
+ *
+ *   $: effectiveTheme = getEffectiveTheme($theme);
+ * </script>
+ *
+ * <button on:click={() => theme.toggle()}>
+ *   Current: {effectiveTheme}
+ * </button>
+ * ```
+ */
+
 import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
 
+/** Theme setting options */
 type Theme = 'light' | 'dark' | 'system';
 
+/**
+ * Gets the initial theme from localStorage or defaults to 'system'.
+ * @returns Stored theme or 'system'
+ */
 function getInitialTheme(): Theme {
   if (!browser) return 'system';
 
@@ -13,11 +51,21 @@ function getInitialTheme(): Theme {
   return 'system';
 }
 
+/**
+ * Detects the system's preferred color scheme.
+ * @returns 'dark' if system prefers dark mode, 'light' otherwise
+ */
 function getSystemTheme(): 'light' | 'dark' {
   if (!browser) return 'light';
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
+/**
+ * Creates the theme store with persistence and system preference support.
+ * Automatically applies theme class to document on change.
+ *
+ * @returns Theme store with setTheme, toggle, and initialize methods
+ */
 function createThemeStore() {
   const { subscribe, set, update } = writable<Theme>(getInitialTheme());
 
@@ -81,7 +129,13 @@ function createThemeStore() {
 
 export const theme = createThemeStore();
 
-// Derived store for the effective theme (resolved from system)
+/**
+ * Resolves the effective theme from a theme setting.
+ * Converts 'system' to the actual system preference.
+ *
+ * @param themeValue - Current theme setting
+ * @returns 'light' or 'dark' (never 'system')
+ */
 export function getEffectiveTheme(themeValue: Theme): 'light' | 'dark' {
   if (themeValue === 'system') {
     return getSystemTheme();

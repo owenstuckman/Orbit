@@ -1,3 +1,26 @@
+<!--
+  @component TaskCard
+
+  Displays a task as an interactive card with gamification badges,
+  urgency indicators, payout calculations, and optional accept button.
+
+  @prop {Task} task - The task object to display
+  @prop {boolean} [showAcceptButton=false] - Show "Pick Up Task" button
+  @prop {boolean} [compact=false] - Use compact layout with less detail
+
+  @event click - Fired when card is clicked, returns task
+  @event accept - Fired when accept button clicked, returns task
+
+  @example
+  ```svelte
+  <TaskCard
+    {task}
+    showAcceptButton={task.status === 'open'}
+    on:click={() => openTaskDetail(task)}
+    on:accept={() => acceptTask(task)}
+  />
+  ```
+-->
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import { Clock, DollarSign, User, Sparkles, TrendingUp, Trophy, Zap, Hand } from 'lucide-svelte';
@@ -5,8 +28,11 @@
   import { formatCurrency, calculateTaskPayout } from '$lib/utils/payout';
   import type { Task } from '$lib/types';
 
+  /** The task to display */
   export let task: Task;
+  /** Whether to show the accept/pickup button */
   export let showAcceptButton = false;
+  /** Use compact layout with fewer details */
   export let compact = false;
 
   const dispatch = createEventDispatcher<{ accept: Task; click: Task }>();

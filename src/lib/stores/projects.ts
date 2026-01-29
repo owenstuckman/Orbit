@@ -1,18 +1,64 @@
+/**
+ * @fileoverview Project State Management
+ *
+ * This module provides Svelte stores for managing project state,
+ * including filtering, real-time updates, and derived views.
+ *
+ * @module stores/projects
+ *
+ * Exported Stores:
+ * - projects - Main project list with CRUD operations
+ * - projectsByStatus - Projects grouped by status
+ * - projectsWithBudgetWarning - Projects over 80% budget
+ * - projectsInOverdraft - Projects exceeding budget
+ * - currentProject - Single project detail view
+ *
+ * Features:
+ * - Real-time subscription for project changes
+ * - Budget tracking and warning derivations
+ * - PM assignment workflow
+ *
+ * @example
+ * ```svelte
+ * <script>
+ *   import { projects, projectsWithBudgetWarning } from '$lib/stores/projects';
+ *
+ *   onMount(() => {
+ *     projects.load({ status: ['active'] });
+ *     projects.subscribeToChanges();
+ *   });
+ * </script>
+ *
+ * {#if $projectsWithBudgetWarning.length > 0}
+ *   <BudgetWarningBanner count={$projectsWithBudgetWarning.length} />
+ * {/if}
+ * ```
+ */
+
 import { writable, derived } from 'svelte/store';
 import type { Project, ProjectStatus } from '$lib/types';
 import { projectsApi } from '$lib/services/api';
 import { subscribeToTable } from '$lib/services/supabase';
 
 // ============================================================================
-// Projects Store
+// Projects Store - Main Project List
 // ============================================================================
 
+/**
+ * Projects store state interface.
+ */
 interface ProjectsState {
   items: Project[];
   loading: boolean;
   error: string | null;
 }
 
+/**
+ * Creates the main projects store with filtering and real-time support.
+ * Provides methods for loading, filtering, and manipulating projects.
+ *
+ * @returns Projects store with load, subscribe, create, and update methods
+ */
 function createProjectsStore() {
   const { subscribe, set, update } = writable<ProjectsState>({
     items: [],
@@ -20,11 +66,16 @@ function createProjectsStore() {
     error: null
   });
 
+  /** Real-time subscription cleanup function */
   let unsubscribe: (() => void) | null = null;
 
   return {
     subscribe,
 
+    /**
+     * Loads projects with optional filtering.
+     * @param filters - Optional filter by status, pmId, or salesId
+     */
     async load(filters?: { status?: ProjectStatus[]; pmId?: string; salesId?: string }) {
       update(state => ({ ...state, loading: true, error: null }));
 
@@ -56,19 +107,26 @@ function createProjectsStore() {
       }
     },
 
+    /** Loads projects waiting for PM assignment */
     async loadPendingForPM() {
       // Load projects waiting for a PM to pick them up
       await this.load({ status: ['pending_pm'] });
     },
 
+    /** Loads projects managed by a specific PM */
     async loadByPM(pmId: string) {
       await this.load({ pmId });
     },
 
+    /** Loads projects created by a specific sales rep */
     async loadBySales(salesId: string) {
       await this.load({ salesId });
     },
 
+    /**
+     * Subscribes to real-time project updates.
+     * Handles INSERT, UPDATE, DELETE events for all org projects.
+     */
     subscribeToChanges() {
       if (unsubscribe) {
         unsubscribe();
@@ -103,6 +161,7 @@ function createProjectsStore() {
       unsubscribe = unsub;
     },
 
+    /** Cleans up real-time subscription */
     unsubscribe() {
       if (unsubscribe) {
         unsubscribe();
@@ -110,6 +169,11 @@ function createProjectsStore() {
       }
     },
 
+    /**
+     * Creates a new project and adds to store.
+     * @param project - Project data to create
+     * @returns Created project or null
+     */
     async create(project: Partial<Project>) {
       const created = await projectsApi.create(project);
       if (created) {
@@ -121,6 +185,14 @@ function createProjectsStore() {
       return created;
     },
 
+    /**
+     * Assigns a PM to a project (PM pickup workflow).
+     * Sets project to active status.
+     *
+     * @param projectId - Project to assign
+     * @param pmId - PM user's UUID
+     * @returns Updated project or null
+     */
     async assignPM(projectId: string, pmId: string) {
       const updated = await projectsApi.assignPM(projectId, pmId);
       if (updated) {
@@ -132,6 +204,12 @@ function createProjectsStore() {
       return updated;
     },
 
+    /**
+     * Updates project fields and reflects in store.
+     * @param projectId - Project to update
+     * @param updates - Fields to update
+     * @returns Updated project or null
+     */
     async updateProject(projectId: string, updates: Partial<Project>) {
       const updated = await projectsApi.update(projectId, updates);
       if (updated) {
@@ -143,6 +221,7 @@ function createProjectsStore() {
       return updated;
     },
 
+    /** Clears store state and unsubscribes from real-time */
     clear() {
       this.unsubscribe();
       set({ items: [], loading: false, error: null });
@@ -153,10 +232,13 @@ function createProjectsStore() {
 export const projects = createProjectsStore();
 
 // ============================================================================
-// Derived Stores
+// Derived Stores - Computed Project Views
 // ============================================================================
 
-// Projects by status
+/**
+ * Projects grouped by status.
+ * Returns a record with all possible statuses as keys.
+ */
 export const projectsByStatus = derived(projects, ($projects) => {
   const grouped: Record<ProjectStatus, Project[]> = {
     draft: [],
@@ -175,7 +257,10 @@ export const projectsByStatus = derived(projects, ($projects) => {
   return grouped;
 });
 
-// Projects with budget warnings (over 80% spent)
+/**
+ * Projects with budget warnings (over 80% spent).
+ * Used for PM dashboard alerts.
+ */
 export const projectsWithBudgetWarning = derived(projects, ($projects) =>
   $projects.items.filter(p => {
     if (p.total_value === 0) return false;
@@ -183,21 +268,33 @@ export const projectsWithBudgetWarning = derived(projects, ($projects) =>
   })
 );
 
-// Projects in overdraft
+/**
+ * Projects in overdraft (spent exceeds budget).
+ * Triggers overdraft penalty calculations.
+ */
 export const projectsInOverdraft = derived(projects, ($projects) =>
   $projects.items.filter(p => p.spent > p.total_value)
 );
 
 // ============================================================================
-// Current Project Store
+// Current Project Store - Single Project Detail View
 // ============================================================================
 
+/**
+ * State for the current/selected project detail view.
+ */
 interface CurrentProjectState {
   project: Project | null;
   loading: boolean;
   error: string | null;
 }
 
+/**
+ * Creates a store for managing single project detail view.
+ * Used when viewing/editing a specific project.
+ *
+ * @returns CurrentProject store with load, update, and clear methods
+ */
 function createCurrentProjectStore() {
   const { subscribe, set, update } = writable<CurrentProjectState>({
     project: null,

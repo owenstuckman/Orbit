@@ -1,3 +1,42 @@
+/**
+ * @fileoverview Notification State Management
+ *
+ * This module provides stores for managing notifications and toast messages.
+ * Supports real-time updates via Supabase subscriptions.
+ *
+ * @module stores/notifications
+ *
+ * Exported Stores:
+ * - notifications - Persistent notifications from database
+ * - unreadCount - Count of unread notifications
+ * - unreadNotifications - Filtered unread items
+ * - recentNotifications - Last 5 notifications
+ * - toasts - Ephemeral toast messages
+ *
+ * Features:
+ * - Real-time notification delivery
+ * - Mark as read (single/all)
+ * - Toast auto-dismissal with configurable duration
+ *
+ * @example
+ * ```svelte
+ * <script>
+ *   import { notifications, toasts, unreadCount } from '$lib/stores/notifications';
+ *
+ *   onMount(() => {
+ *     notifications.load(userId);
+ *     notifications.subscribeToUpdates(userId);
+ *   });
+ *
+ *   function showSuccess() {
+ *     toasts.success('Operation completed!');
+ *   }
+ * </script>
+ *
+ * <Badge count={$unreadCount} />
+ * ```
+ */
+
 import { writable, derived } from 'svelte/store';
 import { supabase, subscribeToTable } from '$lib/services/supabase';
 
@@ -5,6 +44,9 @@ import { supabase, subscribeToTable } from '$lib/services/supabase';
 // Notification Types
 // ============================================================================
 
+/**
+ * Database notification record.
+ */
 export interface Notification {
   id: string;
   user_id: string;
@@ -16,6 +58,9 @@ export interface Notification {
   created_at: string;
 }
 
+/**
+ * All possible notification types in the system.
+ */
 export type NotificationType =
   | 'task_assigned'
   | 'task_completed'
@@ -30,9 +75,12 @@ export type NotificationType =
   | 'system';
 
 // ============================================================================
-// Notifications Store
+// Notifications Store - Persistent Notifications
 // ============================================================================
 
+/**
+ * Notifications store state.
+ */
 interface NotificationsState {
   items: Notification[];
   loading: boolean;
@@ -209,16 +257,27 @@ export const recentNotifications = derived(notifications, ($notifications) =>
 );
 
 // ============================================================================
-// Toast Notifications (for immediate feedback)
+// Toast Notifications - Ephemeral UI Messages
 // ============================================================================
 
+/**
+ * Toast notification for immediate user feedback.
+ * Auto-dismisses after specified duration.
+ */
 export interface Toast {
   id: string;
   type: 'success' | 'error' | 'warning' | 'info';
   message: string;
+  /** Duration in ms before auto-dismiss (default: 5000) */
   duration?: number;
 }
 
+/**
+ * Creates the toast store for ephemeral UI messages.
+ * Provides convenience methods for different message types.
+ *
+ * @returns Toast store with add, remove, success, error, warning, info methods
+ */
 function createToastStore() {
   const { subscribe, update } = writable<Toast[]>([]);
 

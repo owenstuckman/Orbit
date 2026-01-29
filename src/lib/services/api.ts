@@ -1,3 +1,37 @@
+/**
+ * @fileoverview API Service Layer for Orbit Platform
+ *
+ * This module provides typed API interfaces for all database operations.
+ * Each API object corresponds to a database table and provides CRUD operations
+ * plus domain-specific methods.
+ *
+ * @module api
+ *
+ * API Objects:
+ * - usersApi - User management, invitations, org memberships, role management
+ * - projectsApi - Project CRUD, PM assignment, bonus calculations
+ * - tasksApi - Task lifecycle, assignments, submissions, external work
+ * - qcApi - Quality control reviews, Shapley value calculations
+ * - contractsApi - Contract generation, e-signatures, PDF management
+ * - payoutsApi - Payout tracking, summaries by period
+ * - organizationsApi - Organization settings, feature flags
+ * - guestProjectsApi - Trial/demo projects for unauthenticated users
+ *
+ * All operations use Supabase client with RLS (Row Level Security) enforcement.
+ * Multi-tenant isolation is handled via org_id foreign keys.
+ *
+ * @example
+ * ```typescript
+ * import { usersApi, tasksApi } from '$lib/services/api';
+ *
+ * // Get current user
+ * const user = await usersApi.getCurrent();
+ *
+ * // List available tasks for user's level
+ * const tasks = await tasksApi.listAvailable(user.level);
+ * ```
+ */
+
 import { supabase, functions } from './supabase';
 import type {
   User,
@@ -23,18 +57,51 @@ import type {
 } from '$lib/types';
 import { getPreset } from '$lib/config/featureFlags';
 
-// Generic query builder helpers
+// ============================================================================
+// Query Builder Helpers
+// ============================================================================
+
+/**
+ * Generic query filter configuration for Supabase queries.
+ * Supports common SQL operations mapped to Supabase PostgREST filters.
+ *
+ * @example
+ * ```typescript
+ * const filters: QueryFilters = {
+ *   eq: { status: 'active', org_id: '123' },
+ *   gte: { created_at: '2024-01-01' },
+ *   order: { column: 'created_at', ascending: false },
+ *   limit: 10
+ * };
+ * ```
+ */
 type QueryFilters = {
+  /** Equality filters - WHERE column = value */
   eq?: Record<string, unknown>;
+  /** IN filters - WHERE column IN (values) */
   in?: Record<string, unknown[]>;
+  /** Greater than or equal - WHERE column >= value */
   gte?: Record<string, unknown>;
+  /** Less than or equal - WHERE column <= value */
   lte?: Record<string, unknown>;
+  /** Case-insensitive LIKE search - WHERE column ILIKE %value% */
   like?: Record<string, string>;
+  /** ORDER BY configuration */
   order?: { column: string; ascending?: boolean };
+  /** LIMIT clause */
   limit?: number;
+  /** OFFSET for pagination (uses range under the hood) */
   offset?: number;
 };
 
+/**
+ * Applies QueryFilters to a Supabase query builder.
+ * Chains filter methods in sequence to build the final query.
+ *
+ * @param query - Supabase query builder instance
+ * @param filters - Optional filter configuration
+ * @returns Modified query with filters applied
+ */
 function applyFilters<T>(query: T, filters?: QueryFilters): T {
   if (!filters) return query;
   
@@ -78,8 +145,39 @@ function applyFilters<T>(query: T, filters?: QueryFilters): T {
   return q;
 }
 
+// ============================================================================
 // Users API
+// ============================================================================
+
+/**
+ * User management API providing CRUD operations, invitations, and role management.
+ *
+ * Key Features:
+ * - Current user retrieval with organization data
+ * - User invitations with 7-day expiring tokens
+ * - Multi-organization membership management
+ * - Role-based permission updates (owner/admin restricted)
+ *
+ * @example
+ * ```typescript
+ * // Get current authenticated user
+ * const user = await usersApi.getCurrent();
+ *
+ * // Invite a new team member
+ * const invite = await usersApi.invite('newuser@example.com', 'employee');
+ *
+ * // Update user's salary mix ratio
+ * await usersApi.updateSalaryMix(user.id, 0.75);
+ * ```
+ */
 export const usersApi = {
+  /**
+   * Retrieves the currently authenticated user with their organization.
+   * Fetches auth user from Supabase Auth, then loads profile from users table.
+   * Organization is fetched separately to handle RLS edge cases.
+   *
+   * @returns User object with organization, or null if not authenticated
+   */
   async getCurrent(): Promise<User | null> {
     const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
     if (authError) {
@@ -131,6 +229,11 @@ export const usersApi = {
     return { ...data, organization };
   },
 
+  /**
+   * Fetches a user by their database ID with organization join.
+   * @param id - User's UUID
+   * @returns User with organization data, or null if not found
+   */
   async getById(id: string): Promise<User | null> {
     const { data, error } = await supabase
       .from('users')
@@ -145,6 +248,12 @@ export const usersApi = {
     return data;
   },
 
+  /**
+   * Lists users with optional filtering.
+   * Filtered by RLS to current organization's users.
+   * @param filters - Optional query filters
+   * @returns Array of users matching filters
+   */
   async list(filters?: QueryFilters): Promise<User[]> {
     let query = supabase
       .from('users')
@@ -160,6 +269,12 @@ export const usersApi = {
     return data ?? [];
   },
 
+  /**
+   * Updates a user's profile data.
+   * @param id - User's UUID
+   * @param updates - Partial user object with fields to update
+   * @returns Updated user, or null on error
+   */
   async update(id: string, updates: Partial<User>): Promise<User | null> {
     const { data, error } = await supabase
       .from('users')
@@ -175,6 +290,13 @@ export const usersApi = {
     return data;
   },
 
+  /**
+   * Updates a user's salary/task compensation ratio (Salary Mixer feature).
+   * The 'r' value determines the split: salary = base * r + task_value * (1 - r)
+   * @param id - User's UUID
+   * @param r - Salary ratio, typically between 0.5 and 0.9
+   * @returns Updated user, or null on error
+   */
   async updateSalaryMix(id: string, r: number): Promise<User | null> {
     return this.update(id, { r });
   },
@@ -183,6 +305,14 @@ export const usersApi = {
   // User Invitations
   // ============================================================================
 
+  /**
+   * Creates an invitation for a new user to join the current organization.
+   * Generates a 6-character alphanumeric token valid for 7 days.
+   *
+   * @param email - Email address to invite
+   * @param role - Role to assign when invitation is accepted
+   * @returns Created invitation with organization and inviter details
+   */
   async invite(email: string, role: UserRole): Promise<UserInvitation | null> {
     const user = await this.getCurrent();
     if (!user?.org_id) return null;
@@ -222,6 +352,11 @@ export const usersApi = {
     return data;
   },
 
+  /**
+   * Lists all invitations for the current user's organization.
+   * Includes pending, accepted, and cancelled invitations.
+   * @returns Array of invitations with inviter details
+   */
   async listInvitations(): Promise<UserInvitation[]> {
     const user = await this.getCurrent();
     if (!user?.org_id) return [];
@@ -242,6 +377,11 @@ export const usersApi = {
     return data ?? [];
   },
 
+  /**
+   * Cancels a pending invitation.
+   * @param inviteId - Invitation UUID
+   * @returns true if cancelled successfully
+   */
   async cancelInvitation(inviteId: string): Promise<boolean> {
     const { error } = await supabase
       .from('user_invitations')
@@ -282,9 +422,14 @@ export const usersApi = {
   },
 
   // ============================================================================
-  // Organization Memberships
+  // Organization Memberships (Multi-org support)
   // ============================================================================
 
+  /**
+   * Lists all organizations the current user belongs to.
+   * Supports multi-organization feature for users in multiple orgs.
+   * @returns Array of memberships with organization details, primary org first
+   */
   async listUserOrganizations(): Promise<UserOrgMembership[]> {
     const { data: { user: authUser } } = await supabase.auth.getUser();
     if (!authUser) return [];
@@ -309,6 +454,14 @@ export const usersApi = {
     return data ?? [];
   },
 
+  /**
+   * Switches the current user's active organization.
+   * Updates the user's org_id to the specified organization.
+   * User must be a member of the target organization.
+   *
+   * @param orgId - Organization UUID to switch to
+   * @returns true if switch was successful
+   */
   async switchOrganization(orgId: string): Promise<boolean> {
     const user = await this.getCurrent();
     if (!user) return false;
@@ -375,8 +528,44 @@ export const usersApi = {
   }
 };
 
+// ============================================================================
 // Projects API
+// ============================================================================
+
+/**
+ * Project management API for creating and managing projects.
+ *
+ * Project Lifecycle:
+ * 1. Sales creates project (status: draft → pending_pm)
+ * 2. PM picks up project (status: active, pm_id assigned)
+ * 3. Tasks are created and completed
+ * 4. Project completed when all tasks approved
+ *
+ * PM Compensation:
+ * - Profit share based on budget management
+ * - Bonus calculation via edge function
+ * - Overdraft penalties if budget exceeded
+ *
+ * @example
+ * ```typescript
+ * // Create a new project
+ * const project = await projectsApi.create({
+ *   name: 'Website Redesign',
+ *   budget: 5000,
+ *   sales_id: currentUser.id
+ * });
+ *
+ * // Assign a PM
+ * await projectsApi.assignPM(project.id, pmUserId);
+ * ```
+ */
 export const projectsApi = {
+  /**
+   * Fetches a project by ID with related data.
+   * Includes sales rep, PM, and all tasks.
+   * @param id - Project UUID
+   * @returns Project with relations, or null if not found
+   */
   async getById(id: string): Promise<Project | null> {
     const { data, error } = await supabase
       .from('projects')
@@ -396,6 +585,12 @@ export const projectsApi = {
     return data;
   },
 
+  /**
+   * Lists projects with optional filtering.
+   * Includes sales rep and PM names for display.
+   * @param filters - Optional query filters
+   * @returns Array of projects with relations
+   */
   async list(filters?: QueryFilters): Promise<Project[]> {
     let query = supabase
       .from('projects')
@@ -415,6 +610,12 @@ export const projectsApi = {
     return data ?? [];
   },
 
+  /**
+   * Creates a new project.
+   * Typically called by sales role with initial budget and client info.
+   * @param project - Project data (name, budget, client_name, etc.)
+   * @returns Created project, or null on error
+   */
   async create(project: Partial<Project>): Promise<Project | null> {
     const { data, error } = await supabase
       .from('projects')
@@ -429,6 +630,12 @@ export const projectsApi = {
     return data;
   },
 
+  /**
+   * Updates project fields.
+   * @param id - Project UUID
+   * @param updates - Partial project with fields to update
+   * @returns Updated project, or null on error
+   */
   async update(id: string, updates: Partial<Project>): Promise<Project | null> {
     const { data, error } = await supabase
       .from('projects')
@@ -444,6 +651,15 @@ export const projectsApi = {
     return data;
   },
 
+  /**
+   * Assigns a project manager to a project.
+   * Sets status to 'active' and records pickup timestamp.
+   * Sales commission decay is calculated from this timestamp.
+   *
+   * @param projectId - Project UUID
+   * @param pmId - PM user's UUID
+   * @returns Updated project
+   */
   async assignPM(projectId: string, pmId: string): Promise<Project | null> {
     return this.update(projectId, {
       pm_id: pmId,
@@ -452,6 +668,14 @@ export const projectsApi = {
     });
   },
 
+  /**
+   * Calculates PM bonus for a completed project.
+   * Formula: (budget - spent) * X - overdraft * (penalty * X) + bonus
+   * Calls edge function for accurate calculation.
+   *
+   * @param projectId - Project UUID
+   * @returns Calculated bonus amount
+   */
   async calculatePMBonus(projectId: string): Promise<number> {
     const { data } = await functions.invoke<{ bonus: number }>('calculate-payout', {
       body: { project_id: projectId, calculation_type: 'pm_bonus' }
@@ -460,8 +684,50 @@ export const projectsApi = {
   }
 };
 
+// ============================================================================
 // Tasks API
+// ============================================================================
+
+/**
+ * Task management API for the core task workflow.
+ *
+ * Task Lifecycle:
+ * 1. PM creates task (status: open)
+ * 2. Employee accepts task (status: assigned)
+ * 3. Employee works on task (status: in_progress)
+ * 4. Employee submits work (status: completed)
+ * 5. QC reviews submission (status: under_review)
+ * 6. Approved/Rejected (status: approved/rejected)
+ * 7. Payout processed (status: paid)
+ *
+ * Gamification:
+ * - required_level gates task access
+ * - urgency_multiplier affects rewards
+ * - story_points for estimation
+ *
+ * External Assignments:
+ * - Tasks can be assigned to external contractors
+ * - Guest submission links for unauthenticated work
+ *
+ * @example
+ * ```typescript
+ * // List available tasks for user
+ * const tasks = await tasksApi.listAvailable(user.level);
+ *
+ * // Accept a task
+ * await tasksApi.accept(taskId, user.id);
+ *
+ * // Submit completed work
+ * await tasksApi.submit(taskId, submissionData, fileUrls);
+ * ```
+ */
 export const tasksApi = {
+  /**
+   * Fetches a task by ID with full relations.
+   * Includes project, assignee, and all QC reviews with reviewers.
+   * @param id - Task UUID
+   * @returns Task with relations, or null if not found
+   */
   async getById(id: string): Promise<Task | null> {
     const { data, error } = await supabase
       .from('tasks')
@@ -481,6 +747,12 @@ export const tasksApi = {
     return data;
   },
 
+  /**
+   * Lists tasks with optional filtering.
+   * Includes assignee info and QC review summaries.
+   * @param filters - Optional query filters
+   * @returns Array of tasks with relations
+   */
   async list(filters?: QueryFilters): Promise<Task[]> {
     let query = supabase
       .from('tasks')
@@ -500,14 +772,30 @@ export const tasksApi = {
     return data ?? [];
   },
 
+  /**
+   * Lists all tasks for a specific project.
+   * @param projectId - Project UUID
+   */
   async listByProject(projectId: string): Promise<Task[]> {
     return this.list({ eq: { project_id: projectId } });
   },
 
+  /**
+   * Lists all tasks assigned to a specific user.
+   * @param userId - User UUID
+   */
   async listByAssignee(userId: string): Promise<Task[]> {
     return this.list({ eq: { assignee_id: userId } });
   },
 
+  /**
+   * Lists open tasks available for the user's level.
+   * Filters to status=open and required_level <= userLevel.
+   * Ordered by urgency_multiplier (highest first).
+   *
+   * @param userLevel - User's current level
+   * @returns Available tasks the user can accept
+   */
   async listAvailable(userLevel: number): Promise<Task[]> {
     const { data, error } = await supabase
       .from('tasks')
@@ -523,6 +811,13 @@ export const tasksApi = {
     return data ?? [];
   },
 
+  /**
+   * Creates a new task within a project.
+   * Typically called by PM or admin roles.
+   *
+   * @param task - Task data (title, description, dollar_value, etc.)
+   * @returns Created task, or null on error
+   */
   async create(task: Partial<Task>): Promise<Task | null> {
     const { data, error } = await supabase
       .from('tasks')
@@ -537,6 +832,12 @@ export const tasksApi = {
     return data;
   },
 
+  /**
+   * Updates task fields.
+   * @param id - Task UUID
+   * @param updates - Partial task with fields to update
+   * @returns Updated task, or null on error
+   */
   async update(id: string, updates: Partial<Task>): Promise<Task | null> {
     const { data, error } = await supabase
       .from('tasks')
@@ -552,6 +853,15 @@ export const tasksApi = {
     return data;
   },
 
+  /**
+   * Accepts an open task for the current user.
+   * Uses RPC function that validates user level requirements.
+   * Sets status to 'assigned' and records assignment timestamp.
+   *
+   * @param taskId - Task UUID
+   * @param userId - User UUID accepting the task
+   * @returns Assigned task, or null on error
+   */
   async accept(taskId: string, userId: string): Promise<Task | null> {
     // Use RPC function which validates user level and handles the assignment atomically
     const { data, error } = await supabase.rpc('accept_task', {
@@ -572,6 +882,15 @@ export const tasksApi = {
     return data;
   },
 
+  /**
+   * Submits completed work for a task.
+   * Triggers AI QC review automatically after submission.
+   *
+   * @param taskId - Task UUID
+   * @param submissionData - JSON object with submission details
+   * @param files - Optional array of uploaded file URLs
+   * @returns Updated task, or null on error
+   */
   async submit(
     taskId: string,
     submissionData: Record<string, unknown>,
@@ -594,6 +913,14 @@ export const tasksApi = {
     return task;
   },
 
+  /**
+   * Calculates employee payout for a completed task.
+   * Uses hybrid formula: salary * r + task_value * (1 - r)
+   * Calls edge function for accurate calculation with all factors.
+   *
+   * @param taskId - Task UUID
+   * @returns Payout amount and calculation details
+   */
   async calculatePayout(taskId: string): Promise<{ payout: number; details: unknown }> {
     const { data } = await functions.invoke<{ payout: number; details: unknown }>(
       'calculate-payout',
@@ -713,8 +1040,40 @@ export const tasksApi = {
   }
 };
 
+// ============================================================================
 // QC Reviews API
+// ============================================================================
+
+/**
+ * Quality Control review API for the QC workflow.
+ *
+ * QC Flow:
+ * 1. Task submitted → triggers AI review (review_type: 'ai')
+ * 2. Human review if AI confidence < threshold (review_type: 'peer' or 'independent')
+ * 3. Multiple passes allowed with geometric decay in Shapley value
+ *
+ * Shapley Value Calculations:
+ * - d_1 = β * p_0 * V (first-pass marginal, confidence-scaled)
+ * - d_k = d_1 * γ^(k-1) (geometric decay for successive passes)
+ * - Review weights: peer=1.0, independent=2.0
+ *
+ * See FORMULAS.md for detailed calculation documentation.
+ *
+ * @example
+ * ```typescript
+ * // Get tasks pending QC review
+ * const pendingTasks = await qcApi.listPending();
+ *
+ * // Submit a review
+ * await qcApi.submitReview(taskId, reviewerId, true, 'Good work!', 'peer');
+ * ```
+ */
 export const qcApi = {
+  /**
+   * Fetches a QC review by ID with task and reviewer details.
+   * @param id - Review UUID
+   * @returns Review with relations, or null if not found
+   */
   async getById(id: string): Promise<QCReview | null> {
     const { data, error } = await supabase
       .from('qc_reviews')
@@ -733,6 +1092,13 @@ export const qcApi = {
     return data;
   },
 
+  /**
+   * Lists tasks pending QC review.
+   * Returns tasks with status 'completed' or 'under_review'.
+   * Ordered by completion time (oldest first for FIFO processing).
+   *
+   * @returns Tasks needing QC review with assignee and existing reviews
+   */
   async listPending(): Promise<Task[]> {
     const { data, error } = await supabase
       .from('tasks')
@@ -751,6 +1117,13 @@ export const qcApi = {
     return data ?? [];
   },
 
+  /**
+   * Creates a new QC review record.
+   * Automatically updates task status based on review result.
+   *
+   * @param review - Review data (task_id, passed, feedback, etc.)
+   * @returns Created review, or null on error
+   */
   async create(review: Partial<QCReview>): Promise<QCReview | null> {
     const { data, error } = await supabase
       .from('qc_reviews')
@@ -772,6 +1145,21 @@ export const qcApi = {
     return data;
   },
 
+  /**
+   * Submits a human QC review for a task.
+   * Calculates pass number and weight automatically.
+   * Updates task status to approved/rejected based on result.
+   *
+   * Shapley value fields (v0, d_k) are simplified here;
+   * actual payout calculation uses edge function.
+   *
+   * @param taskId - Task UUID
+   * @param reviewerId - Reviewer user's UUID
+   * @param passed - Whether the submission passed QC
+   * @param feedback - Review comments/feedback
+   * @param reviewType - 'peer' (weight 1.0) or 'independent' (weight 2.0)
+   * @returns Created review, or null on error
+   */
   async submitReview(
     taskId: string,
     reviewerId: string,
@@ -800,8 +1188,48 @@ export const qcApi = {
   }
 };
 
+// ============================================================================
 // Contracts API
+// ============================================================================
+
+/**
+ * Contract management API for e-signature workflows.
+ *
+ * Quick Contract Flow:
+ * 1. Generate contract from template (edge function)
+ * 2. Party A (employer) signs
+ * 3. Party B (contractor) reviews and signs
+ * 4. Contract becomes active on dual signature
+ *
+ * PDF Management:
+ * - PDFs stored in Supabase Storage 'contracts' bucket
+ * - Path format: org_id/contract_id/filename (matches RLS policy)
+ *
+ * External Contractor Support:
+ * - Token-based access for unauthenticated contractors
+ * - Sign contracts via submission token
+ *
+ * @example
+ * ```typescript
+ * // Create a new contract
+ * const contract = await contractsApi.create(
+ *   'contractor_agreement',
+ *   employerId,
+ *   { rate: 50, duration: '3 months' },
+ *   { taskId, partyBEmail: 'contractor@example.com' }
+ * );
+ *
+ * // Sign as party A
+ * await contractsApi.sign(contract.id, 'a');
+ * ```
+ */
 export const contractsApi = {
+  /**
+   * Fetches a contract by ID with all relations.
+   * Includes party A, party B, task, and project details.
+   * @param id - Contract UUID
+   * @returns Contract with relations, or null if not found
+   */
   async getById(id: string): Promise<Contract | null> {
     const { data, error } = await supabase
       .from('contracts')
@@ -822,6 +1250,12 @@ export const contractsApi = {
     return data;
   },
 
+  /**
+   * Lists contracts with optional filtering.
+   * Includes party names, task, and project info.
+   * @param filters - Optional query filters
+   * @returns Array of contracts with relations
+   */
   async list(filters?: QueryFilters): Promise<Contract[]> {
     let query = supabase
       .from('contracts')
@@ -843,6 +1277,16 @@ export const contractsApi = {
     return data ?? [];
   },
 
+  /**
+   * Creates a new contract from a template via edge function.
+   * Generates PDF and stores it in Supabase Storage.
+   *
+   * @param templateType - Contract template identifier
+   * @param partyAId - Party A (employer) user UUID
+   * @param terms - Contract terms object
+   * @param options - Additional options (taskId, projectId, partyBId, partyBEmail)
+   * @returns Created contract, or null on error
+   */
   async create(
     templateType: string,
     partyAId: string,
@@ -866,6 +1310,14 @@ export const contractsApi = {
     return data?.contract ?? null;
   },
 
+  /**
+   * Signs a contract as party A or party B.
+   * Automatically activates contract when both parties have signed.
+   *
+   * @param contractId - Contract UUID
+   * @param partyType - 'a' for employer, 'b' for contractor
+   * @returns Updated contract, or null on error
+   */
   async sign(contractId: string, partyType: 'a' | 'b'): Promise<Contract | null> {
     const field = partyType === 'a' ? 'party_a_signed_at' : 'party_b_signed_at';
 
@@ -1011,8 +1463,35 @@ export const contractsApi = {
   }
 };
 
+// ============================================================================
 // Payouts API
+// ============================================================================
+
+/**
+ * Payout tracking API for compensation records.
+ *
+ * Payout Types:
+ * - task_completion: Employee task payouts
+ * - qc_review: QC reviewer Shapley value payouts
+ * - pm_bonus: PM project completion bonuses
+ * - sales_commission: Sales rep commissions
+ *
+ * Status Flow:
+ * pending → paid (or cancelled)
+ *
+ * @example
+ * ```typescript
+ * // Get user's payout summary for the month
+ * const summary = await payoutsApi.getSummary(userId, 'month');
+ * console.log(`Total paid: $${summary.total}`);
+ * ```
+ */
 export const payoutsApi = {
+  /**
+   * Fetches a payout by ID with relations.
+   * @param id - Payout UUID
+   * @returns Payout with user, task, and project details
+   */
   async getById(id: string): Promise<Payout | null> {
     const { data, error } = await supabase
       .from('payouts')
@@ -1032,6 +1511,14 @@ export const payoutsApi = {
     return data;
   },
 
+  /**
+   * Lists payouts for a specific user.
+   * Ordered by created_at descending by default.
+   *
+   * @param userId - User UUID
+   * @param filters - Optional additional filters
+   * @returns Array of payouts with task info
+   */
   async listByUser(userId: string, filters?: QueryFilters): Promise<Payout[]> {
     let query = supabase
       .from('payouts')
@@ -1051,6 +1538,14 @@ export const payoutsApi = {
     return data ?? [];
   },
 
+  /**
+   * Gets aggregated payout summary for a user.
+   * Calculates totals by status and payout type.
+   *
+   * @param userId - User UUID
+   * @param period - Optional time period filter ('week', 'month', 'year')
+   * @returns Summary with total paid, pending, and breakdown by type
+   */
   async getSummary(userId: string, period?: 'week' | 'month' | 'year'): Promise<{
     total: number;
     pending: number;
@@ -1101,8 +1596,41 @@ export const payoutsApi = {
   }
 };
 
-// Organization API
+// ============================================================================
+// Organizations API
+// ============================================================================
+
+/**
+ * Organization management API for settings and configuration.
+ *
+ * Organization Settings:
+ * - Payout parameters: default_r, r_bounds, qc_beta, qc_gamma, pm_x
+ * - Feature flags: Enable/disable platform features
+ * - Branding: Organization name and customization
+ *
+ * Feature Flag Presets:
+ * - all_features: Everything enabled (17/17)
+ * - standard: Recommended default (15/17)
+ * - minimal: Basic task management (7/17)
+ * - none: Start from scratch (0/17)
+ *
+ * @example
+ * ```typescript
+ * // Get current organization
+ * const org = await organizationsApi.getCurrent();
+ *
+ * // Enable a feature
+ * await organizationsApi.updateFeatureFlags(org.id, { analytics: true });
+ *
+ * // Apply a preset
+ * await organizationsApi.applyFeatureFlagPreset(org.id, 'standard');
+ * ```
+ */
 export const organizationsApi = {
+  /**
+   * Gets the current user's active organization.
+   * @returns Organization, or null if not authenticated/no org
+   */
   async getCurrent(): Promise<Organization | null> {
     const user = await usersApi.getCurrent();
     if (!user?.org_id) return null;
@@ -1120,6 +1648,14 @@ export const organizationsApi = {
     return data;
   },
 
+  /**
+   * Updates organization-level settings.
+   * Includes payout parameters, branding, etc.
+   *
+   * @param orgId - Organization UUID
+   * @param settings - Partial organization with fields to update
+   * @returns Updated organization, or null on error
+   */
   async updateSettings(orgId: string, settings: Partial<Organization>): Promise<Organization | null> {
     const { data, error } = await supabase
       .from('organizations')
@@ -1188,7 +1724,38 @@ export const organizationsApi = {
 // Guest Projects API (for anonymous users trying Orbit)
 // ============================================================================
 
-// Generate or retrieve a session ID for guest users
+/**
+ * Guest project API for the "Try Orbit" demo experience.
+ *
+ * Allows unauthenticated users to:
+ * - Create a sample project
+ * - Add/edit/remove tasks
+ * - Experience the UI without signing up
+ *
+ * Session Management:
+ * - Uses localStorage session ID for persistence
+ * - Projects stored in guest_projects table
+ * - Can be imported to real org after signup
+ *
+ * @example
+ * ```typescript
+ * // Add a task to guest project
+ * await guestProjectsApi.addTask({
+ *   title: 'My first task',
+ *   description: 'Test the demo',
+ *   status: 'open'
+ * });
+ *
+ * // After signup, import to real organization
+ * await guestProjectsApi.importToOrganization(orgId);
+ * ```
+ */
+
+/**
+ * Generates or retrieves a persistent session ID for guest users.
+ * Stored in localStorage for cross-page persistence.
+ * @returns Session UUID, or empty string if not in browser
+ */
 function getGuestSessionId(): string {
   if (typeof window === 'undefined') return '';
 

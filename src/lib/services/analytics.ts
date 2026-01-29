@@ -1,8 +1,42 @@
+/**
+ * @fileoverview Analytics Service
+ *
+ * This module provides analytics and metrics calculations for organizations
+ * and individual users. Supports time-based filtering with multiple periods.
+ *
+ * @module services/analytics
+ *
+ * Metrics Types:
+ * - Task Metrics: Completion rates, status distribution, avg completion time
+ * - Payout Metrics: Total paid, pending, breakdown by type
+ * - User Metrics: Active users, top performers, avg tasks/earnings
+ * - Trends: Time-series data for charts
+ *
+ * Periods: week, month, quarter, year
+ *
+ * @example
+ * ```typescript
+ * import { analyticsApi } from '$lib/services/analytics';
+ *
+ * // Get full organization analytics
+ * const analytics = await analyticsApi.getFullAnalytics(orgId, 'month');
+ *
+ * // Get user-specific analytics
+ * const userStats = await analyticsApi.getUserAnalytics(userId, 'week');
+ * ```
+ */
+
 import { supabase } from './supabase';
 import type { AnalyticsData, TaskMetrics, PayoutMetrics, UserMetrics, TrendData, TaskStatus, User } from '$lib/types';
 
+/** Time period options for analytics queries */
 type Period = 'week' | 'month' | 'quarter' | 'year';
 
+/**
+ * Calculates the start date for a given period.
+ * @param period - Time period to calculate from
+ * @returns Date object representing the start of the period
+ */
 function getPeriodStartDate(period: Period): Date {
   const now = new Date();
   switch (period) {
@@ -17,7 +51,21 @@ function getPeriodStartDate(period: Period): Date {
   }
 }
 
+/**
+ * Analytics API for organization and user metrics.
+ *
+ * All methods support period-based filtering and return aggregated metrics.
+ * Data is fetched from tasks, payouts, and users tables with RLS enforcement.
+ */
 export const analyticsApi = {
+  /**
+   * Calculates task metrics for an organization.
+   * Includes completion rates, status breakdown, and average completion time.
+   *
+   * @param orgId - Organization UUID
+   * @param period - Time period to analyze
+   * @returns Task metrics with counts and rates
+   */
   async getTaskMetrics(orgId: string, period: Period): Promise<TaskMetrics> {
     const startDate = getPeriodStartDate(period);
 
@@ -72,6 +120,14 @@ export const analyticsApi = {
     };
   },
 
+  /**
+   * Calculates payout metrics for an organization.
+   * Includes total paid, pending amounts, and breakdown by payout type.
+   *
+   * @param orgId - Organization UUID
+   * @param period - Time period to analyze
+   * @returns Payout metrics with totals and breakdowns
+   */
   async getPayoutMetrics(orgId: string, period: Period): Promise<PayoutMetrics> {
     const startDate = getPeriodStartDate(period);
 
@@ -116,6 +172,14 @@ export const analyticsApi = {
     };
   },
 
+  /**
+   * Calculates user metrics for an organization.
+   * Identifies active users, top performers, and averages.
+   *
+   * @param orgId - Organization UUID
+   * @param period - Time period to analyze
+   * @returns User metrics with top performers and averages
+   */
   async getUserMetrics(orgId: string, period: Period): Promise<UserMetrics> {
     const startDate = getPeriodStartDate(period);
 
@@ -167,6 +231,14 @@ export const analyticsApi = {
     };
   },
 
+  /**
+   * Generates time-series trend data for charts.
+   * Returns data points at intervals based on period (daily, weekly, bi-weekly, monthly).
+   *
+   * @param orgId - Organization UUID
+   * @param period - Time period determining interval size
+   * @returns Array of trend data points with tasks and payouts
+   */
   async getTrends(orgId: string, period: Period): Promise<TrendData[]> {
     const startDate = getPeriodStartDate(period);
     const trends: TrendData[] = [];
@@ -242,6 +314,14 @@ export const analyticsApi = {
     return trends;
   },
 
+  /**
+   * Fetches all analytics data for an organization in parallel.
+   * Combines task, payout, user metrics and trends into single response.
+   *
+   * @param orgId - Organization UUID
+   * @param period - Time period to analyze
+   * @returns Complete analytics data object
+   */
   async getFullAnalytics(orgId: string, period: Period): Promise<AnalyticsData> {
     const [taskMetrics, payoutMetrics, userMetrics, trends] = await Promise.all([
       this.getTaskMetrics(orgId, period),
@@ -259,7 +339,14 @@ export const analyticsApi = {
     };
   },
 
-  // User-specific analytics
+  /**
+   * Calculates analytics for a specific user.
+   * Includes personal task completion, earnings, and performance metrics.
+   *
+   * @param userId - User UUID
+   * @param period - Time period to analyze
+   * @returns User's personal analytics data
+   */
   async getUserAnalytics(userId: string, period: Period) {
     const startDate = getPeriodStartDate(period);
 

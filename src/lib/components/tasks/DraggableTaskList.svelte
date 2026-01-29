@@ -1,12 +1,43 @@
+<!--
+  @component DraggableTaskList
+
+  Renders a list of task cards with drag-and-drop reordering support.
+  Used in Kanban board columns for task organization.
+
+  @prop {Task[]} tasks - Array of tasks to display
+  @prop {TaskStatus} status - Current status column
+  @prop {boolean} [showAcceptButton=false] - Show accept button on cards
+  @prop {boolean} [canReorder=true] - Enable drag-and-drop reordering
+
+  @event click - Fired when a task card is clicked
+  @event accept - Fired when accept button is clicked
+  @event reorder - Fired when tasks are reordered, returns taskIds and status
+  @event move - Fired when task is moved to new status
+
+  @example
+  ```svelte
+  <DraggableTaskList
+    tasks={$tasksByStatus.open}
+    status="open"
+    showAcceptButton
+    on:click={(e) => openTask(e.detail)}
+    on:reorder={(e) => saveTaskOrder(e.detail)}
+  />
+  ```
+-->
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import { flip } from 'svelte/animate';
   import { TaskCard } from '$lib/components/tasks';
   import type { Task, TaskStatus } from '$lib/types';
 
+  /** Array of tasks to render */
   export let tasks: Task[] = [];
+  /** Status column for reorder events */
   export let status: TaskStatus;
+  /** Show accept button on task cards */
   export let showAcceptButton = false;
+  /** Enable drag-and-drop reordering */
   export let canReorder = true;
 
   const dispatch = createEventDispatcher<{

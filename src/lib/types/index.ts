@@ -1,34 +1,94 @@
-// Core database types matching Supabase schema
+/**
+ * @fileoverview TypeScript Type Definitions for Orbit Platform
+ *
+ * This module contains all TypeScript interfaces and type definitions
+ * that mirror the Supabase PostgreSQL database schema.
+ *
+ * @module types
+ *
+ * Type Categories:
+ * - Core Enums: UserRole, TaskStatus, ProjectStatus, etc.
+ * - Artifact Types: File, GitHub PR, URL attachments
+ * - Feature Flags: Organization feature toggles
+ * - Entity Types: Organization, User, Project, Task, etc.
+ * - Access Control: Permissions, team membership
+ * - Analytics: Metrics and trend data structures
+ * - Guest Types: Anonymous user demo data
+ *
+ * Naming Conventions:
+ * - Interfaces match database table names (singular)
+ * - Enums use PascalCase with string literal unions
+ * - Joined fields are optional and marked with comments
+ *
+ * @example
+ * ```typescript
+ * import type { User, Task, TaskStatus } from '$lib/types';
+ *
+ * function filterByStatus(tasks: Task[], status: TaskStatus): Task[] {
+ *   return tasks.filter(t => t.status === status);
+ * }
+ * ```
+ */
 
+// ============================================================================
+// Core Enums - Database ENUM types
+// ============================================================================
+
+/**
+ * User roles defining access levels and capabilities.
+ * - admin: Full organization access
+ * - sales: Project creation, commission tracking
+ * - pm: Project management, task creation
+ * - qc: Quality control reviews
+ * - employee: Task acceptance and completion
+ * - contractor: External worker, same as employee
+ */
 export type UserRole = 'admin' | 'sales' | 'pm' | 'qc' | 'employee' | 'contractor';
 
 // ============================================================================
-// Artifact Types for Task Submissions
+// Artifact Types - Task Submission Attachments
 // ============================================================================
 
+/** Types of artifacts that can be attached to task submissions */
 export type ArtifactType = 'file' | 'github_pr' | 'url';
 
+/** Base artifact interface with common fields */
 export interface BaseArtifact {
+  /** Client-generated UUID */
   id: string;
+  /** Discriminator for artifact type */
   type: ArtifactType;
+  /** ISO timestamp when artifact was added */
   added_at: string;
+  /** Optional notes about the artifact */
   notes?: string;
 }
 
+/** File upload artifact stored in Supabase Storage */
 export interface FileArtifact extends BaseArtifact {
   type: 'file';
+  /** Storage bucket path */
   file_path: string;
+  /** Original filename */
   file_name: string;
+  /** File size in bytes */
   file_size: number;
+  /** MIME type (e.g., 'application/pdf') */
   mime_type: string;
 }
 
+/** GitHub Pull Request reference */
 export interface GitHubPRArtifact extends BaseArtifact {
   type: 'github_pr';
+  /** Full PR URL */
   url: string;
+  /** Repository owner */
   owner: string;
+  /** Repository name */
   repo: string;
+  /** PR number */
   pr_number: number;
+  /** Optional metadata fetched from GitHub API */
   metadata?: {
     title: string;
     state: 'open' | 'closed' | 'merged';
@@ -36,24 +96,55 @@ export interface GitHubPRArtifact extends BaseArtifact {
   };
 }
 
+/** External URL reference */
 export interface URLArtifact extends BaseArtifact {
   type: 'url';
+  /** External URL */
   url: string;
+  /** Optional display title */
   title?: string;
 }
 
+/** Union type of all artifact types */
 export type Artifact = FileArtifact | GitHubPRArtifact | URLArtifact;
 
+/** Structure for task submission data stored as JSONB */
 export interface TaskSubmissionData {
+  /** Submission notes/comments */
   notes?: string;
+  /** When submission was finalized */
   submitted_at?: string;
+  /** Array of attached artifacts */
   artifacts: Artifact[];
+  /** When draft was last saved */
   draft_saved_at?: string;
+  /** Whether this is a draft or final submission */
   is_draft: boolean;
 }
+/**
+ * Task lifecycle status.
+ * Flow: open → assigned → in_progress → completed → under_review → approved/rejected → paid
+ */
 export type TaskStatus = 'open' | 'assigned' | 'in_progress' | 'completed' | 'under_review' | 'approved' | 'rejected' | 'paid';
+
+/**
+ * Project lifecycle status.
+ * Flow: draft → pending_pm → active → completed/cancelled
+ */
 export type ProjectStatus = 'draft' | 'pending_pm' | 'active' | 'completed' | 'cancelled';
+
+/**
+ * QC review types with different weights.
+ * - ai: Automated ML review (confidence-based)
+ * - peer: Review by same-level worker (weight: 1.0)
+ * - independent: Review by QC specialist (weight: 2.0)
+ */
 export type QCReviewType = 'ai' | 'peer' | 'independent';
+
+/**
+ * Contract signing status.
+ * Flow: draft → pending_signature → active → completed/disputed
+ */
 export type ContractStatus = 'draft' | 'pending_signature' | 'active' | 'completed' | 'disputed';
 
 // ============================================================================
@@ -107,43 +198,69 @@ export interface OrganizationSettings {
 }
 
 // ============================================================================
-// Organization
+// Organization - Multi-tenant Root Entity
 // ============================================================================
 
+/**
+ * Organization entity - root of multi-tenant data isolation.
+ * Contains payout configuration and feature flag settings.
+ */
 export interface Organization {
   id: string;
   name: string;
+  /** User ID of organization owner (can transfer ownership) */
   owner_id: string | null;
+  /** JSON settings including feature_flags */
   settings: OrganizationSettings;
+  /** Default salary/task ratio for new users (0.5-0.9) */
   default_r: number;
+  /** Allowed range for user r values */
   r_bounds: { min: number; max: number };
+  /** QC Shapley beta coefficient (confidence scaling) */
   qc_beta: number;
+  /** QC Shapley gamma coefficient (geometric decay) */
   qc_gamma: number;
+  /** PM profit share rate */
   pm_x: number;
+  /** PM overdraft penalty multiplier */
   pm_overdraft_penalty: number;
+  /** Whether external contractor assignments are allowed */
   allow_external_assignment: boolean;
   created_at: string;
   updated_at: string;
 }
 
+/**
+ * User entity - authenticated platform user.
+ * Belongs to one active organization at a time.
+ */
 export interface User {
   id: string;
+  /** Supabase Auth UUID (from auth.users) */
   auth_id: string;
+  /** Current active organization */
   org_id: string;
   email: string;
   full_name: string | null;
+  /** Role within current organization */
   role: UserRole;
+  /** Monthly base salary (for hybrid compensation) */
   base_salary: number | null;
+  /** Personal salary/task ratio (Salary Mixer) */
   r: number | null;
+  /** Gamification level (affects task access) */
   level: number;
+  /** Training completion level */
   training_level: number;
+  /** Extensible metadata for gamification stats */
   metadata: UserMetadata;
   created_at: string;
   updated_at: string;
-  // Joined fields
+  // Joined fields (populated by API with select joins)
   organization?: Organization;
 }
 
+/** User metadata stored as JSONB for extensibility */
 export interface UserMetadata {
   current_streak?: number;
   total_tasks_completed?: number;
@@ -192,22 +309,34 @@ export interface UserOrgMembership {
   user?: User;
 }
 
+/**
+ * Project entity - container for related tasks.
+ * Created by sales, managed by PM.
+ */
 export interface Project {
   id: string;
   org_id: string;
   name: string;
   description: string | null;
   status: ProjectStatus;
+  /** Total budget for the project */
   total_value: number;
+  /** Optional story points budget */
   story_points_budget: number | null;
+  /** Amount spent on completed tasks */
   spent: number;
+  /** Sales rep who created the project */
   sales_id: string | null;
+  /** Project manager assigned */
   pm_id: string | null;
   deadline: string | null;
+  /** Computed days until deadline */
   days_left: number;
+  /** Calculated PM bonus (budget - spent) */
   pm_bonus: number;
   created_at: string;
   updated_at: string;
+  /** When PM picked up the project */
   picked_up_at: string | null;
   // Joined fields
   sales?: User;
@@ -215,6 +344,10 @@ export interface Project {
   tasks?: Task[];
 }
 
+/**
+ * Task entity - unit of work within a project.
+ * Core entity for the gamified task workflow.
+ */
 export interface Task {
   id: string;
   org_id: string;
@@ -222,26 +355,37 @@ export interface Task {
   title: string;
   description: string | null;
   status: TaskStatus;
+  /** T-shirt sizing / story points */
   story_points: number | null;
+  /** Monetary value of task completion */
   dollar_value: number;
+  /** User assigned to the task */
   assignee_id: string | null;
   assigned_at: string | null;
   deadline: string | null;
   completed_at: string | null;
+  /** Time-based reward modifier (default: 1.0) */
   urgency_multiplier: number;
+  /** Minimum user level to accept task (default: 1) */
   required_level: number;
+  /** Submission data as JSONB (TaskSubmissionData) */
   submission_data: Record<string, unknown> | null;
+  /** Legacy: array of file paths */
   submission_files: string[] | null;
   created_at: string;
   updated_at: string;
-  // Tags and ordering
+  /** Categorization tags */
   tags?: string[];
+  /** Order within status column */
   sort_order?: number;
   // External work fields
+  /** Whether assigned to external contractor */
   is_external?: boolean;
   external_contractor_name?: string | null;
   external_contractor_email?: string | null;
+  /** Token for guest submission access */
   external_submission_token?: string | null;
+  /** Associated contract for external work */
   contract_id?: string | null;
   // Joined fields
   project?: Project;
@@ -266,17 +410,28 @@ export interface ExternalAssignmentResult {
   task_id?: string;
 }
 
+/**
+ * QC Review entity - quality control assessment of task submission.
+ * Contains Shapley value fields for fair payout calculation.
+ */
 export interface QCReview {
   id: string;
   task_id: string;
   review_type: QCReviewType;
+  /** Null for AI reviews */
   reviewer_id: string | null;
+  /** Review outcome */
   passed: boolean | null;
+  /** AI confidence score (p0) for Shapley calc */
   confidence: number | null;
   feedback: string | null;
+  /** Worker baseline value (v0) */
   v0: number | null;
+  /** Marginal value contribution (d_k) */
   d_k: number | null;
+  /** Which review pass (1, 2, 3...) */
   pass_number: number;
+  /** Review weight: peer=1.0, independent=2.0 */
   weight: number;
   created_at: string;
   // Joined fields

@@ -1,3 +1,32 @@
+<!--
+  @component TaskCreateModal
+
+  Full-featured modal form for creating new tasks within a project.
+  Includes all gamification fields: story points, urgency bonuses,
+  required level, tags, and deadline.
+
+  @prop {boolean} [show=false] - Controls modal visibility
+  @prop {string|null} [projectId=null] - Pre-select project (optional)
+
+  @event close - Fired when modal is closed
+  @event created - Fired when task is created, returns Task
+
+  Features:
+  - Story point presets (XS, S, M, L, XL, XXL)
+  - Urgency bonus presets (+10%, +20%, +50%)
+  - Level requirement slider (1-5)
+  - Tag input with suggestions
+  - Live preview card
+
+  @example
+  ```svelte
+  <TaskCreateModal
+    bind:show={showCreateModal}
+    projectId={currentProject?.id}
+    on:created={(e) => handleTaskCreated(e.detail)}
+  />
+  ```
+-->
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import { X, Plus, Calendar, DollarSign, Sparkles, AlertCircle, Tag } from 'lucide-svelte';
@@ -7,7 +36,9 @@
   import TagInput from '$lib/components/common/TagInput.svelte';
   import type { Task } from '$lib/types';
 
+  /** Controls modal visibility */
   export let show = false;
+  /** Pre-select project ID */
   export let projectId: string | null = null;
 
   const dispatch = createEventDispatcher<{ close: void; created: Task }>();

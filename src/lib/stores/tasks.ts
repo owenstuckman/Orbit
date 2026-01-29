@@ -1,12 +1,55 @@
+/**
+ * @fileoverview Task State Management
+ *
+ * This module provides Svelte stores for managing task state,
+ * including filtering, real-time updates, and derived views.
+ *
+ * @module stores/tasks
+ *
+ * Exported Stores:
+ * - tasks - Main task list with CRUD operations
+ * - tasksByStatus - Tasks grouped by status (for Kanban)
+ * - tasksPendingReview - Tasks awaiting QC review
+ * - taskCounts - Count of tasks per status
+ * - currentTask - Single task detail view
+ *
+ * Features:
+ * - Real-time subscription support via Supabase
+ * - Flexible filtering by status, project, assignee
+ * - Optimistic updates on task actions
+ *
+ * @example
+ * ```svelte
+ * <script>
+ *   import { tasks, tasksByStatus } from '$lib/stores/tasks';
+ *
+ *   onMount(() => {
+ *     tasks.load({ projectId: currentProjectId });
+ *     tasks.subscribeToProject(currentProjectId);
+ *   });
+ *
+ *   onDestroy(() => tasks.unsubscribe());
+ * </script>
+ *
+ * {#each $tasksByStatus.open as task}
+ *   <TaskCard {task} />
+ * {/each}
+ * ```
+ */
+
 import { writable, derived, get } from 'svelte/store';
 import type { Task, TaskStatus } from '$lib/types';
 import { tasksApi } from '$lib/services/api';
 import { subscribeToTable } from '$lib/services/supabase';
 
 // ============================================================================
-// Tasks Store
+// Tasks Store - Main Task List
 // ============================================================================
 
+/**
+ * Tasks store state interface.
+ * Tracks items, loading state, errors, and active filters.
+ */
 interface TasksState {
   items: Task[];
   loading: boolean;
@@ -14,13 +57,26 @@ interface TasksState {
   filter: TaskFilter;
 }
 
+/**
+ * Filter configuration for task queries.
+ */
 interface TaskFilter {
+  /** Filter by task statuses */
   status?: TaskStatus[];
+  /** Filter by project ID */
   projectId?: string;
+  /** Filter by assigned user ID */
   assigneeId?: string;
+  /** Search text (not currently implemented) */
   search?: string;
 }
 
+/**
+ * Creates the main tasks store with filtering and real-time support.
+ * Provides methods for loading, filtering, and manipulating tasks.
+ *
+ * @returns Tasks store with load, subscribe, accept, submit, create, and update methods
+ */
 function createTasksStore() {
   const { subscribe, set, update } = writable<TasksState>({
     items: [],
@@ -29,11 +85,17 @@ function createTasksStore() {
     filter: {}
   });
 
+  /** Real-time subscription cleanup function */
   let unsubscribe: (() => void) | null = null;
 
   return {
     subscribe,
 
+    /**
+     * Loads tasks with optional filtering.
+     * Replaces current items with filtered results.
+     * @param filter - Optional filter configuration
+     */
     async load(filter?: TaskFilter) {
       update(state => ({ ...state, loading: true, error: null, filter: filter || {} }));
 
@@ -65,14 +127,21 @@ function createTasksStore() {
       }
     },
 
+    /** Loads tasks for a specific project */
     async loadByProject(projectId: string) {
       await this.load({ projectId });
     },
 
+    /** Loads tasks assigned to a specific user */
     async loadByAssignee(userId: string) {
       await this.load({ assigneeId: userId });
     },
 
+    /**
+     * Loads open tasks available for the given user level.
+     * Used for the task board showing tasks a user can accept.
+     * @param userLevel - User's current level
+     */
     async loadAvailable(userLevel: number) {
       update(state => ({ ...state, loading: true, error: null }));
       
@@ -88,6 +157,13 @@ function createTasksStore() {
       }
     },
 
+    /**
+     * Subscribes to real-time updates for a project's tasks.
+     * Automatically handles INSERT, UPDATE, and DELETE events.
+     * Only one subscription active at a time - previous is cleaned up.
+     *
+     * @param projectId - Project to subscribe to
+     */
     subscribeToProject(projectId: string) {
       // Clean up existing subscription
       if (unsubscribe) {
@@ -123,6 +199,7 @@ function createTasksStore() {
       unsubscribe = unsub;
     },
 
+    /** Cleans up real-time subscription */
     unsubscribe() {
       if (unsubscribe) {
         unsubscribe();
@@ -130,6 +207,12 @@ function createTasksStore() {
       }
     },
 
+    /**
+     * Accepts a task for a user with optimistic update.
+     * @param taskId - Task to accept
+     * @param userId - User accepting the task
+     * @returns Updated task or null
+     */
     async accept(taskId: string, userId: string) {
       const task = await tasksApi.accept(taskId, userId);
       if (task) {
@@ -141,6 +224,15 @@ function createTasksStore() {
       return task;
     },
 
+    /**
+     * Submits completed work for a task.
+     * Triggers AI QC review automatically.
+     *
+     * @param taskId - Task to submit
+     * @param data - Submission data object
+     * @param files - Optional array of file URLs
+     * @returns Updated task or null
+     */
     async submit(taskId: string, data: Record<string, unknown>, files?: string[]) {
       const task = await tasksApi.submit(taskId, data, files);
       if (task) {
@@ -152,6 +244,11 @@ function createTasksStore() {
       return task;
     },
 
+    /**
+     * Creates a new task and adds to store.
+     * @param task - Task data to create
+     * @returns Created task or null
+     */
     async create(task: Partial<Task>) {
       const created = await tasksApi.create(task);
       if (created) {
@@ -163,6 +260,12 @@ function createTasksStore() {
       return created;
     },
 
+    /**
+     * Updates a task and reflects change in store.
+     * @param taskId - Task to update
+     * @param updates - Fields to update
+     * @returns Updated task or null
+     */
     async updateTask(taskId: string, updates: Partial<Task>) {
       const updated = await tasksApi.update(taskId, updates);
       if (updated) {
@@ -174,6 +277,7 @@ function createTasksStore() {
       return updated;
     },
 
+    /** Clears store state and unsubscribes from real-time */
     clear() {
       this.unsubscribe();
       set({ items: [], loading: false, error: null, filter: {} });
@@ -184,10 +288,13 @@ function createTasksStore() {
 export const tasks = createTasksStore();
 
 // ============================================================================
-// Derived Stores
+// Derived Stores - Computed Task Views
 // ============================================================================
 
-// Tasks grouped by status (for Kanban board)
+/**
+ * Tasks grouped by status for Kanban board display.
+ * Returns a record with all possible statuses as keys.
+ */
 export const tasksByStatus = derived(tasks, ($tasks) => {
   const grouped: Record<TaskStatus, Task[]> = {
     open: [],
@@ -209,12 +316,12 @@ export const tasksByStatus = derived(tasks, ($tasks) => {
   return grouped;
 });
 
-// Tasks pending QC review
-export const tasksPendingReview = derived(tasks, ($tasks) => 
+/** Tasks pending QC review (completed or under_review status) */
+export const tasksPendingReview = derived(tasks, ($tasks) =>
   $tasks.items.filter(t => t.status === 'completed' || t.status === 'under_review')
 );
 
-// Task counts by status
+/** Count of tasks per status for badges/summaries */
 export const taskCounts = derived(tasksByStatus, ($grouped) => {
   const counts: Record<TaskStatus, number> = {} as Record<TaskStatus, number>;
   for (const [status, items] of Object.entries($grouped)) {
@@ -224,15 +331,24 @@ export const taskCounts = derived(tasksByStatus, ($grouped) => {
 });
 
 // ============================================================================
-// Current Task Store (for detail view)
+// Current Task Store - Single Task Detail View
 // ============================================================================
 
+/**
+ * State for the current/selected task detail view.
+ */
 interface CurrentTaskState {
   task: Task | null;
   loading: boolean;
   error: string | null;
 }
 
+/**
+ * Creates a store for managing single task detail view.
+ * Used when viewing/editing a specific task.
+ *
+ * @returns CurrentTask store with load, update, and clear methods
+ */
 function createCurrentTaskStore() {
   const { subscribe, set, update } = writable<CurrentTaskState>({
     task: null,

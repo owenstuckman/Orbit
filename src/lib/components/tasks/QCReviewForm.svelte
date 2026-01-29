@@ -1,3 +1,30 @@
+<!--
+  @component QCReviewForm
+
+  Quality control review interface for approving or rejecting task submissions.
+  Displays submission artifacts, previous reviews, and calculates Shapley-based
+  payout preview.
+
+  @prop {Task} task - Task with submission data and QC reviews
+
+  @event reviewed - Fired when review is submitted, returns QCReview
+
+  Features:
+  - View submission notes and artifacts
+  - Download attached files
+  - View previous review history
+  - Select review type (peer vs independent)
+  - Approve/reject with feedback
+  - Live Shapley value payout preview
+
+  @example
+  ```svelte
+  <QCReviewForm
+    {task}
+    on:reviewed={(e) => handleReviewComplete(e.detail)}
+  />
+  ```
+-->
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import { CheckCircle, XCircle, AlertCircle, FileText, Download, MessageSquare } from 'lucide-svelte';
@@ -7,6 +34,7 @@
   import { ArtifactList } from '$lib/components/submissions';
   import type { Task, QCReview, TaskSubmissionData } from '$lib/types';
 
+  /** Task with submission and QC review data */
   export let task: Task;
 
   const dispatch = createEventDispatcher<{ reviewed: QCReview }>();
