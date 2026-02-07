@@ -16,6 +16,11 @@ Built with SvelteKit + Supabase, it supports multiple user roles (admin, sales, 
 - `ML_INTEGRATION.md` - ML model integration points and API schemas
 - `ML_MODEL_HOSTING.md` - Guide for deploying the QC ML model as an API
 - `SUPABASE_STORAGE.md` - Storage bucket conventions and usage patterns
+- `USER_REGISTRATION_FLOW.md` - Two-stage registration with email verification
+- `DATA_FLOWS.md` - Complex multi-step workflows (task→QC→payout, registration, contracts, gamification)
+- `COMPONENT_API.md` - All Svelte component props, events, and slots
+- `STORE_API.md` - All Svelte store methods, derived stores, and usage
+- `SERVICE_API.md` - All API service methods with signatures
 
 ## Development Commands
 
@@ -44,7 +49,7 @@ npm run format       # Prettier formatting
 - `src/lib/components/` - Reusable Svelte components organized by domain
 - `src/routes/auth/` - Authentication flows (login, register, password reset)
 - `src/routes/(app)/` - Authenticated app routes (dashboard, tasks, projects, qc, contracts, payouts, settings)
-- `supabase/functions/` - Edge functions for payout calculations
+- `supabase/functions/` - Edge functions (`qc-ai-review` for ML confidence scoring)
 
 ### Component Library (`src/lib/components/`)
 Task components in `tasks/`:
@@ -68,7 +73,7 @@ Each role has dedicated views and AI/calculation services:
 1. Components use stores from `$lib/stores/` for reactive state
 2. Stores call API functions from `$lib/services/api.ts`
 3. API layer uses Supabase client from `$lib/services/supabase.ts`
-4. Complex calculations (payouts) are handled by Supabase Edge Functions
+4. Payout calculations run client-side in `src/lib/utils/payout.ts`; ML confidence scoring uses the `qc-ai-review` edge function
 
 ### Database Schema (PostgreSQL via Supabase)
 Schema reference: `supabasedesign.sql`
@@ -246,4 +251,39 @@ Use types from `$lib/types` - they mirror the database schema and include joined
 ### Route Groups
 - `(app)/` routes require authentication (protected by layout)
 - `auth/` routes are public
+- External routes: `/contract/[token]` (signing), `/submit/[token]` (contractor submission)
 - Dashboards are role-aware - check `user.role` to render appropriate views
+
+## Role-Based Access Control
+
+| Capability | admin | sales | pm | qc | employee | contractor |
+|---|---|---|---|---|---|---|
+| View tasks | Yes | No | Yes | Yes | Yes | Yes |
+| Create tasks | Yes | No | Yes | No | No | No |
+| Assign tasks | Yes | No | Yes | No | No | No |
+| Accept tasks | No | No | No | No | Yes | Yes |
+| Review QC | Yes | No | No | Yes | No | No |
+| View payouts | all | self | team | self | self | self |
+| Create projects | Yes | Yes | No | No | No | No |
+| Manage projects | Yes | No | Yes | No | No | No |
+| View contracts | all | own | team | own | own | own |
+| Sign contracts | Yes | Yes | Yes | No | Yes | Yes |
+| Access settings | org | own | own | own | own | own |
+
+Capabilities are defined in `src/lib/stores/auth.ts` (`ROLE_CAPABILITIES` object) and enforced by:
+- Frontend: `capabilities` derived store checks
+- Backend: RLS policies on Supabase tables using `org_id` foreign keys
+- Service layer: `src/lib/services/access.ts` for fine-grained permission checks
+
+## Edge Functions
+
+### qc-ai-review
+- **Purpose**: Get ML confidence score (p0) for task submissions
+- **Trigger**: Called via `supabase.functions.invoke('qc-ai-review', { body: { task_id } })`
+- **Flow**: Fetch task → Call ML API → Create `qc_reviews` record (review_type='ai', weight=0)
+- **Fallback**: Returns default p0=0.8 if ML service is unreachable
+- **Secrets**: `ML_API_URL`, `ML_API_KEY`
+- **File**: `supabase/functions/qc-ai-review/index.ts`
+- **Docs**: `xtraDocs/ML_INTEGRATION.md`, `xtraDocs/ML_MODEL_HOSTING.md`
+
+Note: Payout calculations are NOT edge functions. They run client-side in `src/lib/utils/payout.ts`.

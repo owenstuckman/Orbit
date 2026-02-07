@@ -182,24 +182,19 @@
     try {
       // Auth is guaranteed to be initialized by the root layout
       const authState = get(auth);
-      console.log('[Layout] Auth state:', { initialized: authState.initialized, hasSession: !!authState.session });
 
       if (!authState.session) {
-        console.log('[Layout] No session, redirecting to login');
         clearRedirectCount();
         goto('/auth/login', { replaceState: true });
         return;
       }
 
       // Load user data
-      console.log('[Layout] Loading user data...');
       const loadedUser = await user.load();
-      console.log('[Layout] User loaded:', loadedUser?.id);
 
       if (!loadedUser) {
         // Check for redirect loop
         const redirectCount = incrementRedirectCount();
-        console.log('[Layout] Redirect count:', redirectCount);
 
         if (redirectCount >= MAX_REDIRECTS) {
           console.error('[Layout] Redirect loop detected! Stopping redirect and showing error.');
@@ -211,7 +206,6 @@
         }
 
         // User is authenticated but has no profile - redirect to complete registration
-        console.log('[Layout] No user profile, redirecting to complete registration');
         goto('/auth/complete-registration', { replaceState: true });
         return;
       }
@@ -220,9 +214,7 @@
       clearRedirectCount();
 
       // Load organization
-      console.log('[Layout] Loading organization...');
       const loadedOrg = await organization.load();
-      console.log('[Layout] Organization loaded:', loadedOrg?.id);
 
       if (!loadedOrg) {
         loadError = 'Organization not found';
@@ -232,11 +224,8 @@
       }
 
       // Load user organization memberships (for org-specific roles)
-      console.log('[Layout] Loading user organization memberships...');
       await userOrganizations.load();
-      console.log('[Layout] User organizations loaded');
 
-      console.log('[Layout] Initialization complete');
       loading = false;
 
     } catch (err) {

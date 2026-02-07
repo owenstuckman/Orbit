@@ -56,11 +56,9 @@
         return;
       }
 
-      console.log('[Register] Auth user created, confirmation email sent');
       success = true;
 
     } catch (err) {
-      console.error('[Register] Unexpected error:', err);
       error = err instanceof Error ? err.message : 'An error occurred';
     } finally {
       loading = false;

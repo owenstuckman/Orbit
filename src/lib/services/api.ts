@@ -185,11 +185,8 @@ export const usersApi = {
       return null;
     }
     if (!authUser) {
-      console.log('[usersApi.getCurrent] No auth user');
       return null;
     }
-
-    console.log('[usersApi.getCurrent] Auth user id:', authUser.id);
 
     // First get just the user record (without organization join to avoid RLS issues)
     const { data, error } = await supabase
@@ -204,7 +201,6 @@ export const usersApi = {
     }
 
     if (!data) {
-      console.log('[usersApi.getCurrent] No user profile found for auth_id:', authUser.id);
       return null;
     }
 
@@ -225,7 +221,6 @@ export const usersApi = {
       }
     }
 
-    console.log('[usersApi.getCurrent] User loaded:', data.id, 'org_id:', data.org_id);
     return { ...data, organization };
   },
 

@@ -27,13 +27,11 @@
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-      console.log('[CompleteReg] No authenticated user, redirecting to login');
       goto('/auth/login', { replaceState: true });
       return;
     }
 
     authUser = { id: user.id, email: user.email || '' };
-    console.log('[CompleteReg] Auth user found:', authUser.email);
 
     // First, check if a user profile exists at all (simple query without joins)
     const { data: existingProfile, error: profileError } = await supabase
@@ -43,12 +41,8 @@
       .maybeSingle();
 
     if (profileError) {
-      console.error('[CompleteReg] Error checking profile:', profileError);
-      console.error('[CompleteReg] Error code:', profileError.code, 'Details:', profileError.details, 'Hint:', profileError.hint);
-
       // If it's an RLS error, the user likely doesn't have a profile yet - continue to show form
       if (profileError.code === '42501' || profileError.message?.includes('permission denied') || profileError.code === 'PGRST301') {
-        console.log('[CompleteReg] RLS error - user likely has no profile, showing registration form');
         // Continue to show registration form
       } else {
         error = `Error checking your account: ${profileError.message || profileError.code}`;
@@ -58,17 +52,13 @@
     }
 
     if (existingProfile) {
-      console.log('[CompleteReg] User profile exists:', existingProfile.id);
-
       // User profile exists - try to load it fully
       const loadedUser = await userStore.load();
 
       if (loadedUser) {
-        console.log('[CompleteReg] User profile loaded successfully, loading org...');
         const loadedOrg = await orgStore.load();
 
         if (loadedOrg) {
-          console.log('[CompleteReg] User and org loaded, redirecting to dashboard');
           goto('/dashboard', { replaceState: true });
           return;
         }
@@ -76,17 +66,12 @@
 
       // User exists but something failed - check if org_id is the issue
       if (!existingProfile.org_id) {
-        console.log('[CompleteReg] User exists but has no org_id, showing form to join/create org');
         error = 'Your account exists but is not linked to an organization. Please join or create one.';
       } else {
-        // org_id exists but org load failed - might be invalid reference
-        console.log('[CompleteReg] User exists with org_id but org load failed, redirecting to dashboard to show error');
         goto('/dashboard', { replaceState: true });
         return;
       }
     }
-
-    console.log('[CompleteReg] No user profile, showing registration form');
 
     // Check if there's a pending guest project to import
     const importPending = localStorage.getItem('orbit_import_pending');
@@ -94,7 +79,6 @@
       const guestProject = await guestProjectsApi.getCurrent();
       if (guestProject && guestProject.tasks.length > 0) {
         hasGuestProject = true;
-        console.log('[CompleteReg] Guest project found with', guestProject.tasks.length, 'tasks');
       }
     }
 
@@ -154,21 +138,15 @@
         regError = result.error;
       }
 
-      console.log('[CompleteReg] Registration result:', regResult, regError);
-
       if (regError) {
         error = regError.message || 'Registration failed';
-        console.error('Registration error:', regError);
         return;
       }
 
       if (!regResult?.success) {
         error = regResult?.error || 'Failed to complete registration';
-        console.error('Registration failed:', regResult);
         return;
       }
-
-      console.log('[CompleteReg] Registration successful!');
       success = true;
 
       // Clear any redirect loop tracking
@@ -185,15 +163,11 @@
       // Import guest project if available
       if (hasGuestProject && regResult.org_id) {
         importingProject = true;
-        console.log('[CompleteReg] Importing guest project...');
 
         const importResult = await guestProjectsApi.importToOrganization(regResult.org_id);
 
         if (importResult.success) {
           guestProjectImported = true;
-          console.log('[CompleteReg] Guest project imported:', importResult.project_id);
-        } else {
-          console.error('[CompleteReg] Failed to import guest project:', importResult.error);
         }
 
         // Clear the import pending flag
@@ -205,7 +179,6 @@
       setTimeout(() => goto('/dashboard', { replaceState: true }), hasGuestProject ? 2500 : 1500);
 
     } catch (err) {
-      console.error('[CompleteReg] Unexpected error:', err);
       error = err instanceof Error ? err.message : 'An error occurred';
     } finally {
       loading = false;

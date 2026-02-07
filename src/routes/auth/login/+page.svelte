@@ -53,19 +53,13 @@
         .maybeSingle();
 
       if (!existingProfile) {
-        // No profile exists - go to complete registration
-        console.log('[Login] No user profile exists, redirecting to complete registration');
         goto('/auth/complete-registration', { replaceState: true });
         return;
       }
 
-      // Profile exists - try to load full user data
-      console.log('[Login] User profile exists, loading full data...');
       const loadedUser = await user.load();
 
       if (!loadedUser) {
-        // Profile exists but couldn't load - this is an error state
-        console.error('[Login] User profile exists but failed to load');
         error = 'Failed to load your profile. Please try again or contact support.';
         return;
       }
