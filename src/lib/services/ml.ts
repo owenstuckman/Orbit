@@ -6,12 +6,19 @@
  * - Task complexity analysis
  * - Quality assessments
  *
+ * All requests are routed through the Supabase `qc-ai-review` edge function,
+ * which reads the ML endpoint from the `ML_API_URL` secret. This avoids
+ * exposing ML credentials to the browser.
+ *
+ * Setup:
+ *   supabase secrets set ML_API_URL=https://your-ml-api.com
+ *   supabase secrets set ML_API_KEY=your-api-key
+ *   supabase functions deploy qc-ai-review
+ *
  * See xtraDocs/ML_INTEGRATION.md for full integration guide.
  */
 
-// Environment variables - these should be set in .env
-const ML_API_BASE = import.meta.env.VITE_ML_API_URL || 'http://localhost:8000';
-const ML_API_KEY = import.meta.env.VITE_ML_API_KEY || '';
+import { functions } from '$lib/services/supabase';
 
 // ============================================================================
 // Types
@@ -86,30 +93,30 @@ const DEFAULT_QUALITY_RESPONSE: MLQualityAssessmentResponse = {
 };
 
 // ============================================================================
-// API Client
+// Edge Function Client
 // ============================================================================
 
-async function mlFetch<T>(
-  endpoint: string,
-  options: RequestInit = {},
+/**
+ * Invoke the qc-ai-review edge function with the given action and payload.
+ * All ML requests are routed through this single edge function, which holds
+ * the ML_API_URL and ML_API_KEY secrets server-side.
+ */
+async function invokeML<T>(
+  action: string,
+  payload: Record<string, unknown>,
   fallback: T
 ): Promise<T> {
   try {
-    const response = await fetch(`${ML_API_BASE}${endpoint}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': ML_API_KEY ? `Bearer ${ML_API_KEY}` : '',
-        ...options.headers
-      }
+    const { data, error } = await functions.invoke<T>('qc-ai-review', {
+      body: { action, ...payload }
     });
 
-    if (!response.ok) {
-      console.warn(`[ML API] Request failed: ${response.status} ${response.statusText}`);
+    if (error || !data) {
+      console.warn(`[ML API] Edge function error (${action}):`, error);
       return fallback;
     }
 
-    return await response.json();
+    return data;
   } catch (error) {
     console.warn('[ML API] Service unavailable:', error);
     return fallback;
@@ -122,13 +129,6 @@ async function mlFetch<T>(
 
 export const mlApi = {
   /**
-   * Check if ML service is configured and available
-   */
-  isConfigured(): boolean {
-    return !!ML_API_BASE && ML_API_BASE !== 'http://localhost:8000';
-  },
-
-  /**
    * Get AI confidence score for a task submission
    *
    * Called when a task is submitted for review.
@@ -138,12 +138,9 @@ export const mlApi = {
    * @returns Confidence score and analysis
    */
   async getSubmissionConfidence(request: MLSubmissionRequest): Promise<MLSubmissionResponse> {
-    return mlFetch<MLSubmissionResponse>(
-      '/api/v1/review/confidence',
-      {
-        method: 'POST',
-        body: JSON.stringify(request)
-      },
+    return invokeML<MLSubmissionResponse>(
+      'confidence',
+      { task_id: request.task_id, submission_data: request.submission_data, task_context: request.task_context },
       DEFAULT_SUBMISSION_RESPONSE
     );
   },
@@ -157,12 +154,9 @@ export const mlApi = {
    * @returns Suggested story points and complexity analysis
    */
   async analyzeTaskComplexity(task: { title: string; description: string }): Promise<MLTaskComplexityResponse> {
-    return mlFetch<MLTaskComplexityResponse>(
-      '/api/v1/task/complexity',
-      {
-        method: 'POST',
-        body: JSON.stringify(task)
-      },
+    return invokeML<MLTaskComplexityResponse>(
+      'complexity',
+      { task_context: task },
       DEFAULT_COMPLEXITY_RESPONSE
     );
   },
@@ -176,9 +170,9 @@ export const mlApi = {
    * @returns Quality assessment and comparison data
    */
   async getQualityAssessment(taskId: string): Promise<MLQualityAssessmentResponse> {
-    return mlFetch<MLQualityAssessmentResponse>(
-      `/api/v1/review/quality/${taskId}`,
-      { method: 'GET' },
+    return invokeML<MLQualityAssessmentResponse>(
+      'quality',
+      { task_id: taskId },
       DEFAULT_QUALITY_RESPONSE
     );
   },

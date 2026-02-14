@@ -322,9 +322,13 @@ Hierarchical permission system with role-based defaults, explicit access grants,
 **File**: `src/lib/services/ml.ts`
 **Import**: `import { mlApi } from '$lib/services/ml';`
 
-Communicates with the external ML model server for QC confidence scoring, task complexity analysis, and quality assessments. All methods gracefully fall back to default values when the ML service is unavailable.
+Routes all ML requests through the `qc-ai-review` Supabase edge function, which holds `ML_API_URL` and `ML_API_KEY` as server-side secrets. All methods gracefully fall back to default values when the ML service is unavailable.
 
-**Environment variables**: `VITE_ML_API_URL` (default: `http://localhost:8000`), `VITE_ML_API_KEY`
+**Configuration**: Set via Supabase secrets (no client-side env vars needed):
+```bash
+supabase secrets set ML_API_URL=https://your-ml-api.com
+supabase secrets set ML_API_KEY=your-api-key
+```
 
 ### Exported Types
 

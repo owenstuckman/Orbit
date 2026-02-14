@@ -38,10 +38,12 @@ Task Submit → tasksApi.submit() → Edge Function → ML API → AI Review Cre
 
 | File | Purpose |
 |------|---------|
-| `supabase/functions/qc-ai-review/index.ts` | Edge function (calls ML API) |
-| `src/lib/services/ml.ts` | Frontend ML client (fallback calls) |
+| `supabase/functions/qc-ai-review/index.ts` | Edge function (calls ML API, holds secrets) |
+| `src/lib/services/ml.ts` | Frontend ML client (routes through edge function) |
 | `src/lib/utils/payout.ts` | Shapley calculations using p0 |
 | `src/lib/config/featureFlags.ts` | `ai_qc_review` flag |
+
+**Important**: The frontend `ml.ts` never calls the ML API directly. All requests are proxied through the `qc-ai-review` edge function, which holds `ML_API_URL` and `ML_API_KEY` as Supabase secrets. This keeps credentials server-side.
 
 ---
 
@@ -82,10 +84,33 @@ Task Submit → tasksApi.submit() → Edge Function → ML API → AI Review Cre
 
 ---
 
+## Environment Variables
+
+Only **two** Supabase secrets are needed. No `VITE_` env vars required — the frontend never contacts the ML API directly.
+
+| Secret | Description | Example |
+|--------|-------------|---------|
+| `ML_API_URL` | Base URL of your deployed ML API | `https://your-ml-api.up.railway.app` |
+| `ML_API_KEY` | Bearer token for ML API auth (optional if API has no auth) | `your-api-key` |
+
+```bash
+supabase secrets set ML_API_URL=https://your-ml-api.com
+supabase secrets set ML_API_KEY=your-api-key
+```
+
 ## Setup Steps
 
 ### 1. Deploy ML API
 See `ML_MODEL_HOSTING.md` for FastAPI setup and deployment options.
+
+Your ML API must implement these endpoints:
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/v1/review/confidence` | POST | Confidence scoring (p0) — required |
+| `/api/v1/task/complexity` | POST | Story point suggestions — optional |
+| `/api/v1/review/quality/{task_id}` | GET | Quality assessment — optional |
+| `/health` | GET | Health check |
 
 ### 2. Set Secrets
 ```bash
@@ -99,14 +124,32 @@ supabase functions deploy qc-ai-review
 ```
 
 ### 4. Enable Feature Flag
-Set `ai_qc_review: true` in organization settings.
+Set `ai_qc_review: true` in organization settings (Admin → Settings → Feature Flags).
 
 ### 5. Test
+
+**Confidence scoring** (creates AI review record):
 ```bash
 curl -X POST https://YOUR_PROJECT.supabase.co/functions/v1/qc-ai-review \
   -H "Authorization: Bearer YOUR_ANON_KEY" \
   -H "Content-Type: application/json" \
   -d '{"task_id": "existing-task-uuid"}'
+```
+
+**Complexity analysis** (no DB write):
+```bash
+curl -X POST https://YOUR_PROJECT.supabase.co/functions/v1/qc-ai-review \
+  -H "Authorization: Bearer YOUR_ANON_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"action": "complexity", "task_context": {"title": "Add feature", "description": "Add new feature"}}'
+```
+
+**Quality assessment** (no DB write):
+```bash
+curl -X POST https://YOUR_PROJECT.supabase.co/functions/v1/qc-ai-review \
+  -H "Authorization: Bearer YOUR_ANON_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"action": "quality", "task_id": "existing-task-uuid"}'
 ```
 
 ---

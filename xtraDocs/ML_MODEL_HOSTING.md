@@ -166,6 +166,34 @@ async def get_confidence(req: ConfidenceRequest) -> ConfidenceResponse:
         recommendations=["Link GitHub PR if code changes"] if not any(a.type == "github_pr" for a in req.submission_data.artifacts) else [],
     )
 
+# --- Optional Endpoints (used by Orbit frontend via edge function) ---
+
+class ComplexityRequest(BaseModel):
+    title: str
+    description: str = ""
+
+@app.post("/api/v1/task/complexity", dependencies=[Depends(verify_api_key)])
+async def get_complexity(req: ComplexityRequest):
+    """Suggest story points based on task description. Customize with your model."""
+    word_count = len(f"{req.title} {req.description}".split())
+    score = min(word_count / 200, 1.0)
+    points = max(1, min(13, round(score * 13)))
+    return {
+        "suggested_story_points": points,
+        "complexity_score": round(score, 4),
+        "reasoning": f"Based on {word_count} words in title/description",
+    }
+
+@app.get("/api/v1/review/quality/{task_id}", dependencies=[Depends(verify_api_key)])
+async def get_quality(task_id: str):
+    """Quality assessment for QC reviewers. Customize with your model."""
+    return {
+        "overall_quality": 0.8,
+        "areas_of_concern": [],
+        "strengths": [],
+        "comparison_to_similar": 0.5,
+    }
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
@@ -242,13 +270,24 @@ supabase functions deploy qc-ai-review
 
 ---
 
+## Required Endpoints
+
+| Endpoint | Method | Status | Description |
+|----------|--------|--------|-------------|
+| `/health` | GET | Required | Health check |
+| `/api/v1/review/confidence` | POST | Required | Confidence scoring (p0 for Shapley) |
+| `/api/v1/task/complexity` | POST | Optional | Story point suggestions |
+| `/api/v1/review/quality/{task_id}` | GET | Optional | Quality assessment for QC reviewers |
+
+All endpoints are called from the Supabase `qc-ai-review` edge function, never directly from the browser.
+
 ## Test
 
 ```bash
 # Health check
 curl http://localhost:8000/health
 
-# Confidence check
+# Confidence check (required endpoint)
 curl -X POST http://localhost:8000/api/v1/review/confidence \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer your-key" \
@@ -257,6 +296,16 @@ curl -X POST http://localhost:8000/api/v1/review/confidence \
     "submission_data": {"notes": "Implemented feature with tests", "artifacts": [{"type": "github_pr", "data": {}}]},
     "task_context": {"title": "Add feature", "description": "Add new feature", "story_points": 5}
   }'
+
+# Complexity analysis (optional endpoint)
+curl -X POST http://localhost:8000/api/v1/task/complexity \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer your-key" \
+  -d '{"title": "Add feature", "description": "Build a new dashboard widget"}'
+
+# Quality assessment (optional endpoint)
+curl http://localhost:8000/api/v1/review/quality/test-task-id \
+  -H "Authorization: Bearer your-key"
 ```
 
 ---

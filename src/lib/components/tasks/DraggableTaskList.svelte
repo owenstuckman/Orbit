@@ -125,6 +125,7 @@
       role="listitem"
       aria-grabbed={draggedTask?.id === task.id}
       class="relative transition-transform duration-150"
+      class:select-none={canReorder}
       class:opacity-50={draggedTask?.id === task.id}
       class:cursor-grab={canReorder}
       class:cursor-grabbing={draggedTask?.id === task.id}
@@ -146,9 +147,3 @@
   {/each}
 </div>
 
-<style>
-  [draggable="true"] {
-    user-select: none;
-    -webkit-user-select: none;
-  }
-</style>
