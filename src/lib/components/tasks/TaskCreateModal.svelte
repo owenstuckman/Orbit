@@ -33,6 +33,8 @@
   import { tasks } from '$lib/stores/tasks';
   import { projects } from '$lib/stores/projects';
   import { user } from '$lib/stores/auth';
+  import { featureFlags } from '$lib/stores/featureFlags';
+  import { mlApi } from '$lib/services/ml';
   import TagInput from '$lib/components/common/TagInput.svelte';
   import type { Task } from '$lib/types';
 
@@ -60,6 +62,29 @@
   // UI state
   let submitting = false;
   let error = '';
+  let aiSuggesting = false;
+  let aiReasoning = '';
+
+  async function suggestStoryPoints() {
+    if (!title.trim()) {
+      error = 'Enter a title before requesting AI suggestion';
+      return;
+    }
+    aiSuggesting = true;
+    aiReasoning = '';
+    try {
+      const result = await mlApi.analyzeTaskComplexity({
+        title: title.trim(),
+        description: description.trim()
+      });
+      storyPoints = result.suggested_story_points;
+      aiReasoning = result.reasoning;
+    } catch (err) {
+      error = 'AI suggestion failed. Try again later.';
+    } finally {
+      aiSuggesting = false;
+    }
+  }
 
   // Load projects on mount
   $: if (show && $projects.items.length === 0) {
@@ -82,6 +107,7 @@
     selectedProjectId = projectId || '';
     tags = [];
     error = '';
+    aiReasoning = '';
   }
 
   function close() {
@@ -302,7 +328,25 @@
                     {preset.label}
                   </button>
                 {/each}
+                {#if $featureFlags.ai_qc_review}
+                  <button
+                    type="button"
+                    on:click={suggestStoryPoints}
+                    disabled={aiSuggesting}
+                    class="px-3 py-1.5 text-sm font-medium rounded-lg transition-colors bg-purple-100 text-purple-700 hover:bg-purple-200 disabled:opacity-50 flex items-center gap-1"
+                  >
+                    {#if aiSuggesting}
+                      <div class="w-3 h-3 border-2 border-purple-400/30 border-t-purple-600 rounded-full animate-spin"></div>
+                    {:else}
+                      <Sparkles size={14} />
+                    {/if}
+                    AI Suggest
+                  </button>
+                {/if}
               </div>
+              {#if aiReasoning}
+                <p class="mt-1 text-xs text-purple-600">{aiReasoning}</p>
+              {/if}
             </div>
           </div>
 

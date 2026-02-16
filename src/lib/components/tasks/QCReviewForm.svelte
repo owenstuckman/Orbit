@@ -31,6 +31,7 @@
   import { qcApi } from '$lib/services/api';
   import { storage } from '$lib/services/supabase';
   import { user } from '$lib/stores/auth';
+  import { featureFlags } from '$lib/stores/featureFlags';
   import { ArtifactList } from '$lib/components/submissions';
   import type { Task, QCReview, TaskSubmissionData } from '$lib/types';
 
@@ -232,7 +233,7 @@
                 {#if review.feedback}
                   <p class="text-sm text-slate-600">{review.feedback}</p>
                 {/if}
-                {#if review.confidence}
+                {#if $featureFlags.ai_qc_review && review.confidence}
                   <div class="mt-1 flex items-center gap-2 text-xs text-slate-500">
                     <span>Confidence: {(review.confidence * 100).toFixed(0)}%</span>
                   </div>

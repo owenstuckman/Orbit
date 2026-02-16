@@ -899,10 +899,14 @@ export const tasksApi = {
     });
 
     if (task) {
-      // Trigger AI QC review
-      await functions.invoke('qc-ai-review', {
-        body: { task_id: taskId }
-      });
+      // Trigger AI QC review (only when feature flag is enabled)
+      // Dynamic import to avoid circular dependency: api → featureFlags → auth → api
+      const { isFeatureEnabled } = await import('$lib/stores/featureFlags');
+      if (isFeatureEnabled('ai_qc_review')) {
+        await functions.invoke('qc-ai-review', {
+          body: { task_id: taskId }
+        });
+      }
     }
 
     return task;

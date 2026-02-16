@@ -237,10 +237,103 @@ CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 3. Set env vars: `API_KEY=your-key`
 4. Get URL: `https://your-app.up.railway.app`
 
-### Render
-1. render.com → New Web Service → Docker
-2. Set env vars, deploy
-3. ~$7/month
+### Render (Recommended)
+
+Render offers straightforward Docker deployments with a generous free tier for getting started and affordable paid plans for production.
+
+#### Prerequisites
+- GitHub repo containing the `qc-ml-api` project (structure above)
+- Render account at [render.com](https://render.com)
+
+#### Step-by-Step Setup
+
+1. **Push your project to GitHub**
+   ```bash
+   cd qc-ml-api
+   git init && git add . && git commit -m "Initial ML API"
+   gh repo create qc-ml-api --private --push
+   ```
+
+2. **Create a new Web Service on Render**
+   - Go to [dashboard.render.com](https://dashboard.render.com) → **New +** → **Web Service**
+   - Connect your GitHub account if not already connected
+   - Select the `qc-ml-api` repository
+
+3. **Configure the service**
+   | Setting | Value |
+   |---------|-------|
+   | **Name** | `orbit-qc-ml-api` |
+   | **Region** | Pick closest to your Supabase project region |
+   | **Runtime** | **Docker** (auto-detected from Dockerfile) |
+   | **Instance Type** | **Starter** ($7/month, 512 MB RAM) — sufficient for scikit-learn models. Use **Standard** ($25/month, 2 GB RAM) if your model file is large or you use sentence-transformers |
+   | **Branch** | `main` |
+
+4. **Set environment variables**
+   Under **Environment** → **Environment Variables**, add:
+   | Key | Value |
+   |-----|-------|
+   | `API_KEY` | Generate a secure key (e.g., `openssl rand -hex 32`) |
+   | `MODEL_PATH` | `model/qc-model.joblib` (default, only change if different) |
+
+5. **Deploy**
+   - Click **Create Web Service**
+   - Render builds the Docker image and deploys automatically
+   - First deploy takes 3-5 minutes
+   - Your service URL will be: `https://orbit-qc-ml-api.onrender.com`
+
+#### Health Check Configuration
+
+Render pings your service to verify it's running. Configure under **Settings** → **Health Check Path**:
+- **Health Check Path**: `/health`
+- This matches the `/health` endpoint in `main.py`
+
+#### Auto-Deploy on Push
+
+Render auto-deploys on every push to your selected branch by default. To disable:
+- **Settings** → **Build & Deploy** → toggle off **Auto-Deploy**
+
+#### Custom Domain (Optional)
+
+1. **Settings** → **Custom Domains** → **Add Custom Domain**
+2. Enter your domain (e.g., `ml-api.yourdomain.com`)
+3. Add the CNAME record Render provides to your DNS
+4. SSL is provisioned automatically
+
+#### Render Free Tier Notes
+
+Render's free tier **spins down after 15 minutes of inactivity**. The first request after spin-down takes ~30-60 seconds (cold start) while the container restarts. This is fine for development but not suitable for production.
+
+For production, use the **Starter** plan ($7/month) which keeps the service running continuously.
+
+#### Monitoring & Logs
+
+- **Logs**: Dashboard → your service → **Logs** tab (live streaming)
+- **Metrics**: Dashboard → your service → **Metrics** tab (CPU, memory, request count)
+- **Alerts**: Set up notifications under **Settings** → **Notifications** for deploy failures or health check failures
+
+#### Scaling
+
+If you need to handle more concurrent QC reviews:
+- Upgrade the instance type for vertical scaling (more CPU/RAM)
+- Render does not natively support horizontal scaling on web services — if you need multiple instances, consider switching to Google Cloud Run (auto-scales to zero and handles bursts)
+
+#### Troubleshooting
+
+| Issue | Fix |
+|-------|-----|
+| Build fails | Check Dockerfile — ensure `requirements.txt` is copied before `pip install` |
+| Health check fails | Verify `/health` endpoint returns 200 and the health check path is set |
+| Out of memory | Upgrade instance type or reduce model size (use model compression/quantization) |
+| Slow cold starts (free tier) | Upgrade to Starter plan, or accept the delay for dev use |
+| Model not found | Ensure `model/qc-model.joblib` is committed to the repo (check `.gitignore`) |
+
+#### Pricing Summary
+
+| Plan | Price | RAM | Always On | Best For |
+|------|-------|-----|-----------|----------|
+| Free | $0/month | 512 MB | No (spins down) | Development/testing |
+| Starter | $7/month | 512 MB | Yes | Small team production |
+| Standard | $25/month | 2 GB | Yes | Larger models or higher traffic |
 
 ### Fly.io
 ```bash

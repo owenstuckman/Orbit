@@ -5,6 +5,8 @@
   import { qcApi, tasksApi } from '$lib/services/api';
   import { formatCurrency, computeQCMarginals, calculateQCPayout } from '$lib/utils/payout';
   import { toasts } from '$lib/stores/notifications';
+  import { featureFlags } from '$lib/stores/featureFlags';
+  import { mlApi, type MLQualityAssessmentResponse } from '$lib/services/ml';
   import type { Task, QCReview, ShapleyParams } from '$lib/types';
   import {
     Shield,
@@ -27,6 +29,32 @@
   // Review form
   let reviewPassed = true;
   let feedback = '';
+
+  // AI quality assessment
+  let qualityAssessment: MLQualityAssessmentResponse | null = null;
+  let loadingAssessment = false;
+
+  // AI confidence breakdown - derived from selected task's AI review
+  $: selectedAiReview = selectedTask?.qc_reviews?.find(r => r.review_type === 'ai') ?? null;
+
+  // Parse AI review feedback - may be a JSON string containing breakdown, issues, recommendations
+  $: parsedAiFeedback = (() => {
+    if (!selectedAiReview?.feedback) return null;
+    try {
+      const parsed = typeof selectedAiReview.feedback === 'string'
+        ? JSON.parse(selectedAiReview.feedback)
+        : selectedAiReview.feedback;
+      return parsed as {
+        confidence_breakdown?: { completeness?: number; quality?: number; requirements_met?: number };
+        issues?: string[];
+        recommendations?: string[];
+      };
+    } catch {
+      return null;
+    }
+  })();
+  $: confidenceBreakdown = parsedAiFeedback?.confidence_breakdown ?? null;
+  $: aiFeedbackObj = parsedAiFeedback;
 
   // QC payout preview - reactively update when org settings or task changes
   $: potentialPayout = selectedTask ? calculatePotentialPayout(selectedTask) : 0;
@@ -60,6 +88,18 @@
 
   async function selectTask(task: Task) {
     selectedTask = await tasksApi.getById(task.id);
+    qualityAssessment = null;
+
+    if (selectedTask && $featureFlags.ai_qc_review) {
+      loadingAssessment = true;
+      try {
+        qualityAssessment = await mlApi.getQualityAssessment(selectedTask.id);
+      } catch (err) {
+        console.warn('Failed to load AI quality assessment:', err);
+      } finally {
+        loadingAssessment = false;
+      }
+    }
   }
 
   function calculatePotentialPayout(task: Task): number {
@@ -300,6 +340,139 @@
                 </div>
               {/each}
             </div>
+          </div>
+        {/if}
+
+        <!-- AI Confidence Breakdown -->
+        {#if $featureFlags.ai_qc_review && selectedAiReview}
+          <div>
+            <h3 class="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">AI Confidence Breakdown</h3>
+            <div class="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4 space-y-3">
+              {#if confidenceBreakdown}
+                {#each [
+                  { label: 'Completeness', value: confidenceBreakdown.completeness },
+                  { label: 'Quality', value: confidenceBreakdown.quality },
+                  { label: 'Requirements Met', value: confidenceBreakdown.requirements_met }
+                ] as metric}
+                  {#if metric.value != null}
+                    <div>
+                      <div class="flex items-center justify-between text-sm mb-1">
+                        <span class="text-slate-600 dark:text-slate-300">{metric.label}</span>
+                        <span class="font-medium {getConfidenceColor(metric.value)} px-2 py-0.5 rounded-full text-xs">
+                          {(metric.value * 100).toFixed(0)}%
+                        </span>
+                      </div>
+                      <div class="w-full h-2 bg-slate-200 dark:bg-slate-600 rounded-full overflow-hidden">
+                        <div
+                          class="h-full rounded-full transition-all {metric.value >= 0.75 ? 'bg-green-500' : metric.value >= 0.5 ? 'bg-amber-500' : 'bg-red-500'}"
+                          style="width: {metric.value * 100}%"
+                        ></div>
+                      </div>
+                    </div>
+                  {/if}
+                {/each}
+              {/if}
+
+              {#if aiFeedbackObj?.issues?.length}
+                <div class="pt-2 border-t border-slate-200 dark:border-slate-600">
+                  <p class="text-xs font-medium text-red-600 dark:text-red-400 mb-1">Issues Found</p>
+                  <ul class="text-sm text-slate-600 dark:text-slate-300 space-y-1">
+                    {#each aiFeedbackObj.issues as issue}
+                      <li class="flex items-start gap-2">
+                        <span class="text-red-400 mt-0.5">&#x2022;</span>
+                        {issue}
+                      </li>
+                    {/each}
+                  </ul>
+                </div>
+              {/if}
+              {#if aiFeedbackObj?.recommendations?.length}
+                <div class="pt-2 border-t border-slate-200 dark:border-slate-600">
+                  <p class="text-xs font-medium text-blue-600 dark:text-blue-400 mb-1">Recommendations</p>
+                  <ul class="text-sm text-slate-600 dark:text-slate-300 space-y-1">
+                    {#each aiFeedbackObj.recommendations as rec}
+                      <li class="flex items-start gap-2">
+                        <span class="text-blue-400 mt-0.5">&#x2022;</span>
+                        {rec}
+                      </li>
+                    {/each}
+                  </ul>
+                </div>
+              {/if}
+            </div>
+          </div>
+        {/if}
+
+        <!-- AI Quality Assessment -->
+        {#if $featureFlags.ai_qc_review}
+          <div>
+            <h3 class="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">AI Quality Assessment</h3>
+            {#if loadingAssessment}
+              <div class="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-6 flex items-center justify-center gap-2">
+                <div class="w-5 h-5 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin"></div>
+                <span class="text-sm text-slate-500 dark:text-slate-400">Loading AI assessment...</span>
+              </div>
+            {:else if qualityAssessment}
+              <div class="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4 space-y-4">
+                <!-- Overall Quality Score -->
+                <div>
+                  <div class="flex items-center justify-between text-sm mb-1">
+                    <span class="text-slate-600 dark:text-slate-300">Overall Quality</span>
+                    <span class="font-semibold {getConfidenceColor(qualityAssessment.overall_quality)} px-2 py-0.5 rounded-full text-xs">
+                      {(qualityAssessment.overall_quality * 100).toFixed(0)}%
+                    </span>
+                  </div>
+                  <div class="w-full h-3 bg-slate-200 dark:bg-slate-600 rounded-full overflow-hidden">
+                    <div
+                      class="h-full rounded-full transition-all {qualityAssessment.overall_quality >= 0.75 ? 'bg-green-500' : qualityAssessment.overall_quality >= 0.5 ? 'bg-amber-500' : 'bg-red-500'}"
+                      style="width: {qualityAssessment.overall_quality * 100}%"
+                    ></div>
+                  </div>
+                </div>
+
+                <!-- Strengths -->
+                {#if qualityAssessment.strengths.length > 0}
+                  <div>
+                    <p class="text-xs font-medium text-green-600 dark:text-green-400 mb-1">Strengths</p>
+                    <ul class="text-sm text-slate-600 dark:text-slate-300 space-y-1">
+                      {#each qualityAssessment.strengths as strength}
+                        <li class="flex items-start gap-2">
+                          <span class="text-green-500 mt-0.5">&#x2713;</span>
+                          {strength}
+                        </li>
+                      {/each}
+                    </ul>
+                  </div>
+                {/if}
+
+                <!-- Areas of Concern -->
+                {#if qualityAssessment.areas_of_concern.length > 0}
+                  <div>
+                    <p class="text-xs font-medium text-amber-600 dark:text-amber-400 mb-1">Areas of Concern</p>
+                    <ul class="text-sm text-slate-600 dark:text-slate-300 space-y-1">
+                      {#each qualityAssessment.areas_of_concern as concern}
+                        <li class="flex items-start gap-2">
+                          <span class="text-amber-500 mt-0.5">&#x26A0;</span>
+                          {concern}
+                        </li>
+                      {/each}
+                    </ul>
+                  </div>
+                {/if}
+
+                <!-- Comparison -->
+                {#if qualityAssessment.comparison_to_similar != null}
+                  <div class="pt-2 border-t border-slate-200 dark:border-slate-600 text-xs text-slate-500 dark:text-slate-400">
+                    Compared to similar tasks: <span class="font-medium">{qualityAssessment.comparison_to_similar >= 0.5 ? 'Above' : 'Below'} average</span>
+                    ({(qualityAssessment.comparison_to_similar * 100).toFixed(0)}th percentile)
+                  </div>
+                {/if}
+              </div>
+            {:else}
+              <div class="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4 text-center text-sm text-slate-400 dark:text-slate-500">
+                No AI assessment available
+              </div>
+            {/if}
           </div>
         {/if}
 
