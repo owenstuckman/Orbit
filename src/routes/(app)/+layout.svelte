@@ -40,7 +40,7 @@
     Bell
   } from 'lucide-svelte';
 
-  let sidebarOpen = true;
+  let sidebarOpen = false;
   let userMenuOpen = false;
   let loading = true;
   let loadError = '';
@@ -64,85 +64,80 @@
     return ROLE_DISPLAY[role] || { label: role, description: role };
   }
 
+  // Current path segment for active nav detection
+  $: currentPath = $page.url.pathname;
+
   // Navigation items - role-based access combined with feature flags
-  // Feature flags can disable features org-wide, role determines who can access enabled features
-  $: navItems = [
-    {
-      href: '/dashboard',
-      label: 'Dashboard',
-      icon: LayoutDashboard,
-      show: true
-    },
-    {
-      href: '/tasks',
-      label: $currentOrgRole === 'employee' || $currentOrgRole === 'contractor' ? 'Pick Up Tasks' : 'Tasks',
-      icon: CheckSquare,
-      // Feature: tasks - Employees/contractors pick up tasks, PM/Admin manage tasks, QC views for review
-      show: $featureFlags.tasks && ['employee', 'contractor', 'pm', 'admin', 'qc'].includes($currentOrgRole)
-    },
-    {
-      href: '/projects',
-      label: 'Projects',
-      icon: FolderKanban,
-      // Feature: projects - Only PM, Sales, and Admin can see projects
-      show: $featureFlags.projects && ['pm', 'sales', 'admin'].includes($currentOrgRole)
-    },
-    {
-      href: '/qc',
-      label: 'QC Reviews',
-      icon: Shield,
-      // Feature: qc_reviews - Only QC and Admin can review
-      show: $featureFlags.qc_reviews && ['qc', 'admin'].includes($currentOrgRole)
-    },
-    {
-      href: '/contracts',
-      label: 'Contracts',
-      icon: FileText,
-      // Feature: contracts - PM, Sales, and Admin manage contracts
-      show: $featureFlags.contracts && ['pm', 'sales', 'admin'].includes($currentOrgRole)
-    },
-    {
-      href: '/payouts',
-      label: 'My Payouts',
-      icon: DollarSign,
-      // Feature: payouts
-      show: $featureFlags.payouts
-    },
-    {
-      href: '/achievements',
-      label: 'Achievements',
-      icon: Trophy,
-      // Feature: achievements - Only employees and contractors have gamification
-      show: $featureFlags.achievements && ['employee', 'contractor'].includes($currentOrgRole)
-    },
-    {
-      href: '/analytics',
-      label: 'Analytics',
-      icon: BarChart3,
-      // Feature: analytics - Only Admin and PM see analytics
-      show: $featureFlags.analytics && ['admin', 'pm'].includes($currentOrgRole)
-    },
-    {
-      href: '/admin',
-      label: 'Admin Panel',
-      icon: Users,
-      // Admin panel always available to admins (not feature-gated)
-      show: $currentOrgRole === 'admin'
-    },
-    {
-      href: '/notifications',
-      label: 'Notifications',
-      icon: Bell,
-      // Feature: notifications_page
-      show: $featureFlags.notifications_page
-    },
-    {
-      href: '/settings',
-      label: 'Settings',
-      icon: Settings,
-      show: true
+  $: navItems = buildNavItems($featureFlags, $currentOrgRole);
+
+  function buildNavItems(flags: typeof $featureFlags, role: string) {
+    const items: { href: string; label: string; icon: typeof LayoutDashboard }[] = [];
+
+    items.push({ href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard });
+
+    if (flags.tasks && ['employee', 'contractor', 'pm', 'admin', 'qc'].includes(role)) {
+      items.push({
+        href: '/tasks',
+        label: role === 'employee' || role === 'contractor' ? 'Pick Up Tasks' : 'Tasks',
+        icon: CheckSquare
+      });
     }
-  ].filter(item => item.show);
+
+    if (flags.projects && ['pm', 'sales', 'admin'].includes(role)) {
+      items.push({ href: '/projects', label: 'Projects', icon: FolderKanban });
+    }
+
+    if (flags.qc_reviews && ['qc', 'admin'].includes(role)) {
+      items.push({ href: '/qc', label: 'QC Reviews', icon: Shield });
+    }
+
+    if (flags.contracts && ['pm', 'sales', 'admin'].includes(role)) {
+      items.push({ href: '/contracts', label: 'Contracts', icon: FileText });
+    }
+
+    if (flags.payouts) {
+      items.push({ href: '/payouts', label: 'My Payouts', icon: DollarSign });
+    }
+
+    if (flags.achievements && ['employee', 'contractor'].includes(role)) {
+      items.push({ href: '/achievements', label: 'Achievements', icon: Trophy });
+    }
+
+    if (flags.analytics && ['admin', 'pm'].includes(role)) {
+      items.push({ href: '/analytics', label: 'Analytics', icon: BarChart3 });
+    }
+
+    if (role === 'admin') {
+      items.push({ href: '/admin', label: 'Admin Panel', icon: Users });
+    }
+
+    if (flags.notifications_page) {
+      items.push({ href: '/notifications', label: 'Notifications', icon: Bell });
+    }
+
+    items.push({ href: '/settings', label: 'Settings', icon: Settings });
+
+    return items;
+  }
+
+  // Check if a nav item is active (exact match for dashboard, prefix match for others)
+  function isActive(href: string, path: string): boolean {
+    if (href === '/dashboard') return path === '/dashboard' || path === '/';
+    return path === href || path.startsWith(href + '/');
+  }
+
+  function getNavClass(href: string, path: string): string {
+    return isActive(href, path)
+      ? 'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium bg-slate-800 text-white'
+      : 'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-colors';
+  }
+
+  function handleNavClick() {
+    // Close sidebar on mobile after navigation
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      sidebarOpen = false;
+    }
+  }
 
   onMount(() => {
     initializeApp();
@@ -318,7 +313,7 @@ Error: {errorDetails}</pre>
     >
       <!-- Logo -->
       <div class="flex items-center justify-between h-16 px-6 border-b border-slate-800 flex-shrink-0">
-        <a href="/dashboard" class="flex items-center gap-3">
+        <a href="/dashboard" on:click={handleNavClick} class="flex items-center gap-3">
           <div class="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
             <span class="text-white font-bold text-lg">O</span>
           </div>
@@ -339,15 +334,11 @@ Error: {errorDetails}</pre>
 
       <!-- Navigation (scrollable) -->
       <nav class="px-3 py-4 space-y-1 flex-1 overflow-y-auto">
-        {#each navItems as item}
+        {#each navItems as item (item.href)}
           <a
             href={item.href}
-            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors"
-            class:bg-slate-800={$page.url.pathname.startsWith(item.href)}
-            class:text-white={$page.url.pathname.startsWith(item.href)}
-            class:text-slate-400={!$page.url.pathname.startsWith(item.href)}
-            class:hover:bg-slate-800={!$page.url.pathname.startsWith(item.href)}
-            class:hover:text-white={!$page.url.pathname.startsWith(item.href)}
+            on:click={handleNavClick}
+            class={getNavClass(item.href, currentPath)}
           >
             <svelte:component this={item.icon} size={18} />
             {item.label}
@@ -397,14 +388,15 @@ Error: {errorDetails}</pre>
       </div>
     </aside>
 
-    <!-- Mobile sidebar overlay -->
-    {#if sidebarOpen}
-      <button
-        class="fixed inset-0 z-40 bg-black/50 lg:hidden"
-        on:click={toggleSidebar}
-        aria-label="Close sidebar"
-      />
-    {/if}
+    <!-- Mobile sidebar overlay (only visible on mobile when sidebar is open) -->
+    <button
+      class="fixed inset-0 z-40 bg-black/50 lg:hidden transition-opacity"
+      class:pointer-events-none={!sidebarOpen}
+      class:opacity-0={!sidebarOpen}
+      on:click={toggleSidebar}
+      aria-label="Close sidebar"
+      tabindex={sidebarOpen ? 0 : -1}
+    />
 
     <!-- Main content -->
     <div class="lg:pl-64">

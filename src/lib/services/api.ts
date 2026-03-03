@@ -1007,6 +1007,16 @@ export const tasksApi = {
       return { success: false, error: data?.error || 'Failed to submit work' };
     }
 
+    // Trigger AI QC review for external submissions (same as internal submit)
+    if (data.task_id) {
+      const { isFeatureEnabled } = await import('$lib/stores/featureFlags');
+      if (isFeatureEnabled('ai_qc_review')) {
+        await functions.invoke('qc-ai-review', {
+          body: { task_id: data.task_id }
+        });
+      }
+    }
+
     return {
       success: true,
       task_id: data.task_id
@@ -1170,7 +1180,7 @@ export const qcApi = {
     const task = await tasksApi.getById(taskId);
     if (!task) return null;
 
-    const passNumber = (task.qc_reviews?.length ?? 0) + 1;
+    const passNumber = (task.qc_reviews?.filter(r => r.review_type !== 'ai').length ?? 0) + 1;
     const weight = reviewType === 'peer' ? 1.0 : 2.0;
 
     return this.create({

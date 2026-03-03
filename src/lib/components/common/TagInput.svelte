@@ -59,14 +59,14 @@
   }
 
   const tagColors = [
-    'bg-blue-100 text-blue-700',
-    'bg-green-100 text-green-700',
-    'bg-purple-100 text-purple-700',
-    'bg-amber-100 text-amber-700',
-    'bg-pink-100 text-pink-700',
-    'bg-cyan-100 text-cyan-700',
-    'bg-orange-100 text-orange-700',
-    'bg-indigo-100 text-indigo-700',
+    'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+    'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+    'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+    'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+    'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400',
+    'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400',
+    'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
+    'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400',
   ];
 
   function getTagColor(tag: string): string {
@@ -76,7 +76,7 @@
 </script>
 
 <div class="w-full">
-  <div class="flex flex-wrap gap-2 p-2 min-h-[42px] border border-slate-200 rounded-lg focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-transparent bg-white {disabled ? 'opacity-50 cursor-not-allowed' : ''}">
+  <div class="flex flex-wrap gap-2 p-2 min-h-[42px] border border-slate-200 dark:border-slate-600 rounded-lg focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-transparent bg-white dark:bg-slate-700 {disabled ? 'opacity-50 cursor-not-allowed' : ''}">
     {#each tags as tag}
       <span class="inline-flex items-center gap-1 px-2 py-1 rounded-md text-sm font-medium {getTagColor(tag)}">
         {tag}
@@ -102,16 +102,16 @@
           on:blur={handleBlur}
           {placeholder}
           {disabled}
-          class="w-full bg-transparent border-none outline-none text-sm text-slate-700 placeholder:text-slate-400"
+          class="w-full bg-transparent border-none outline-none text-sm text-slate-700 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
         />
 
         {#if showSuggestions && filteredSuggestions.length > 0}
-          <div class="absolute top-full left-0 mt-1 w-48 bg-white border border-slate-200 rounded-lg shadow-lg z-10">
+          <div class="absolute top-full left-0 mt-1 w-48 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg shadow-lg z-10">
             {#each filteredSuggestions as suggestion}
               <button
                 type="button"
                 on:mousedown|preventDefault={() => addTag(suggestion)}
-                class="w-full px-3 py-2 text-left text-sm hover:bg-slate-50 first:rounded-t-lg last:rounded-b-lg"
+                class="w-full px-3 py-2 text-left text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 first:rounded-t-lg last:rounded-b-lg"
               >
                 {suggestion}
               </button>
@@ -123,6 +123,6 @@
   </div>
 
   {#if tags.length >= maxTags}
-    <p class="mt-1 text-xs text-slate-500">Maximum {maxTags} tags allowed</p>
+    <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Maximum {maxTags} tags allowed</p>
   {/if}
 </div>

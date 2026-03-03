@@ -180,10 +180,10 @@
 
   // Urgency presets
   const urgencyPresets = [
-    { label: 'Normal', value: 1.0, color: 'bg-slate-100 text-slate-700' },
-    { label: '+10%', value: 1.1, color: 'bg-amber-100 text-amber-700' },
-    { label: '+20%', value: 1.2, color: 'bg-orange-100 text-orange-700' },
-    { label: '+50%', value: 1.5, color: 'bg-red-100 text-red-700' }
+    { label: 'Normal', value: 1.0, color: 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300' },
+    { label: '+10%', value: 1.1, color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
+    { label: '+20%', value: 1.2, color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' },
+    { label: '+50%', value: 1.5, color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' }
   ];
 </script>
 
@@ -200,18 +200,18 @@
 
     <!-- Modal -->
     <div class="flex min-h-full items-center justify-center p-4">
-      <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div class="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <!-- Header -->
-        <div class="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between rounded-t-2xl">
+        <div class="sticky top-0 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 py-4 flex items-center justify-between rounded-t-2xl">
           <div class="flex items-center gap-3">
-            <div class="p-2 bg-indigo-100 rounded-lg">
-              <Plus class="text-indigo-600" size={20} />
+            <div class="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
+              <Plus class="text-indigo-600 dark:text-indigo-400" size={20} />
             </div>
-            <h2 class="text-xl font-bold text-slate-900">Create New Task</h2>
+            <h2 class="text-xl font-bold text-slate-900 dark:text-white">Create New Task</h2>
           </div>
           <button
             on:click={close}
-            class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+            class="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
           >
             <X size={20} />
           </button>
@@ -220,7 +220,7 @@
         <!-- Form -->
         <form on:submit|preventDefault={handleSubmit} class="p-6 space-y-6">
           {#if error}
-            <div class="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700">
+            <div class="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-400">
               <AlertCircle size={18} />
               <span class="text-sm">{error}</span>
             </div>
@@ -228,7 +228,7 @@
 
           <!-- Title -->
           <div>
-            <label for="title" class="block text-sm font-medium text-slate-700 mb-1">
+            <label for="title" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
               Task Title <span class="text-red-500">*</span>
             </label>
             <input
@@ -236,20 +236,20 @@
               id="title"
               bind:value={title}
               placeholder="Enter task title..."
-              class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               required
             />
           </div>
 
           <!-- Project Selection -->
           <div>
-            <label for="project" class="block text-sm font-medium text-slate-700 mb-1">
+            <label for="project" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
               Project <span class="text-red-500">*</span>
             </label>
             <select
               id="project"
               bind:value={selectedProjectId}
-              class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               required
             >
               <option value="">Select a project...</option>
@@ -261,7 +261,7 @@
 
           <!-- Description -->
           <div>
-            <label for="description" class="block text-sm font-medium text-slate-700 mb-1">
+            <label for="description" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
               Description
             </label>
             <textarea
@@ -269,15 +269,15 @@
               bind:value={description}
               rows="3"
               placeholder="Describe the task requirements..."
-              class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none"
+              class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none"
             ></textarea>
           </div>
 
           <!-- Tags -->
           <div>
-            <span id="tags-label" class="block text-sm font-medium text-slate-700 mb-1">
+            <span id="tags-label" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
               <span class="flex items-center gap-2">
-                <Tag size={16} class="text-slate-400" />
+                <Tag size={16} class="text-slate-400 dark:text-slate-500" />
                 Tags
               </span>
             </span>
@@ -286,25 +286,25 @@
               suggestions={tagSuggestions}
               placeholder="Add tags (press Enter or comma)..."
             />
-            <p class="mt-1 text-xs text-slate-500">Add tags to categorize and filter tasks</p>
+            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Add tags to categorize and filter tasks</p>
           </div>
 
           <!-- Value and Points Row -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <!-- Dollar Value -->
             <div>
-              <label for="dollarValue" class="block text-sm font-medium text-slate-700 mb-1">
+              <label for="dollarValue" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                 Base Value <span class="text-red-500">*</span>
               </label>
               <div class="relative">
-                <DollarSign class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <DollarSign class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={18} />
                 <input
                   type="number"
                   id="dollarValue"
                   bind:value={dollarValue}
                   min="1"
                   step="0.01"
-                  class="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  class="w-full pl-10 pr-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   required
                 />
               </div>
@@ -312,7 +312,7 @@
 
             <!-- Story Points -->
             <div role="group" aria-labelledby="story-points-label">
-              <span id="story-points-label" class="block text-sm font-medium text-slate-700 mb-1">
+              <span id="story-points-label" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                 Story Points (T-Shirt Size)
               </span>
               <div class="flex flex-wrap gap-2">
@@ -323,7 +323,7 @@
                     class="px-3 py-1.5 text-sm font-medium rounded-lg transition-colors
                       {storyPoints === preset.value
                         ? 'bg-indigo-600 text-white'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}"
+                        : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'}"
                   >
                     {preset.label}
                   </button>
@@ -333,7 +333,7 @@
                     type="button"
                     on:click={suggestStoryPoints}
                     disabled={aiSuggesting}
-                    class="px-3 py-1.5 text-sm font-medium rounded-lg transition-colors bg-purple-100 text-purple-700 hover:bg-purple-200 disabled:opacity-50 flex items-center gap-1"
+                    class="px-3 py-1.5 text-sm font-medium rounded-lg transition-colors bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-900/50 disabled:opacity-50 flex items-center gap-1"
                   >
                     {#if aiSuggesting}
                       <div class="w-3 h-3 border-2 border-purple-400/30 border-t-purple-600 rounded-full animate-spin"></div>
@@ -345,14 +345,14 @@
                 {/if}
               </div>
               {#if aiReasoning}
-                <p class="mt-1 text-xs text-purple-600">{aiReasoning}</p>
+                <p class="mt-1 text-xs text-purple-600 dark:text-purple-400">{aiReasoning}</p>
               {/if}
             </div>
           </div>
 
           <!-- Urgency Multiplier -->
           <div role="group" aria-labelledby="urgency-label">
-            <span id="urgency-label" class="block text-sm font-medium text-slate-700 mb-1">
+            <span id="urgency-label" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
               Urgency Bonus
             </span>
             <div class="flex flex-wrap gap-2">
@@ -362,21 +362,21 @@
                   on:click={() => urgencyMultiplier = preset.value}
                   class="px-4 py-2 text-sm font-medium rounded-lg transition-colors
                     {urgencyMultiplier === preset.value
-                      ? preset.color + ' ring-2 ring-offset-2 ring-indigo-500'
+                      ? preset.color + ' ring-2 ring-offset-2 dark:ring-offset-slate-800 ring-indigo-500'
                       : preset.color + ' opacity-60 hover:opacity-100'}"
                 >
                   {preset.label}
                 </button>
               {/each}
             </div>
-            <p class="mt-1 text-xs text-slate-500">
+            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
               Higher urgency means higher payout but faster deadline expectations
             </p>
           </div>
 
           <!-- Required Level -->
           <div>
-            <label for="requiredLevel" class="block text-sm font-medium text-slate-700 mb-1">
+            <label for="requiredLevel" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
               Required Level
             </label>
             <div class="flex items-center gap-4">
@@ -386,49 +386,49 @@
                 bind:value={requiredLevel}
                 min="1"
                 max="5"
-                class="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                class="flex-1 h-2 bg-slate-200 dark:bg-slate-600 rounded-lg appearance-none cursor-pointer"
               />
-              <div class="flex items-center gap-1 px-3 py-1.5 bg-amber-100 rounded-lg">
-                <Sparkles size={14} class="text-amber-600" />
-                <span class="text-sm font-medium text-amber-700">Level {requiredLevel}+</span>
+              <div class="flex items-center gap-1 px-3 py-1.5 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
+                <Sparkles size={14} class="text-amber-600 dark:text-amber-400" />
+                <span class="text-sm font-medium text-amber-700 dark:text-amber-400">Level {requiredLevel}+</span>
               </div>
             </div>
-            <p class="mt-1 text-xs text-slate-500">
+            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
               Only employees at this level or higher can accept the task
             </p>
           </div>
 
           <!-- Deadline -->
           <div>
-            <label for="deadline" class="block text-sm font-medium text-slate-700 mb-1">
+            <label for="deadline" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
               Deadline
             </label>
             <div class="relative">
-              <Calendar class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <Calendar class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={18} />
               <input
                 type="datetime-local"
                 id="deadline"
                 bind:value={deadline}
                 min={new Date().toISOString().slice(0, 16)}
-                class="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                class="w-full pl-10 pr-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
           </div>
 
           <!-- Preview Card -->
-          <div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
-            <h4 class="text-xs font-medium text-slate-500 uppercase tracking-wider mb-3">Task Preview</h4>
-            <div class="bg-white rounded-lg border border-slate-200 p-4">
+          <div class="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-200 dark:border-slate-700">
+            <h4 class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">Task Preview</h4>
+            <div class="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-600 p-4">
               <div class="flex items-start justify-between gap-2">
-                <h5 class="font-medium text-slate-900">{title || 'Task title...'}</h5>
+                <h5 class="font-medium text-slate-900 dark:text-white">{title || 'Task title...'}</h5>
                 {#if urgencyMultiplier > 1}
-                  <span class="px-2 py-0.5 text-xs font-medium rounded bg-amber-100 text-amber-700">
+                  <span class="px-2 py-0.5 text-xs font-medium rounded bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
                     +{((urgencyMultiplier - 1) * 100).toFixed(0)}% bonus
                   </span>
                 {/if}
               </div>
-              <div class="mt-2 flex items-center gap-4 text-sm text-slate-500">
-                <span class="text-green-600 font-medium">${(dollarValue * urgencyMultiplier).toFixed(2)}</span>
+              <div class="mt-2 flex items-center gap-4 text-sm text-slate-500 dark:text-slate-400">
+                <span class="text-green-600 dark:text-green-400 font-medium">${(dollarValue * urgencyMultiplier).toFixed(2)}</span>
                 {#if requiredLevel > 1}
                   <span class="flex items-center gap-1">
                     <Sparkles size={12} />
@@ -440,11 +440,11 @@
           </div>
 
           <!-- Actions -->
-          <div class="flex justify-end gap-3 pt-4 border-t border-slate-200">
+          <div class="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
             <button
               type="button"
               on:click={close}
-              class="px-6 py-2.5 text-slate-600 hover:text-slate-900 font-medium transition-colors"
+              class="px-6 py-2.5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-medium transition-colors"
             >
               Cancel
             </button>

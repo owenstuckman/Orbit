@@ -227,6 +227,14 @@ async function handleConfidence(taskId: string): Promise<Response> {
   const confidence = mlResponse.pass_probability;
   const passed = confidence > 0.5;
 
+  // Store full ML response as JSON so QC page can display breakdown, issues, recommendations
+  const feedbackJson = JSON.stringify({
+    summary: mlResponse.summary,
+    confidence_breakdown: mlResponse.confidence_breakdown,
+    issues: mlResponse.issues,
+    recommendations: mlResponse.recommendations,
+  });
+
   // Create AI review record
   // weight=0 because AI reviews are informational only (human reviews have weight)
   const { error: reviewError } = await supabase.from("qc_reviews").insert({
@@ -234,7 +242,7 @@ async function handleConfidence(taskId: string): Promise<Response> {
     review_type: "ai",
     passed: passed,
     confidence: confidence,
-    feedback: mlResponse.summary,
+    feedback: feedbackJson,
     pass_number: 1,
     weight: 0,
   });
@@ -242,6 +250,17 @@ async function handleConfidence(taskId: string): Promise<Response> {
   if (reviewError) {
     console.error("Review insert failed:", reviewError);
     return jsonResponse({ error: "Failed to create review" }, 500);
+  }
+
+  // Transition task to under_review now that AI review is complete
+  const { error: statusError } = await supabase
+    .from("tasks")
+    .update({ status: "under_review" })
+    .eq("id", taskId);
+
+  if (statusError) {
+    console.warn("Failed to update task status to under_review:", statusError);
+    // Non-fatal: task already in completed queue, QC can still see it
   }
 
   console.log(`AI review created: task=${taskId} confidence=${confidence}`);
