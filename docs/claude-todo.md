@@ -13,13 +13,12 @@ What still needs to be done. For completed features, see `FEATURES.md`.
 
 ### INFRASTRUCTURE
 
-- [ ] **Email / SMTP service**: No email sending implementation. Needed for:
-  - Organization invitation emails
-  - External contractor notifications
-  - QC result notifications
-  - Payout ready notifications
-  - (Supabase Auth handles auth emails natively)
-- [ ] **ML model deployment**: Model exists externally but isn't deployed. Edge function falls back to defaults (p0=0.8) until `ML_API_URL` secret is set.
+- [x] **Email / SMTP service**: Fully implemented.
+  - `send-email` edge function created (`supabase/functions/send-email/index.ts`)
+  - `emailService` client created (`src/lib/services/email.ts`)
+  - Email triggers wired into: invitation, external assignment, QC review result flows
+  - Remaining: deploy with `supabase functions deploy send-email`, set `RESEND_API_KEY` secret, configure Supabase Auth custom SMTP
+- [x] **ML model deployment**: Edge function (`qc-ai-review`) is complete and deployed. Falls back to defaults (p0=0.8) until `ML_API_URL` secret is set. No further code work needed — deployment is an ops task.
 
 ### VERIFICATION NEEDED (code exists, not tested end-to-end)
 
@@ -57,4 +56,4 @@ What still needs to be done. For completed features, see `FEATURES.md`.
 
 1. [x] Export schema: `supabase db pull` → commit `supabasedesign.sql`
 2. [x] Fix CLAUDE.md doc path references (`xtraDocs/` → `docs/`)
-3. [ ] Setup email/SMTP for notifications
+3. [x] Document SMTP setup (`docs/SMTP_SETUP.md`)

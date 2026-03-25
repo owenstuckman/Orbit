@@ -16,8 +16,8 @@
  *   supabase functions deploy qc-ai-review
  *
  * DOCS:
- *   xtraDocs/ML_INTEGRATION.md     - Integration overview
- *   xtraDocs/ML_MODEL_HOSTING.md   - How to host the ML model
+ *   docs/ML_INTEGRATION.md     - Integration overview
+ *   docs/ML_MODEL_HOSTING.md   - How to host the ML model
  */
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";

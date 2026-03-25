@@ -58,7 +58,7 @@ Where:
   k   = pass number (1-indexed)
 ```
 
-See: `xtraDocs/FORMULAS.md` for full mathematical reference.
+See: `docs/FORMULAS.md` for full mathematical reference.
 
 ---
 
@@ -97,7 +97,7 @@ Redirect to /dashboard → (app) layout loads user, org, memberships
 - **Feature preset selector**: `src/lib/components/auth/FeaturePresetSelector.svelte`
 - **Auth store initialization**: `src/lib/stores/auth.ts` → `auth.initialize()`
 - **App layout init**: `src/routes/(app)/+layout.svelte` → `initializeApp()`
-- **Detailed docs**: `xtraDocs/USER_REGISTRATION_FLOW.md`
+- **Detailed docs**: `docs/USER_REGISTRATION_FLOW.md`
 
 ### App Layout Initialization Sequence
 ```
@@ -228,7 +228,7 @@ QC opens review → QCReviewForm loads task.submission_data
 - **Artifact display**: `src/lib/components/submissions/ArtifactItem.svelte`, `ArtifactList.svelte`
 - **Artifact service**: `src/lib/services/artifacts.ts`
 - **Storage helpers**: `storage.uploadFile()`, `storage.downloadFile()` in `src/lib/services/supabase.ts`
-- **Storage docs**: `xtraDocs/SUPABASE_STORAGE.md`
+- **Storage docs**: `docs/SUPABASE_STORAGE.md`
 
 ---
 

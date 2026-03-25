@@ -344,6 +344,16 @@ export const usersApi = {
       console.error('Error creating invitation:', error);
       return null;
     }
+
+    // Send invitation email (fire-and-forget)
+    if (data) {
+      import('./email').then(({ emailService }) => {
+        const orgName = data.organization?.name || 'your organization';
+        const inviterName = user.full_name || user.email;
+        emailService.sendInvitation(email, token, orgName, inviterName);
+      }).catch(() => {});
+    }
+
     return data;
   },
 
@@ -956,6 +966,19 @@ export const tasksApi = {
       return { success: false, error: data?.error || 'Failed to assign task externally' };
     }
 
+    // Send notification emails to the contractor (fire-and-forget)
+    if (assignment.contractor_email && data.submission_token) {
+      const task = await this.getById(taskId);
+      import('./email').then(({ emailService }) => {
+        emailService.sendExternalAssignment(
+          assignment.contractor_email,
+          assignment.contractor_name,
+          task?.title || 'New Task',
+          data.submission_token
+        );
+      }).catch(() => {});
+    }
+
     return {
       success: true,
       contract_id: data.contract_id,
@@ -1183,7 +1206,7 @@ export const qcApi = {
     const passNumber = (task.qc_reviews?.filter(r => r.review_type !== 'ai').length ?? 0) + 1;
     const weight = reviewType === 'peer' ? 1.0 : 2.0;
 
-    return this.create({
+    const review = await this.create({
       task_id: taskId,
       reviewer_id: reviewerId,
       review_type: reviewType,
@@ -1194,6 +1217,18 @@ export const qcApi = {
       v0: task.dollar_value * 0.7,
       d_k: task.dollar_value * 0.1 // Simplified; real calc in edge function
     });
+
+    // Notify task assignee of QC result (fire-and-forget)
+    if (review && task.assignee_id) {
+      import('./email').then(async ({ emailService }) => {
+        const assignee = await usersApi.getById(task.assignee_id!);
+        if (assignee?.email) {
+          emailService.sendQCResult(assignee.email, task.title, passed, feedback);
+        }
+      }).catch(() => {});
+    }
+
+    return review;
   }
 };
 

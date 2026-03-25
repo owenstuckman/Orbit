@@ -110,14 +110,12 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 
 #### 3. Deploy edge functions (optional)
 
-If you want AI-powered QC reviews or server-side payout calculations, deploy the Supabase edge functions:
+If you want AI-powered QC reviews, deploy the edge function:
 
 ```bash
 supabase login
 supabase link --project-ref your-project-ref
 supabase functions deploy qc-ai-review
-supabase functions deploy payout-calculator
-supabase functions deploy generate-contract
 ```
 
 For AI QC reviews, set the ML API secrets:
@@ -127,6 +125,8 @@ supabase secrets set ML_API_KEY=your-ml-api-key
 ```
 
 The edge function falls back to a default confidence score (p0=0.8) if the ML service is not configured.
+
+> **Note**: The app also calls `payout-calculator` and `generate-contract` edge functions. Their source is not in this repo — they need to be created and deployed separately if you want server-side payout calculations and contract generation.
 
 #### 4. Run locally
 

@@ -19,6 +19,7 @@ Built with SvelteKit + Supabase, it supports multiple user roles (admin, sales, 
 - `DATA_FLOWS.md` - Complex multi-step workflows (task→QC→payout, registration, contracts, gamification)
 - `FEATURES.md` - All completed features and capabilities
 - `TODO.md` - Remaining tasks organized by priority
+- `SMTP_SETUP.md` - SMTP provider setup, email templates, edge function guide
 
 ## Development Commands
 

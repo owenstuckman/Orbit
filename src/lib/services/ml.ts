@@ -15,7 +15,7 @@
  *   supabase secrets set ML_API_KEY=your-api-key
  *   supabase functions deploy qc-ai-review
  *
- * See xtraDocs/ML_INTEGRATION.md for full integration guide.
+ * See docs/ML_INTEGRATION.md for full integration guide.
  */
 
 import { functions } from '$lib/services/supabase';

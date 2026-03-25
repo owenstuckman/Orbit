@@ -181,7 +181,7 @@ Three actions routed through a single Supabase edge function:
 - PM bonus contribution from unclaimed commission
 
 ### Payout Infrastructure
-- `payout-calculator` edge function (deployed, active)
+- `payout-calculator` edge function (called from `api.ts`, source not in repo)
 - Client-side calculation utilities in `payout.ts`
 - Payout tracking page at `/payouts`
 
@@ -196,7 +196,7 @@ Three actions routed through a single Supabase edge function:
 
 ### Contract E-Signature
 - PDF generation via jsPDF (`contractPdf.ts`)
-- `generate-contract` edge function (deployed, active)
+- `generate-contract` edge function (called from `api.ts`, source not in repo)
 - Dual-signature flow: Party A (employer) → Party B (contractor)
 - External signing route: `/contract/[token]`
 - Contract status: draft → pending_signature → active → completed
@@ -355,15 +355,13 @@ Three actions routed through a single Supabase edge function:
 
 ---
 
-## Edge Functions (5 deployed)
+## Edge Functions
 
 | Slug | Purpose | Status |
 |------|---------|--------|
-| `qc-ai-review` | AI confidence, complexity, quality scoring | v6, active |
-| `payout-calculator` | Employee/PM payout calculations | active |
-| `generate-contract` | Server-side contract PDF generation | active |
-| `contract-generator` | Contract generation | active |
-| `contract-sing` | Contract signing | active |
+| `qc-ai-review` | AI confidence, complexity, quality scoring | v6, source in repo |
+| `payout-calculator` | Employee/PM payout calculations | called from `api.ts`, source not in repo |
+| `generate-contract` | Server-side contract PDF generation | called from `api.ts`, source not in repo |
 
 ---
 

@@ -20,13 +20,14 @@ All remaining tasks, organized by priority.
 ## High Priority
 
 ### Infrastructure
-- [ ] Setup SMTP service (Google/SendGrid/Postmark) for email notifications
+- [ ] Setup SMTP service — see `docs/SMTP_SETUP.md` for full guide
 - [ ] Implement email sending for:
   - [ ] Organization invitations
   - [ ] External contractor assignment notifications
   - [ ] QC review result notifications (approved/rejected)
   - [ ] Payout ready notifications
 - [ ] Configure Supabase Auth email templates (confirmation, password reset)
+- [x] Document SMTP setup guide (`docs/SMTP_SETUP.md`)
 
 ### Testing & Verification
 - [ ] End-to-end test: task lifecycle (create → assign → start → submit → AI review → QC approve → payout)
