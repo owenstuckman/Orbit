@@ -64,7 +64,7 @@ supabase/
 ├── migrations/         # Database schema
 └── functions/          # Edge functions for payouts
 static/                 # Static assets
-xtraDocs/               # Technical documentation
+docs/                   # Technical documentation
 ```
 
 ## Tech Stack
