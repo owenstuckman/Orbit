@@ -10,17 +10,15 @@ Built with SvelteKit + Supabase, it supports multiple user roles (admin, sales, 
 
 **Wiki Documentation**: https://github.com/owenstuckman/Orbit/wiki
 
-**Additional Docs** (`xtraDocs/`):
-- `TECHNICAL_ARCHITECTURE.md` - Detailed architecture decisions and rationale
+**Additional Docs** (`docs/`):
 - `FORMULAS.md` - Payout calculation formulas (employee, QC, PM, sales)
 - `ML_INTEGRATION.md` - ML model integration points and API schemas
 - `ML_MODEL_HOSTING.md` - Guide for deploying the QC ML model as an API
 - `SUPABASE_STORAGE.md` - Storage bucket conventions and usage patterns
 - `USER_REGISTRATION_FLOW.md` - Two-stage registration with email verification
 - `DATA_FLOWS.md` - Complex multi-step workflows (task→QC→payout, registration, contracts, gamification)
-- `COMPONENT_API.md` - All Svelte component props, events, and slots
-- `STORE_API.md` - All Svelte store methods, derived stores, and usage
-- `SERVICE_API.md` - All API service methods with signatures
+- `FEATURES.md` - All completed features and capabilities
+- `TODO.md` - Remaining tasks organized by priority
 
 ## Development Commands
 
@@ -284,6 +282,6 @@ Capabilities are defined in `src/lib/stores/auth.ts` (`ROLE_CAPABILITIES` object
 - **Fallback**: Returns default p0=0.8 if ML service is unreachable
 - **Secrets**: `ML_API_URL`, `ML_API_KEY`
 - **File**: `supabase/functions/qc-ai-review/index.ts`
-- **Docs**: `xtraDocs/ML_INTEGRATION.md`, `xtraDocs/ML_MODEL_HOSTING.md`
+- **Docs**: `docs/ML_INTEGRATION.md`, `docs/ML_MODEL_HOSTING.md`
 
 Note: Payout calculations are NOT edge functions. They run client-side in `src/lib/utils/payout.ts`.

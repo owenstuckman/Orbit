@@ -672,7 +672,7 @@ export const projectsApi = {
    * @returns Calculated bonus amount
    */
   async calculatePMBonus(projectId: string): Promise<number> {
-    const { data } = await functions.invoke<{ bonus: number }>('calculate-payout', {
+    const { data } = await functions.invoke<{ bonus: number }>('payout-calculator', {
       body: { project_id: projectId, calculation_type: 'pm_bonus' }
     });
     return data?.bonus ?? 0;
@@ -922,7 +922,7 @@ export const tasksApi = {
    */
   async calculatePayout(taskId: string): Promise<{ payout: number; details: unknown }> {
     const { data } = await functions.invoke<{ payout: number; details: unknown }>(
-      'calculate-payout',
+      'payout-calculator',
       { body: { task_id: taskId, calculation_type: 'employee' } }
     );
     return data ?? { payout: 0, details: {} };
