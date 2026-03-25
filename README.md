@@ -73,31 +73,103 @@ docs/                   # Technical documentation
 - **Backend**: Supabase (PostgreSQL, Auth, Storage, Edge Functions, Realtime)
 - **Icons**: Lucide Svelte
 
+## Deploy
+
+### One-Click Deploy to Vercel
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fowenstuckman%2FOrbit&env=VITE_SUPABASE_URL,VITE_SUPABASE_ANON_KEY&envDescription=Supabase%20project%20credentials%20required%20for%20the%20app%20to%20connect%20to%20your%20database&envLink=https%3A%2F%2Fsupabase.com%2Fdashboard&project-name=orbit&framework=sveltekit)
+
+You will be prompted to set the required environment variables during setup.
+
+### Manual Deployment
+
+#### Prerequisites
+- [Node.js](https://nodejs.org/) 18+
+- A [Supabase](https://supabase.com) project (free tier works)
+
+#### 1. Set up Supabase
+
+1. Create a new project at [supabase.com/dashboard](https://supabase.com/dashboard)
+2. Run the schema against your database — import `supabasedesign.sql` or apply the migrations in `supabase/migrations/`
+3. Copy your project URL and anon key from **Settings > API**
+
+#### 2. Clone and configure
+
+```bash
+git clone https://github.com/owenstuckman/Orbit.git
+cd Orbit
+npm install
+cp .env.example .env
+```
+
+Add your Supabase credentials to `.env`:
+```
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+```
+
+#### 3. Deploy edge functions (optional)
+
+If you want AI-powered QC reviews or server-side payout calculations, deploy the Supabase edge functions:
+
+```bash
+supabase login
+supabase link --project-ref your-project-ref
+supabase functions deploy qc-ai-review
+supabase functions deploy payout-calculator
+supabase functions deploy generate-contract
+```
+
+For AI QC reviews, set the ML API secrets:
+```bash
+supabase secrets set ML_API_URL=https://your-ml-api.com
+supabase secrets set ML_API_KEY=your-ml-api-key
+```
+
+The edge function falls back to a default confidence score (p0=0.8) if the ML service is not configured.
+
+#### 4. Run locally
+
+```bash
+npm run dev
+```
+
+The app runs at `http://localhost:5173`.
+
+#### 5. Deploy to Vercel (CLI)
+
+```bash
+npm i -g vercel
+vercel --prod
+```
+
+Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in your Vercel project's environment variables.
+
+### Other Hosting
+
+SvelteKit uses `adapter-auto` which auto-detects Vercel, Netlify, and Cloudflare. For other platforms, swap the adapter in `svelte.config.js`:
+
+```bash
+# Netlify
+npm i -D @sveltejs/adapter-netlify
+
+# Cloudflare Pages
+npm i -D @sveltejs/adapter-cloudflare
+
+# Node.js server
+npm i -D @sveltejs/adapter-node
+```
+
 ## Development
 
-### Installation
-
-1. **Clone and install dependencies**
-   ```bash
-   npm install
-   ```
-
-2. **Configure environment**
-   ```bash
-   cp .env.example .env
-   ```
-
-   Add Supabase credentials:
-   ```
-   VITE_SUPABASE_URL=https://your-project.supabase.co
-   VITE_SUPABASE_ANON_KEY=your-anon-key
-   ```
-
-3. **Run dev server**
-   ```bash
-   npm run dev
-   ```
-
+```bash
+npm run dev          # Start dev server (localhost:5173)
+npm run build        # Production build
+npm run preview      # Preview production build
+npm run check        # TypeScript type checking
+npm run lint         # ESLint
+npm run format       # Prettier formatting
+```
 
 ## Roadmap
 

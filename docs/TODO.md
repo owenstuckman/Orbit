@@ -90,7 +90,7 @@ All remaining tasks, organized by priority.
 ### Documentation
 - [x] Fix CLAUDE.md doc path references (`xtraDocs/` → `docs/`)
 - [x] Fix CLAUDE.md schema reference (`supabasedesign.sql`)
-- [ ] Add deployment guide (Vercel/Netlify + Supabase)
+- [x] Add deployment guide (Vercel/Netlify + Supabase)
 - [ ] Add contributing guide
 
 ### Future Enhancements
