@@ -285,4 +285,13 @@ Capabilities are defined in `src/lib/stores/auth.ts` (`ROLE_CAPABILITIES` object
 - **File**: `supabase/functions/qc-ai-review/index.ts`
 - **Docs**: `docs/ML_INTEGRATION.md`, `docs/ML_MODEL_HOSTING.md`
 
+### send-email
+- **Purpose**: Send transactional emails via Resend API
+- **Trigger**: Called via `emailService` methods in `src/lib/services/email.ts`
+- **Templates**: Invitation, external assignment, QC result, payout ready, contract signing
+- **Secrets**: `RESEND_API_KEY`, `EMAIL_FROM`
+- **File**: `supabase/functions/send-email/index.ts`
+- **Docs**: `docs/SMTP_SETUP.md`
+- **Graceful**: Skips silently if `RESEND_API_KEY` is not configured
+
 Note: Payout calculations are NOT edge functions. They run client-side in `src/lib/utils/payout.ts`.

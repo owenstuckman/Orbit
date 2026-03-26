@@ -360,8 +360,18 @@ Three actions routed through a single Supabase edge function:
 | Slug | Purpose | Status |
 |------|---------|--------|
 | `qc-ai-review` | AI confidence, complexity, quality scoring | v6, source in repo |
+| `send-email` | Transactional emails via Resend API | source in repo, needs deploy + secret |
 | `payout-calculator` | Employee/PM payout calculations | called from `api.ts`, source not in repo |
 | `generate-contract` | Server-side contract PDF generation | called from `api.ts`, source not in repo |
+
+### Email Service (`src/lib/services/email.ts`)
+- `emailService.sendInvitation()` — Organization invite with code + link
+- `emailService.sendExternalAssignment()` — Contractor task notification with submission link
+- `emailService.sendQCResult()` — Approved/rejected notification with feedback
+- `emailService.sendPayoutReady()` — Payout notification with amount
+- `emailService.sendContractReady()` — Contract signing link for contractors
+- All methods fire-and-forget (never block the calling flow)
+- Wired into: `usersApi.invite()`, `tasksApi.assignExternal()`, `qcApi.submitReview()`
 
 ---
 

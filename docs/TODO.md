@@ -20,14 +20,15 @@ All remaining tasks, organized by priority.
 ## High Priority
 
 ### Infrastructure
-- [ ] Setup SMTP service — see `docs/SMTP_SETUP.md` for full guide
-- [ ] Implement email sending for:
-  - [ ] Organization invitations
-  - [ ] External contractor assignment notifications
-  - [ ] QC review result notifications (approved/rejected)
-  - [ ] Payout ready notifications
+- [x] Setup SMTP service — `send-email` edge function + `emailService` client created
+- [x] Implement email sending for:
+  - [x] Organization invitations
+  - [x] External contractor assignment notifications
+  - [x] QC review result notifications (approved/rejected)
+  - [ ] Payout ready notifications (emailService method exists, needs wiring into payout creation flow)
 - [ ] Configure Supabase Auth email templates (confirmation, password reset)
 - [x] Document SMTP setup guide (`docs/SMTP_SETUP.md`)
+- [ ] Deploy: `supabase functions deploy send-email` and set `RESEND_API_KEY` secret
 
 ### Testing & Verification
 - [ ] End-to-end test: task lifecycle (create → assign → start → submit → AI review → QC approve → payout)
