@@ -3,119 +3,167 @@
   import { user, capabilities, organization, currentOrgRole } from '$lib/stores/auth';
   import { tasks } from '$lib/stores/tasks';
   import { projects } from '$lib/stores/projects';
-  import { payoutsApi } from '$lib/services/api';
-  import { formatCurrency, calculateSalaryBreakdown, projectAnnualSalary } from '$lib/utils/payout';
-  import { 
-    TrendingUp, 
-    CheckCircle, 
-    Clock, 
+  import { payoutsApi, qcApi, usersApi } from '$lib/services/api';
+  import { formatCurrency, calculateSalaryBreakdown } from '$lib/utils/payout';
+  import { featureFlags } from '$lib/stores/featureFlags';
+  import { notifications, unreadCount } from '$lib/stores/notifications';
+  import {
+    TrendingUp,
+    CheckCircle,
+    Clock,
     DollarSign,
     Target,
     AlertTriangle,
     ArrowUpRight,
-    ArrowDownRight,
     Users,
     FolderKanban,
-    Shield
+    Shield,
+    Zap,
+    Star,
+    Award,
+    BarChart3,
+    FileText,
+    ExternalLink,
+    Bell,
+    Flame,
+    ChevronRight
   } from 'lucide-svelte';
+  import type { Task, User as UserType } from '$lib/types';
 
-  // Dashboard data
+  // Common data
   let stats = {
     tasksCompleted: 0,
     tasksInProgress: 0,
+    tasksOpen: 0,
     totalEarnings: 0,
     pendingPayouts: 0,
     qcPassRate: 0,
     currentStreak: 0
   };
-  let recentTasks: any[] = [];
+  let recentTasks: Task[] = [];
   let salaryBreakdown: any = null;
   let loading = true;
 
-  // PM-specific stats
+  // PM data
   let pmStats = {
     projectsManaged: 0,
     budgetUtilization: 0,
-    teamSize: 0,
-    overdraftRisk: 0
+    overdraftRisk: 0,
+    totalBudget: 0,
+    totalSpent: 0,
+    tasksUnderReview: 0
   };
 
-  // QC-specific stats
+  // QC data
   let qcStats = {
     reviewsCompleted: 0,
+    pendingReviews: 0,
     avgConfidence: 0,
-    issuesFound: 0
+    qcEarnings: 0
   };
+  let pendingQCTasks: Task[] = [];
 
-  // Sales-specific stats
+  // Sales data
   let salesStats = {
     projectsSold: 0,
     totalSalesValue: 0,
     pendingProjects: 0,
-    commissionEarned: 0
+    commissionEarned: 0,
+    activeProjects: 0
   };
+
+  // Admin data
+  let adminStats = {
+    totalUsers: 0,
+    totalTasks: 0,
+    activeProjects: 0,
+    totalValue: 0,
+    totalSpent: 0,
+    pendingQC: 0,
+    openTasks: 0,
+    completedTasks: 0
+  };
+  let orgMembers: UserType[] = [];
 
   onMount(async () => {
     if (!$user) return;
 
     try {
-      // Load common data
       const payoutSummary = await payoutsApi.getSummary($user.id, 'month');
       stats.totalEarnings = payoutSummary.total;
       stats.pendingPayouts = payoutSummary.pending;
       stats.currentStreak = $user.metadata?.current_streak || 0;
-      stats.qcPassRate = ($user.metadata?.qc_pass_rate || 0) * 100;
+      stats.tasksCompleted = $user.metadata?.total_tasks_completed || 0;
 
-      // Calculate salary breakdown
       if ($user.base_salary && $user.r != null) {
         const monthlyTaskValue = payoutSummary.byType.task || 0;
         salaryBreakdown = calculateSalaryBreakdown(
-          $user.base_salary / 12, // Monthly base
+          $user.base_salary / 12,
           $user.r,
           monthlyTaskValue
         );
       }
 
-      // Role-specific data loading
-      switch ($user.role) {
-        case 'employee':
-        case 'contractor':
-          await tasks.loadByAssignee($user.id);
-          stats.tasksCompleted = $tasks.items.filter(t => t.status === 'approved' || t.status === 'paid').length;
-          stats.tasksInProgress = $tasks.items.filter(t => t.status === 'in_progress' || t.status === 'assigned').length;
-          recentTasks = $tasks.items.slice(0, 5);
-          break;
+      const role = $currentOrgRole;
 
-        case 'pm':
-          await projects.loadByPM($user.id);
-          pmStats.projectsManaged = $projects.items.filter(p => p.status === 'active').length;
-          pmStats.budgetUtilization = $projects.items.length > 0
-            ? $projects.items.reduce((sum, p) => sum + (p.spent / p.total_value), 0) / $projects.items.length * 100
-            : 0;
-          pmStats.overdraftRisk = $projects.items.filter(p => (p.spent / p.total_value) > 0.9).length;
-          break;
-
-        case 'qc':
-          // Load QC queue - would need API method
-          qcStats.reviewsCompleted = Number($user.metadata?.reviews_completed) || 0;
-          qcStats.avgConfidence = (Number($user.metadata?.avg_confidence) || 0) * 100;
-          qcStats.issuesFound = Number($user.metadata?.issues_found) || 0;
-          break;
-
-        case 'sales':
-          await projects.loadBySales($user.id);
-          salesStats.projectsSold = $projects.items.filter(p => p.status !== 'draft').length;
-          salesStats.totalSalesValue = $projects.items.reduce((sum, p) => sum + p.total_value, 0);
-          salesStats.pendingProjects = $projects.items.filter(p => p.status === 'pending_pm').length;
-          salesStats.commissionEarned = payoutSummary.byType.sales_commission || 0;
-          break;
-
-        case 'admin':
-          // Load everything
-          await tasks.load();
-          await projects.load();
-          break;
+      if (role === 'employee' || role === 'contractor') {
+        await tasks.loadByAssignee($user.id);
+        const items = $tasks.items;
+        stats.tasksCompleted = items.filter(t => t.status === 'approved' || t.status === 'paid').length;
+        stats.tasksInProgress = items.filter(t => t.status === 'in_progress' || t.status === 'assigned').length;
+        stats.tasksOpen = items.filter(t => t.status === 'under_review').length;
+        recentTasks = items.slice(0, 6);
       }
+
+      if (role === 'pm') {
+        await projects.loadByPM($user.id);
+        await tasks.load();
+        const activeProjects = $projects.items.filter(p => p.status === 'active');
+        pmStats.projectsManaged = activeProjects.length;
+        pmStats.totalBudget = $projects.items.reduce((s, p) => s + p.total_value, 0);
+        pmStats.totalSpent = $projects.items.reduce((s, p) => s + (p.spent || 0), 0);
+        pmStats.budgetUtilization = pmStats.totalBudget > 0
+          ? (pmStats.totalSpent / pmStats.totalBudget) * 100 : 0;
+        pmStats.overdraftRisk = $projects.items.filter(p => p.total_value > 0 && (p.spent || 0) / p.total_value > 0.9).length;
+        pmStats.tasksUnderReview = $tasks.items.filter(t => t.status === 'under_review').length;
+      }
+
+      if (role === 'qc') {
+        pendingQCTasks = await qcApi.listPending();
+        qcStats.pendingReviews = pendingQCTasks.length;
+        qcStats.reviewsCompleted = Number($user.metadata?.reviews_completed) || 0;
+        qcStats.avgConfidence = (Number($user.metadata?.avg_confidence) || 0) * 100;
+        qcStats.qcEarnings = payoutSummary.byType.qc || stats.totalEarnings;
+      }
+
+      if (role === 'sales') {
+        await projects.loadBySales($user.id);
+        salesStats.projectsSold = $projects.items.filter(p => p.status !== 'draft').length;
+        salesStats.totalSalesValue = $projects.items.reduce((s, p) => s + p.total_value, 0);
+        salesStats.pendingProjects = $projects.items.filter(p => p.status === 'pending_pm').length;
+        salesStats.activeProjects = $projects.items.filter(p => p.status === 'active').length;
+        salesStats.commissionEarned = payoutSummary.byType.sales_commission || 0;
+      }
+
+      if (role === 'admin') {
+        await tasks.load();
+        await projects.load();
+        const allTasks = $tasks.items;
+        const allProjects = $projects.items;
+        adminStats.totalTasks = allTasks.length;
+        adminStats.activeProjects = allProjects.filter(p => p.status === 'active').length;
+        adminStats.totalValue = allProjects.reduce((s, p) => s + p.total_value, 0);
+        adminStats.totalSpent = allProjects.reduce((s, p) => s + (p.spent || 0), 0);
+        adminStats.pendingQC = allTasks.filter(t => t.status === 'under_review').length;
+        adminStats.openTasks = allTasks.filter(t => t.status === 'open').length;
+        adminStats.completedTasks = allTasks.filter(t => t.status === 'approved' || t.status === 'paid').length;
+        try {
+          const members = await usersApi.list({ eq: { org_id: $user.org_id } });
+          orgMembers = members;
+          adminStats.totalUsers = members.length;
+        } catch { adminStats.totalUsers = 0; }
+      }
+
     } catch (error) {
       console.error('Error loading dashboard data:', error);
     } finally {
@@ -123,441 +171,593 @@
     }
   });
 
-  // Format percentage change
-  function formatChange(value: number): string {
-    const sign = value >= 0 ? '+' : '';
-    return `${sign}${value.toFixed(1)}%`;
+  function getStatusColor(status: string): string {
+    const colors: Record<string, string> = {
+      approved: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300',
+      paid: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300',
+      in_progress: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
+      assigned: 'bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300',
+      under_review: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300',
+      rejected: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300',
+      open: 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300',
+      completed: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300',
+    };
+    return colors[status] || colors.open;
+  }
+
+  function getRoleBadge(role: string): string {
+    const badges: Record<string, string> = {
+      admin: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300',
+      pm: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
+      qc: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300',
+      sales: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300',
+      employee: 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300',
+      contractor: 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300',
+    };
+    return badges[role] || badges.employee;
   }
 </script>
 
-<div class="space-y-8">
+<div class="space-y-6">
   <!-- Header -->
-  <div>
-    <h1 class="text-2xl font-bold text-slate-900 dark:text-white">
-      Welcome back, {$user?.full_name?.split(' ')[0] || 'there'}
-    </h1>
-    <p class="mt-1 text-slate-600 dark:text-slate-300">
-      Here's what's happening with your work today.
-    </p>
+  <div class="flex items-start justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-slate-900 dark:text-white">
+        Welcome back, {$user?.full_name?.split(' ')[0] || 'there'}
+      </h1>
+      <p class="mt-1 text-slate-500 dark:text-slate-400">
+        {#if $currentOrgRole === 'admin'}
+          Organization overview for <span class="font-medium text-slate-700 dark:text-slate-300">{$organization?.name}</span>
+        {:else if $currentOrgRole === 'pm'}
+          Your projects and team at a glance
+        {:else if $currentOrgRole === 'qc'}
+          Quality control dashboard
+        {:else if $currentOrgRole === 'sales'}
+          Sales pipeline overview
+        {:else}
+          Here's your work summary
+        {/if}
+      </p>
+    </div>
+    <div class="flex items-center gap-3">
+      {#if $user?.level}
+        <div class="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/20 rounded-full">
+          <Star size={14} class="text-indigo-500" />
+          <span class="text-sm font-semibold text-indigo-700 dark:text-indigo-300">Level {$user.level}</span>
+        </div>
+      {/if}
+      {#if $user?.training_level}
+        <div class="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 dark:bg-amber-900/20 rounded-full">
+          <Zap size={14} class="text-amber-500" />
+          <span class="text-sm font-semibold text-amber-700 dark:text-amber-300">Training Lv.{$user.training_level}</span>
+        </div>
+      {/if}
+      {#if stats.currentStreak > 0}
+        <div class="flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 dark:bg-orange-900/20 rounded-full">
+          <Flame size={14} class="text-orange-500" />
+          <span class="text-sm font-semibold text-orange-700 dark:text-orange-300">{stats.currentStreak}d streak</span>
+        </div>
+      {/if}
+    </div>
   </div>
 
   {#if loading}
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       {#each Array(4) as _}
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 animate-pulse">
-          <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded w-24 mb-4"></div>
-          <div class="h-8 bg-slate-200 dark:bg-slate-700 rounded w-32"></div>
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5 animate-pulse">
+          <div class="h-3 bg-slate-200 dark:bg-slate-700 rounded w-20 mb-3"></div>
+          <div class="h-7 bg-slate-200 dark:bg-slate-700 rounded w-28"></div>
         </div>
       {/each}
     </div>
   {:else}
-    <!-- Employee/Contractor Dashboard -->
+
+    <!-- ==================== EMPLOYEE / CONTRACTOR ==================== -->
     {#if $currentOrgRole === 'employee' || $currentOrgRole === 'contractor'}
-      <!-- Stats Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 overflow-hidden">
-          <div class="flex items-center justify-between gap-4">
-            <div class="min-w-0 flex-1">
-              <p class="text-sm font-medium text-slate-600 dark:text-slate-400 truncate">Tasks Completed</p>
-              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1 truncate">{stats.tasksCompleted}</p>
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-9 h-9 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+              <CheckCircle class="text-green-600 dark:text-green-400" size={18} />
             </div>
-            <div class="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
-              <CheckCircle class="text-green-600 dark:text-green-400" size={24} />
-            </div>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Completed</p>
           </div>
-          <div class="mt-4 flex items-center text-sm">
-            <ArrowUpRight class="text-green-500 flex-shrink-0" size={16} />
-            <span class="text-green-600 dark:text-green-400 font-medium ml-1">12%</span>
-            <span class="text-slate-500 dark:text-slate-400 ml-2 truncate">vs last month</span>
-          </div>
+          <p class="text-2xl font-bold text-slate-900 dark:text-white">{stats.tasksCompleted}</p>
         </div>
 
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 overflow-hidden">
-          <div class="flex items-center justify-between gap-4">
-            <div class="min-w-0 flex-1">
-              <p class="text-sm font-medium text-slate-600 dark:text-slate-400 truncate">In Progress</p>
-              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1 truncate">{stats.tasksInProgress}</p>
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-9 h-9 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+              <Clock class="text-blue-600 dark:text-blue-400" size={18} />
             </div>
-            <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
-              <Clock class="text-blue-600 dark:text-blue-400" size={24} />
-            </div>
+            <p class="text-sm text-slate-500 dark:text-slate-400">In Progress</p>
           </div>
-          <div class="mt-4 flex items-center text-sm">
-            <span class="text-slate-500 dark:text-slate-400 truncate">Active tasks</span>
-          </div>
+          <p class="text-2xl font-bold text-slate-900 dark:text-white">{stats.tasksInProgress}</p>
         </div>
 
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 overflow-hidden">
-          <div class="flex items-center justify-between gap-4">
-            <div class="min-w-0 flex-1">
-              <p class="text-sm font-medium text-slate-600 dark:text-slate-400 truncate">Monthly Earnings</p>
-              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1 truncate">{formatCurrency(stats.totalEarnings)}</p>
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-9 h-9 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg flex items-center justify-center">
+              <DollarSign class="text-indigo-600 dark:text-indigo-400" size={18} />
             </div>
-            <div class="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
-              <DollarSign class="text-indigo-600 dark:text-indigo-400" size={24} />
-            </div>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Earnings</p>
           </div>
-          <div class="mt-4 flex items-center text-sm">
-            <span class="text-amber-600 dark:text-amber-400 font-medium truncate">{formatCurrency(stats.pendingPayouts)}</span>
-            <span class="text-slate-500 dark:text-slate-400 ml-2 truncate">pending</span>
-          </div>
+          <p class="text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(stats.totalEarnings)}</p>
+          {#if stats.pendingPayouts > 0}
+            <p class="text-xs text-amber-600 dark:text-amber-400 mt-1">{formatCurrency(stats.pendingPayouts)} pending</p>
+          {/if}
         </div>
 
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 overflow-hidden">
-          <div class="flex items-center justify-between gap-4">
-            <div class="min-w-0 flex-1">
-              <p class="text-sm font-medium text-slate-600 dark:text-slate-400 truncate">QC Pass Rate</p>
-              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1 truncate">{stats.qcPassRate.toFixed(0)}%</p>
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-9 h-9 bg-amber-100 dark:bg-amber-900/30 rounded-lg flex items-center justify-center">
+              <Shield class="text-amber-600 dark:text-amber-400" size={18} />
             </div>
-            <div class="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
-              <Target class="text-purple-600 dark:text-purple-400" size={24} />
-            </div>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Under Review</p>
           </div>
-          <div class="mt-4 flex items-center text-sm">
-            <span class="text-slate-500 dark:text-slate-400 truncate">🔥 {stats.currentStreak} day streak</span>
-          </div>
+          <p class="text-2xl font-bold text-slate-900 dark:text-white">{stats.tasksOpen}</p>
         </div>
       </div>
 
-      <!-- Salary Breakdown Card -->
+      <!-- Salary Breakdown -->
       {#if salaryBreakdown}
-        <div class="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl p-6 text-white">
-          <h3 class="text-lg font-semibold mb-4">This Month's Salary Breakdown</h3>
-          <div class="grid grid-cols-3 gap-6">
-            <div>
-              <p class="text-indigo-200 text-sm">Base Salary (r={($user?.r || 0.7).toFixed(0)}%)</p>
-              <p class="text-2xl font-bold">{formatCurrency(salaryBreakdown.base)}</p>
-            </div>
-            <div>
-              <p class="text-indigo-200 text-sm">Task Earnings</p>
-              <p class="text-2xl font-bold">{formatCurrency(salaryBreakdown.tasks)}</p>
-            </div>
-            <div>
-              <p class="text-indigo-200 text-sm">Total This Month</p>
-              <p class="text-2xl font-bold">{formatCurrency(salaryBreakdown.total)}</p>
-            </div>
+        <div class="bg-gradient-to-r from-indigo-600 to-violet-600 rounded-xl p-5 text-white">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold">Monthly Compensation</h3>
+            <a href="/settings" class="text-xs text-white/70 hover:text-white">Adjust mix &rarr;</a>
           </div>
-          <div class="mt-4 pt-4 border-t border-white/20">
-            <a href="/settings" class="text-sm text-white/80 hover:text-white">
-              Adjust your salary/task mix →
-            </a>
+          <div class="grid grid-cols-3 gap-4">
+            <div>
+              <p class="text-indigo-200 text-xs">Base (r={(($user?.r || 0.7) * 100).toFixed(0)}%)</p>
+              <p class="text-xl font-bold mt-0.5">{formatCurrency(salaryBreakdown.base)}</p>
+            </div>
+            <div>
+              <p class="text-indigo-200 text-xs">Task Earnings</p>
+              <p class="text-xl font-bold mt-0.5">{formatCurrency(salaryBreakdown.tasks)}</p>
+            </div>
+            <div>
+              <p class="text-indigo-200 text-xs">Total</p>
+              <p class="text-xl font-bold mt-0.5">{formatCurrency(salaryBreakdown.total)}</p>
+            </div>
           </div>
         </div>
       {/if}
 
       <!-- Recent Tasks -->
-      <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-        <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-          <h3 class="font-semibold text-slate-900 dark:text-white">Recent Tasks</h3>
-          <a href="/tasks" class="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium">
-            View all →
-          </a>
-        </div>
-        <div class="divide-y divide-slate-100 dark:divide-slate-700">
-          {#each recentTasks as task}
-            <a href="/tasks/{task.id}" class="block px-6 py-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-              <div class="flex items-center justify-between">
-                <div>
-                  <p class="font-medium text-slate-900 dark:text-white">{task.title}</p>
-                  <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                    {task.project?.name || 'No project'} · {formatCurrency(task.dollar_value)}
+      {#if recentTasks.length > 0}
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+          <div class="px-5 py-3.5 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+            <h3 class="font-semibold text-slate-900 dark:text-white text-sm">Your Tasks</h3>
+            <a href="/tasks" class="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 font-medium">View all &rarr;</a>
+          </div>
+          <div class="divide-y divide-slate-100 dark:divide-slate-700">
+            {#each recentTasks as task}
+              <a href="/tasks/{task.id}" class="flex items-center justify-between px-5 py-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors group">
+                <div class="min-w-0 flex-1">
+                  <p class="font-medium text-sm text-slate-900 dark:text-white truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400">{task.title}</p>
+                  <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    {task.project?.name || 'No project'} &middot; {formatCurrency(task.dollar_value)}
+                    {#if task.story_points} &middot; {task.story_points} SP{/if}
                   </p>
                 </div>
-                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium
-                  {task.status === 'approved' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' : ''}
-                  {task.status === 'in_progress' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300' : ''}
-                  {task.status === 'under_review' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300' : ''}
-                  {task.status === 'rejected' ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300' : ''}
-                  {task.status === 'open' ? 'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-300' : ''}
-                ">
+                <span class="ml-3 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {getStatusColor(task.status)}">
                   {task.status.replace('_', ' ')}
                 </span>
-              </div>
-            </a>
-          {:else}
-            <div class="px-6 py-12 text-center">
-              <p class="text-slate-500 dark:text-slate-400">No tasks yet. Check available tasks to get started!</p>
-              <a href="/tasks" class="inline-flex items-center mt-4 text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium">
-                Browse available tasks →
               </a>
-            </div>
-          {/each}
-        </div>
-      </div>
-    {/if}
-
-    <!-- PM Dashboard -->
-    {#if $currentOrgRole === 'pm'}
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 overflow-hidden">
-          <div class="flex items-center justify-between gap-4">
-            <div class="min-w-0 flex-1">
-              <p class="text-sm font-medium text-slate-600 dark:text-slate-400 truncate">Active Projects</p>
-              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1 truncate">{pmStats.projectsManaged}</p>
-            </div>
-            <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
-              <FolderKanban class="text-blue-600 dark:text-blue-400" size={24} />
-            </div>
+            {/each}
           </div>
         </div>
-
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 overflow-hidden">
-          <div class="flex items-center justify-between gap-4">
-            <div class="min-w-0 flex-1">
-              <p class="text-sm font-medium text-slate-600 dark:text-slate-400 truncate">Avg Budget Used</p>
-              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1 truncate">{pmStats.budgetUtilization.toFixed(0)}%</p>
-            </div>
-            <div class="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
-              <TrendingUp class="text-green-600 dark:text-green-400" size={24} />
-            </div>
-          </div>
-        </div>
-
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 overflow-hidden">
-          <div class="flex items-center justify-between gap-4">
-            <div class="min-w-0 flex-1">
-              <p class="text-sm font-medium text-slate-600 dark:text-slate-400 truncate">Potential Profit</p>
-              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1 truncate">{formatCurrency(stats.totalEarnings)}</p>
-            </div>
-            <div class="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
-              <DollarSign class="text-indigo-600 dark:text-indigo-400" size={24} />
-            </div>
-          </div>
-        </div>
-
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 overflow-hidden">
-          <div class="flex items-center justify-between gap-4">
-            <div class="min-w-0 flex-1">
-              <p class="text-sm font-medium text-slate-600 dark:text-slate-400 truncate">Overdraft Risk</p>
-              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1 truncate">{pmStats.overdraftRisk}</p>
-            </div>
-            <div class="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
-              <AlertTriangle class="text-red-600 dark:text-red-400" size={24} />
-            </div>
-          </div>
-          <p class="text-sm text-slate-500 dark:text-slate-400 mt-2 truncate">projects near budget limit</p>
-        </div>
-      </div>
-
-      <!-- Projects List -->
-      <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-        <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-          <h3 class="font-semibold text-slate-900 dark:text-white">Your Projects</h3>
-          <a href="/projects" class="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium">
-            View all →
+      {:else}
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-10 text-center">
+          <Target class="mx-auto text-slate-300 dark:text-slate-600 mb-3" size={40} />
+          <p class="text-slate-600 dark:text-slate-400 font-medium">No tasks yet</p>
+          <a href="/tasks" class="inline-flex items-center gap-1 mt-3 text-sm text-indigo-600 dark:text-indigo-400 font-medium hover:text-indigo-700">
+            Browse available tasks <ChevronRight size={14} />
           </a>
         </div>
+      {/if}
+    {/if}
+
+    <!-- ==================== PM DASHBOARD ==================== -->
+    {#if $currentOrgRole === 'pm'}
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-9 h-9 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+              <FolderKanban class="text-blue-600 dark:text-blue-400" size={18} />
+            </div>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Active Projects</p>
+          </div>
+          <p class="text-2xl font-bold text-slate-900 dark:text-white">{pmStats.projectsManaged}</p>
+        </div>
+
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-9 h-9 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+              <DollarSign class="text-green-600 dark:text-green-400" size={18} />
+            </div>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Budget</p>
+          </div>
+          <p class="text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(pmStats.totalBudget)}</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">{formatCurrency(pmStats.totalSpent)} spent ({pmStats.budgetUtilization.toFixed(0)}%)</p>
+        </div>
+
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-9 h-9 bg-amber-100 dark:bg-amber-900/30 rounded-lg flex items-center justify-center">
+              <Shield class="text-amber-600 dark:text-amber-400" size={18} />
+            </div>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Under Review</p>
+          </div>
+          <p class="text-2xl font-bold text-slate-900 dark:text-white">{pmStats.tasksUnderReview}</p>
+        </div>
+
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-9 h-9 {pmStats.overdraftRisk > 0 ? 'bg-red-100 dark:bg-red-900/30' : 'bg-green-100 dark:bg-green-900/30'} rounded-lg flex items-center justify-center">
+              <AlertTriangle class="{pmStats.overdraftRisk > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}" size={18} />
+            </div>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Overdraft Risk</p>
+          </div>
+          <p class="text-2xl font-bold text-slate-900 dark:text-white">{pmStats.overdraftRisk}</p>
+          <p class="text-xs text-slate-500 mt-1">{pmStats.overdraftRisk > 0 ? 'projects > 90% budget' : 'all projects on track'}</p>
+        </div>
+      </div>
+
+      <!-- Profit Share Banner -->
+      <div class="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-xl p-5 text-white">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-emerald-100 text-xs font-medium uppercase tracking-wider">Estimated Profit Share</p>
+            <p class="text-3xl font-bold mt-1">{formatCurrency(stats.totalEarnings)}</p>
+            <p class="text-emerald-200 text-sm mt-1">payout = (budget - spent) &times; {$organization?.pm_x || 0.5}</p>
+          </div>
+          <a href="/payouts" class="px-4 py-2 bg-white/15 hover:bg-white/25 rounded-lg text-sm font-medium transition-colors">
+            View Payouts
+          </a>
+        </div>
+      </div>
+
+      <!-- Projects -->
+      <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+        <div class="px-5 py-3.5 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+          <h3 class="font-semibold text-slate-900 dark:text-white text-sm">Your Projects</h3>
+          <a href="/projects" class="text-xs text-indigo-600 dark:text-indigo-400 font-medium">View all &rarr;</a>
+        </div>
         <div class="divide-y divide-slate-100 dark:divide-slate-700">
-          {#each $projects.items.slice(0, 5) as project}
-            <a href="/projects/{project.id}" class="block px-6 py-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+          {#each $projects.items.slice(0, 6) as project}
+            {@const pct = project.total_value > 0 ? (project.spent || 0) / project.total_value : 0}
+            <a href="/projects/{project.id}" class="block px-5 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
               <div class="flex items-center justify-between mb-2">
-                <p class="font-medium text-slate-900 dark:text-white">{project.name}</p>
-                <span class="text-sm text-slate-600 dark:text-slate-400">
-                  {formatCurrency(project.spent)} / {formatCurrency(project.total_value)}
-                </span>
+                <p class="font-medium text-sm text-slate-900 dark:text-white">{project.name}</p>
+                <div class="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full font-medium {getStatusColor(project.status)}">
+                    {project.status.replace('_', ' ')}
+                  </span>
+                  <span>{formatCurrency(project.spent || 0)} / {formatCurrency(project.total_value)}</span>
+                </div>
               </div>
-              <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+              <div class="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-1.5">
                 <div
-                  class="h-2 rounded-full transition-all
-                    {(project.spent / project.total_value) > 0.9 ? 'bg-red-500' : ''}
-                    {(project.spent / project.total_value) > 0.7 && (project.spent / project.total_value) <= 0.9 ? 'bg-amber-500' : ''}
-                    {(project.spent / project.total_value) <= 0.7 ? 'bg-green-500' : ''}
-                  "
-                  style="width: {Math.min((project.spent / project.total_value) * 100, 100)}%"
+                  class="h-1.5 rounded-full transition-all {pct > 0.9 ? 'bg-red-500' : pct > 0.7 ? 'bg-amber-500' : 'bg-emerald-500'}"
+                  style="width: {Math.min(pct * 100, 100)}%"
                 ></div>
               </div>
             </a>
           {:else}
-            <div class="px-6 py-12 text-center">
-              <p class="text-slate-500 dark:text-slate-400">No projects assigned yet.</p>
-              <a href="/projects" class="inline-flex items-center mt-4 text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium">
-                Browse available projects →
-              </a>
+            <div class="px-5 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
+              No projects yet. <a href="/projects" class="text-indigo-600 dark:text-indigo-400 font-medium">Browse available &rarr;</a>
             </div>
           {/each}
         </div>
       </div>
     {/if}
 
-    <!-- QC Dashboard -->
+    <!-- ==================== QC DASHBOARD ==================== -->
     {#if $currentOrgRole === 'qc'}
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 overflow-hidden">
-          <div class="flex items-center justify-between gap-4">
-            <div class="min-w-0 flex-1">
-              <p class="text-sm font-medium text-slate-600 dark:text-slate-400 truncate">Reviews Completed</p>
-              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1 truncate">{qcStats.reviewsCompleted}</p>
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-9 h-9 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
+              <Clock class="text-orange-600 dark:text-orange-400" size={18} />
             </div>
-            <div class="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
-              <CheckCircle class="text-green-600 dark:text-green-400" size={24} />
-            </div>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Pending Review</p>
           </div>
+          <p class="text-2xl font-bold text-slate-900 dark:text-white">{qcStats.pendingReviews}</p>
         </div>
 
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 overflow-hidden">
-          <div class="flex items-center justify-between gap-4">
-            <div class="min-w-0 flex-1">
-              <p class="text-sm font-medium text-slate-600 dark:text-slate-400 truncate">Avg Confidence</p>
-              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1 truncate">{qcStats.avgConfidence.toFixed(0)}%</p>
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-9 h-9 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+              <CheckCircle class="text-green-600 dark:text-green-400" size={18} />
             </div>
-            <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
-              <Target class="text-blue-600 dark:text-blue-400" size={24} />
-            </div>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Reviews Done</p>
           </div>
+          <p class="text-2xl font-bold text-slate-900 dark:text-white">{qcStats.reviewsCompleted}</p>
         </div>
 
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 overflow-hidden">
-          <div class="flex items-center justify-between gap-4">
-            <div class="min-w-0 flex-1">
-              <p class="text-sm font-medium text-slate-600 dark:text-slate-400 truncate">Issues Found</p>
-              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1 truncate">{qcStats.issuesFound}</p>
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-9 h-9 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+              <Target class="text-blue-600 dark:text-blue-400" size={18} />
             </div>
-            <div class="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
-              <Shield class="text-orange-600 dark:text-orange-400" size={24} />
-            </div>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Avg Confidence</p>
           </div>
+          <p class="text-2xl font-bold text-slate-900 dark:text-white">{qcStats.avgConfidence.toFixed(0)}%</p>
         </div>
 
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 overflow-hidden">
-          <div class="flex items-center justify-between gap-4">
-            <div class="min-w-0 flex-1">
-              <p class="text-sm font-medium text-slate-600 dark:text-slate-400 truncate">QC Earnings</p>
-              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1 truncate">{formatCurrency(stats.totalEarnings)}</p>
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-9 h-9 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg flex items-center justify-center">
+              <DollarSign class="text-indigo-600 dark:text-indigo-400" size={18} />
             </div>
-            <div class="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
-              <DollarSign class="text-indigo-600 dark:text-indigo-400" size={24} />
-            </div>
+            <p class="text-sm text-slate-500 dark:text-slate-400">QC Earnings</p>
           </div>
+          <p class="text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(qcStats.qcEarnings)}</p>
         </div>
       </div>
 
-      <!-- QC Queue Link -->
-      <div class="bg-gradient-to-br from-orange-500 to-red-600 rounded-xl p-6 text-white">
-        <div class="flex items-center justify-between">
-          <div>
-            <h3 class="text-xl font-bold">Review Queue</h3>
-            <p class="text-orange-100 mt-1">Tasks waiting for quality review</p>
-          </div>
-          <a
-            href="/qc"
-            class="px-6 py-3 bg-white text-orange-600 font-semibold rounded-lg hover:bg-orange-50 transition-colors"
-          >
-            Start Reviewing
-          </a>
+      <!-- Review Queue CTA -->
+      <div class="bg-gradient-to-r from-orange-500 to-rose-500 rounded-xl p-5 text-white flex items-center justify-between">
+        <div>
+          <h3 class="text-lg font-bold">Review Queue</h3>
+          <p class="text-orange-100 text-sm mt-0.5">{qcStats.pendingReviews} task{qcStats.pendingReviews !== 1 ? 's' : ''} awaiting quality review</p>
         </div>
+        <a href="/qc" class="px-5 py-2.5 bg-white text-orange-600 font-semibold rounded-lg hover:bg-orange-50 transition-colors text-sm">
+          Start Reviewing
+        </a>
       </div>
+
+      <!-- Pending Tasks Preview -->
+      {#if pendingQCTasks.length > 0}
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+          <div class="px-5 py-3.5 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+            <h3 class="font-semibold text-slate-900 dark:text-white text-sm">Next Up for Review</h3>
+            <a href="/qc" class="text-xs text-indigo-600 dark:text-indigo-400 font-medium">View queue &rarr;</a>
+          </div>
+          <div class="divide-y divide-slate-100 dark:divide-slate-700">
+            {#each pendingQCTasks.slice(0, 5) as task}
+              {@const aiReview = task.qc_reviews?.find(r => r.review_type === 'ai')}
+              <div class="px-5 py-3 flex items-center justify-between">
+                <div class="min-w-0 flex-1">
+                  <p class="font-medium text-sm text-slate-900 dark:text-white truncate">{task.title}</p>
+                  <p class="text-xs text-slate-500 mt-0.5">{formatCurrency(task.dollar_value)}
+                    {#if task.story_points} &middot; {task.story_points} SP{/if}
+                  </p>
+                </div>
+                {#if aiReview?.confidence}
+                  <span class="ml-3 text-xs font-medium px-2 py-0.5 rounded-full
+                    {aiReview.confidence >= 0.75 ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' :
+                     aiReview.confidence >= 0.5 ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300' :
+                     'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'}">
+                    AI: {(aiReview.confidence * 100).toFixed(0)}%
+                  </span>
+                {/if}
+              </div>
+            {/each}
+          </div>
+        </div>
+      {/if}
     {/if}
 
-    <!-- Sales Dashboard -->
+    <!-- ==================== SALES DASHBOARD ==================== -->
     {#if $currentOrgRole === 'sales'}
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 overflow-hidden">
-          <div class="flex items-center justify-between gap-4">
-            <div class="min-w-0 flex-1">
-              <p class="text-sm font-medium text-slate-600 dark:text-slate-400 truncate">Projects Sold</p>
-              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1 truncate">{salesStats.projectsSold}</p>
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-9 h-9 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+              <FolderKanban class="text-green-600 dark:text-green-400" size={18} />
             </div>
-            <div class="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
-              <FolderKanban class="text-green-600 dark:text-green-400" size={24} />
-            </div>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Projects Sold</p>
           </div>
+          <p class="text-2xl font-bold text-slate-900 dark:text-white">{salesStats.projectsSold}</p>
+          <p class="text-xs text-slate-500 mt-1">{salesStats.activeProjects} active</p>
         </div>
 
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 overflow-hidden">
-          <div class="flex items-center justify-between gap-4">
-            <div class="min-w-0 flex-1">
-              <p class="text-sm font-medium text-slate-600 dark:text-slate-400 truncate">Total Sales Value</p>
-              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1 truncate">{formatCurrency(salesStats.totalSalesValue)}</p>
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-9 h-9 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+              <TrendingUp class="text-blue-600 dark:text-blue-400" size={18} />
             </div>
-            <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
-              <TrendingUp class="text-blue-600 dark:text-blue-400" size={24} />
-            </div>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Total Sales</p>
           </div>
+          <p class="text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(salesStats.totalSalesValue)}</p>
         </div>
 
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 overflow-hidden">
-          <div class="flex items-center justify-between gap-4">
-            <div class="min-w-0 flex-1">
-              <p class="text-sm font-medium text-slate-600 dark:text-slate-400 truncate">Pending Pickup</p>
-              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1 truncate">{salesStats.pendingProjects}</p>
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-9 h-9 bg-amber-100 dark:bg-amber-900/30 rounded-lg flex items-center justify-center">
+              <Clock class="text-amber-600 dark:text-amber-400" size={18} />
             </div>
-            <div class="w-12 h-12 bg-amber-100 dark:bg-amber-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
-              <Clock class="text-amber-600 dark:text-amber-400" size={24} />
-            </div>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Awaiting PM</p>
           </div>
-          <p class="text-sm text-slate-500 dark:text-slate-400 mt-2 truncate">awaiting PM assignment</p>
+          <p class="text-2xl font-bold text-slate-900 dark:text-white">{salesStats.pendingProjects}</p>
+          <p class="text-xs text-slate-500 mt-1">commission decays over time</p>
         </div>
 
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 overflow-hidden">
-          <div class="flex items-center justify-between gap-4">
-            <div class="min-w-0 flex-1">
-              <p class="text-sm font-medium text-slate-600 dark:text-slate-400 truncate">Commission Earned</p>
-              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1 truncate">{formatCurrency(salesStats.commissionEarned)}</p>
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-9 h-9 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg flex items-center justify-center">
+              <DollarSign class="text-indigo-600 dark:text-indigo-400" size={18} />
             </div>
-            <div class="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
-              <DollarSign class="text-indigo-600 dark:text-indigo-400" size={24} />
-            </div>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Commission</p>
           </div>
+          <p class="text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(salesStats.commissionEarned)}</p>
+        </div>
+      </div>
+
+      <!-- Sales Projects -->
+      <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+        <div class="px-5 py-3.5 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+          <h3 class="font-semibold text-slate-900 dark:text-white text-sm">Your Projects</h3>
+          <a href="/projects" class="text-xs text-indigo-600 dark:text-indigo-400 font-medium">View all &rarr;</a>
+        </div>
+        <div class="divide-y divide-slate-100 dark:divide-slate-700">
+          {#each $projects.items.slice(0, 6) as project}
+            <a href="/projects/{project.id}" class="flex items-center justify-between px-5 py-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+              <div class="min-w-0 flex-1">
+                <p class="font-medium text-sm text-slate-900 dark:text-white truncate">{project.name}</p>
+                <p class="text-xs text-slate-500 mt-0.5">{formatCurrency(project.total_value)}
+                  {#if project.pm_id} &middot; PM assigned{:else} &middot; <span class="text-amber-600 dark:text-amber-400">awaiting PM</span>{/if}
+                </p>
+              </div>
+              <span class="ml-3 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {getStatusColor(project.status)}">
+                {project.status.replace('_', ' ')}
+              </span>
+            </a>
+          {:else}
+            <div class="px-5 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
+              No projects yet. <a href="/projects" class="text-indigo-600 dark:text-indigo-400 font-medium">Create one &rarr;</a>
+            </div>
+          {/each}
         </div>
       </div>
     {/if}
 
-    <!-- Admin Dashboard -->
+    <!-- ==================== ADMIN DASHBOARD ==================== -->
     {#if $currentOrgRole === 'admin'}
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 overflow-hidden">
-          <div class="flex items-center justify-between gap-4">
-            <div class="min-w-0 flex-1">
-              <p class="text-sm font-medium text-slate-600 dark:text-slate-400 truncate">Total Tasks</p>
-              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1 truncate">{$tasks.items.length}</p>
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-9 h-9 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
+              <Users class="text-purple-600 dark:text-purple-400" size={18} />
             </div>
-            <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
-              <CheckCircle class="text-blue-600 dark:text-blue-400" size={24} />
+            <p class="text-sm text-slate-500 dark:text-slate-400">Team Members</p>
+          </div>
+          <p class="text-2xl font-bold text-slate-900 dark:text-white">{adminStats.totalUsers}</p>
+        </div>
+
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-9 h-9 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+              <FolderKanban class="text-blue-600 dark:text-blue-400" size={18} />
             </div>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Active Projects</p>
+          </div>
+          <p class="text-2xl font-bold text-slate-900 dark:text-white">{adminStats.activeProjects}</p>
+        </div>
+
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-9 h-9 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+              <DollarSign class="text-green-600 dark:text-green-400" size={18} />
+            </div>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Total Budget</p>
+          </div>
+          <p class="text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(adminStats.totalValue)}</p>
+          <p class="text-xs text-slate-500 mt-1">{formatCurrency(adminStats.totalSpent)} spent</p>
+        </div>
+
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-9 h-9 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg flex items-center justify-center">
+              <BarChart3 class="text-indigo-600 dark:text-indigo-400" size={18} />
+            </div>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Total Tasks</p>
+          </div>
+          <p class="text-2xl font-bold text-slate-900 dark:text-white">{adminStats.totalTasks}</p>
+        </div>
+      </div>
+
+      <!-- Task Pipeline -->
+      <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+        <h3 class="font-semibold text-slate-900 dark:text-white text-sm mb-4">Task Pipeline</h3>
+        <div class="grid grid-cols-4 gap-3">
+          <div class="text-center p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+            <p class="text-2xl font-bold text-slate-900 dark:text-white">{adminStats.openTasks}</p>
+            <p class="text-xs text-slate-500 mt-1">Open</p>
+          </div>
+          <div class="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+            <p class="text-2xl font-bold text-blue-700 dark:text-blue-300">{$tasks.items.filter(t => t.status === 'in_progress' || t.status === 'assigned').length}</p>
+            <p class="text-xs text-slate-500 mt-1">In Progress</p>
+          </div>
+          <div class="text-center p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
+            <p class="text-2xl font-bold text-amber-700 dark:text-amber-300">{adminStats.pendingQC}</p>
+            <p class="text-xs text-slate-500 mt-1">Under Review</p>
+          </div>
+          <div class="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+            <p class="text-2xl font-bold text-green-700 dark:text-green-300">{adminStats.completedTasks}</p>
+            <p class="text-xs text-slate-500 mt-1">Completed</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Two-column: Projects + Team -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <!-- Projects -->
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+          <div class="px-5 py-3.5 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+            <h3 class="font-semibold text-slate-900 dark:text-white text-sm">Projects</h3>
+            <a href="/projects" class="text-xs text-indigo-600 dark:text-indigo-400 font-medium">View all &rarr;</a>
+          </div>
+          <div class="divide-y divide-slate-100 dark:divide-slate-700">
+            {#each $projects.items.slice(0, 5) as project}
+              {@const pct = project.total_value > 0 ? (project.spent || 0) / project.total_value : 0}
+              <a href="/projects/{project.id}" class="block px-5 py-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                <div class="flex items-center justify-between mb-1.5">
+                  <p class="font-medium text-sm text-slate-900 dark:text-white truncate">{project.name}</p>
+                  <span class="text-xs text-slate-500">{formatCurrency(project.spent || 0)}/{formatCurrency(project.total_value)}</span>
+                </div>
+                <div class="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-1.5">
+                  <div class="h-1.5 rounded-full {pct > 0.9 ? 'bg-red-500' : pct > 0.7 ? 'bg-amber-500' : 'bg-emerald-500'}"
+                    style="width: {Math.min(pct * 100, 100)}%"></div>
+                </div>
+              </a>
+            {:else}
+              <div class="px-5 py-8 text-center text-sm text-slate-500">No projects</div>
+            {/each}
           </div>
         </div>
 
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 overflow-hidden">
-          <div class="flex items-center justify-between gap-4">
-            <div class="min-w-0 flex-1">
-              <p class="text-sm font-medium text-slate-600 dark:text-slate-400 truncate">Active Projects</p>
-              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1 truncate">
-                {$projects.items.filter(p => p.status === 'active').length}
-              </p>
-            </div>
-            <div class="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
-              <FolderKanban class="text-green-600 dark:text-green-400" size={24} />
-            </div>
+        <!-- Team Members -->
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+          <div class="px-5 py-3.5 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+            <h3 class="font-semibold text-slate-900 dark:text-white text-sm">Team</h3>
+            <a href="/settings" class="text-xs text-indigo-600 dark:text-indigo-400 font-medium">Manage &rarr;</a>
+          </div>
+          <div class="divide-y divide-slate-100 dark:divide-slate-700">
+            {#each orgMembers.slice(0, 6) as member}
+              <div class="px-5 py-3 flex items-center justify-between">
+                <div class="flex items-center gap-3 min-w-0">
+                  <div class="w-8 h-8 bg-slate-200 dark:bg-slate-600 rounded-full flex items-center justify-center text-xs font-bold text-slate-600 dark:text-slate-300">
+                    {(member.full_name || member.email || '?').charAt(0).toUpperCase()}
+                  </div>
+                  <div class="min-w-0">
+                    <p class="text-sm font-medium text-slate-900 dark:text-white truncate">{member.full_name || member.email}</p>
+                    <p class="text-xs text-slate-500 truncate">Lv.{member.level || 1} &middot; {member.metadata?.total_tasks_completed || 0} tasks</p>
+                  </div>
+                </div>
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {getRoleBadge(member.role)}">
+                  {member.role}
+                </span>
+              </div>
+            {:else}
+              <div class="px-5 py-8 text-center text-sm text-slate-500">No team members</div>
+            {/each}
           </div>
         </div>
+      </div>
 
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 overflow-hidden">
-          <div class="flex items-center justify-between gap-4">
-            <div class="min-w-0 flex-1">
-              <p class="text-sm font-medium text-slate-600 dark:text-slate-400 truncate">Total Value</p>
-              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1 truncate">
-                {formatCurrency($projects.items.reduce((sum, p) => sum + p.total_value, 0))}
-              </p>
-            </div>
-            <div class="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
-              <DollarSign class="text-indigo-600 dark:text-indigo-400" size={24} />
-            </div>
-          </div>
-        </div>
-
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 overflow-hidden">
-          <div class="flex items-center justify-between gap-4">
-            <div class="min-w-0 flex-1">
-              <p class="text-sm font-medium text-slate-600 dark:text-slate-400 truncate">QC Pending</p>
-              <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1 truncate">
-                {$tasks.items.filter(t => t.status === 'under_review').length}
-              </p>
-            </div>
-            <div class="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
-              <Shield class="text-orange-600 dark:text-orange-400" size={24} />
-            </div>
-          </div>
-        </div>
+      <!-- Quick Actions -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <a href="/projects" class="flex items-center gap-3 p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-600 transition-colors group">
+          <FolderKanban size={18} class="text-slate-400 group-hover:text-indigo-500" />
+          <span class="text-sm font-medium text-slate-700 dark:text-slate-300">Projects</span>
+        </a>
+        <a href="/tasks" class="flex items-center gap-3 p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-600 transition-colors group">
+          <CheckCircle size={18} class="text-slate-400 group-hover:text-indigo-500" />
+          <span class="text-sm font-medium text-slate-700 dark:text-slate-300">Tasks</span>
+        </a>
+        {#if $featureFlags.analytics}
+          <a href="/analytics" class="flex items-center gap-3 p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-600 transition-colors group">
+            <BarChart3 size={18} class="text-slate-400 group-hover:text-indigo-500" />
+            <span class="text-sm font-medium text-slate-700 dark:text-slate-300">Analytics</span>
+          </a>
+        {/if}
+        <a href="/settings" class="flex items-center gap-3 p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-600 transition-colors group">
+          <Award size={18} class="text-slate-400 group-hover:text-indigo-500" />
+          <span class="text-sm font-medium text-slate-700 dark:text-slate-300">Settings</span>
+        </a>
       </div>
     {/if}
   {/if}

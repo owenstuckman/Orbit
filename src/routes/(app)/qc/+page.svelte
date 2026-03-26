@@ -167,7 +167,8 @@
       await loadPendingTasks();
     } catch (error) {
       console.error('Failed to submit review:', error);
-      toasts.error('Failed to submit review. Please try again.');
+      const message = error instanceof Error ? error.message : 'Failed to submit review';
+      toasts.error(message);
     } finally {
       submitting = false;
     }
@@ -234,9 +235,15 @@
                     </span>
                   {/if}
 
-                  <!-- Value -->
+                  <!-- Task Value -->
                   <span class="text-slate-500 dark:text-slate-400">
                     {formatCurrency(task.dollar_value)}
+                  </span>
+
+                  <!-- QC Payout -->
+                  <span class="inline-flex items-center gap-1 text-xs font-medium text-green-600 dark:text-green-400">
+                    <DollarSign size={12} />
+                    {formatCurrency(calculatePotentialPayout(task))}
                   </span>
                 </div>
 
@@ -327,6 +334,11 @@
                       {#if review.confidence}
                         <span class="text-xs text-slate-500 dark:text-slate-400">
                           ({(review.confidence * 100).toFixed(0)}% confidence)
+                        </span>
+                      {/if}
+                      {#if review.d_k != null && review.review_type !== 'ai'}
+                        <span class="text-xs font-medium text-green-600 dark:text-green-400">
+                          {formatCurrency(review.d_k)} payout
                         </span>
                       {/if}
                     </div>

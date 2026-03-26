@@ -1164,14 +1164,17 @@ export const qcApi = {
       .single();
 
     if (error) {
-      console.error('Error creating QC review:', error);
-      return null;
+      console.error('Error creating QC review:', error.message, error.details, error.hint);
+      throw new Error(`Failed to create QC review: ${error.message}`);
     }
 
     // Update task status based on review
     if (data) {
       const newStatus: TaskStatus = data.passed ? 'approved' : 'rejected';
-      await tasksApi.update(data.task_id, { status: newStatus });
+      const updated = await tasksApi.update(data.task_id, { status: newStatus });
+      if (!updated) {
+        console.warn('QC review created but task status update failed for task:', data.task_id);
+      }
     }
 
     return data;
@@ -1206,6 +1209,14 @@ export const qcApi = {
     const passNumber = (task.qc_reviews?.filter(r => r.review_type !== 'ai').length ?? 0) + 1;
     const weight = reviewType === 'peer' ? 1.0 : 2.0;
 
+    // Calculate actual Shapley marginal for this pass
+    const beta = 0.25; // Will be overridden by org settings if available
+    const gamma = 0.4;
+    const aiReview = task.qc_reviews?.find(r => r.review_type === 'ai');
+    const p0 = aiReview?.confidence ?? 0.8;
+    const d1 = beta * p0 * task.dollar_value;
+    const dk = d1 * Math.pow(gamma, passNumber - 1);
+
     const review = await this.create({
       task_id: taskId,
       reviewer_id: reviewerId,
@@ -1215,7 +1226,7 @@ export const qcApi = {
       pass_number: passNumber,
       weight,
       v0: task.dollar_value * 0.7,
-      d_k: task.dollar_value * 0.1 // Simplified; real calc in edge function
+      d_k: dk * weight
     });
 
     // Notify task assignee of QC result (fire-and-forget)
