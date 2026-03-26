@@ -3,6 +3,7 @@
   import { user } from '$lib/stores/auth';
   import { payoutsApi } from '$lib/services/api';
   import { formatCurrency } from '$lib/utils/payout';
+  import { exportToCSV } from '$lib/services/export';
   import type { Payout } from '$lib/types';
   import {
     DollarSign,
@@ -20,11 +21,14 @@
   let summary = { total: 0, pending: 0, byType: {} as Record<string, number> };
   let selectedPeriod: 'week' | 'month' | 'year' = 'month';
   let filterType: string | null = null;
+  let filterStatus: string | null = null;
   const periodOptions: Array<'week' | 'month' | 'year'> = ['week', 'month', 'year'];
 
-  $: filteredPayouts = filterType 
-    ? payouts.filter(p => p.payout_type === filterType)
-    : payouts;
+  $: filteredPayouts = payouts.filter(p => {
+    if (filterType && p.payout_type !== filterType) return false;
+    if (filterStatus && p.status !== filterStatus) return false;
+    return true;
+  });
 
   onMount(async () => {
     await loadData();
@@ -89,6 +93,24 @@
       year: 'numeric'
     });
   }
+
+  function exportPayouts() {
+    if (filteredPayouts.length === 0) return;
+    const data = filteredPayouts.map(p => ({
+      date: formatDate(p.created_at),
+      type: getPayoutTypeLabel(p.payout_type),
+      task: p.task?.title || '-',
+      gross: p.gross_amount,
+      deductions: p.deductions,
+      net: p.net_amount,
+      status: p.status,
+      paid_at: p.paid_at ? formatDate(p.paid_at) : '-'
+    }));
+    exportToCSV(data, {
+      filename: `payouts-${selectedPeriod}-${new Date().toISOString().split('T')[0]}`,
+      headers: ['date', 'type', 'task', 'gross', 'deductions', 'net', 'status', 'paid_at']
+    });
+  }
 </script>
 
 <div class="space-y-8">
@@ -113,7 +135,10 @@
         {/each}
       </div>
 
-      <button class="flex items-center gap-2 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-900 dark:text-white transition-colors">
+      <button
+        on:click={exportPayouts}
+        class="flex items-center gap-2 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-900 dark:text-white transition-colors"
+      >
         <Download size={18} />
         Export
       </button>
@@ -188,13 +213,28 @@
   <!-- Payout History -->
   <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
     <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-      <h3 class="font-semibold text-slate-900 dark:text-white">Payment History</h3>
-      {#if filterType}
+      <div class="flex items-center gap-3">
+        <h3 class="font-semibold text-slate-900 dark:text-white">Payment History</h3>
+        <div class="flex gap-1">
+          {#each ['pending', 'approved', 'paid'] as status}
+            <button
+              class="px-2.5 py-1 rounded-full text-xs font-medium transition-colors
+                {filterStatus === status
+                  ? status === 'paid' ? 'bg-green-500 text-white' : status === 'approved' ? 'bg-blue-500 text-white' : 'bg-amber-500 text-white'
+                  : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'}"
+              on:click={() => filterStatus = filterStatus === status ? null : status}
+            >
+              {status}
+            </button>
+          {/each}
+        </div>
+      </div>
+      {#if filterType || filterStatus}
         <button
           class="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300"
-          on:click={() => filterType = null}
+          on:click={() => { filterType = null; filterStatus = null; }}
         >
-          Clear filter
+          Clear filters
         </button>
       {/if}
     </div>

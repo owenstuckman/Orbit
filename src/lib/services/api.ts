@@ -1175,6 +1175,55 @@ export const qcApi = {
       if (!updated) {
         console.warn('QC review created but task status update failed for task:', data.task_id);
       }
+
+      // Create payout for task assignee on approval
+      if (data.passed) {
+        const task = await tasksApi.getById(data.task_id);
+        if (task?.assignee_id) {
+          payoutsApi.create({
+            org_id: task.org_id,
+            user_id: task.assignee_id,
+            task_id: task.id,
+            project_id: task.project_id,
+            qc_review_id: data.id,
+            payout_type: 'task',
+            gross_amount: task.dollar_value * (task.urgency_multiplier ?? 1),
+            deductions: 0,
+            net_amount: task.dollar_value * (task.urgency_multiplier ?? 1),
+            calculation_details: {
+              formula: 'dollar_value * urgency_multiplier',
+              inputs: {
+                dollar_value: task.dollar_value,
+                urgency_multiplier: task.urgency_multiplier ?? 1
+              }
+            },
+            status: 'pending'
+          }).catch(err => console.error('Failed to create task payout:', err));
+
+          // Create QC reviewer payout
+          if (data.d_k && data.d_k > 0) {
+            payoutsApi.create({
+              org_id: task.org_id,
+              user_id: data.reviewer_id,
+              task_id: task.id,
+              qc_review_id: data.id,
+              payout_type: 'qc',
+              gross_amount: data.d_k,
+              deductions: 0,
+              net_amount: data.d_k,
+              calculation_details: {
+                formula: 'd_k = β * p0 * V * γ^(k-1) * weight',
+                inputs: {
+                  d_k: data.d_k,
+                  pass_number: data.pass_number ?? 1,
+                  weight: data.weight ?? 1
+                }
+              },
+              status: 'pending'
+            }).catch(err => console.error('Failed to create QC payout:', err));
+          }
+        }
+      }
     }
 
     return data;
@@ -1542,6 +1591,42 @@ export const contractsApi = {
  * ```
  */
 export const payoutsApi = {
+  /**
+   * Creates a new payout record.
+   * @param payout - Payout data
+   * @returns Created payout, or null on error
+   */
+  async create(payout: Partial<Payout>): Promise<Payout | null> {
+    const { data, error } = await supabase
+      .from('payouts')
+      .insert(payout)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating payout:', error);
+      return null;
+    }
+
+    // Send payout ready email (fire-and-forget)
+    if (data) {
+      import('./email').then(async ({ emailService }) => {
+        const payoutUser = await usersApi.getById(data.user_id);
+        if (payoutUser?.email) {
+          const task = data.task_id ? await tasksApi.getById(data.task_id) : null;
+          emailService.sendPayoutReady(
+            payoutUser.email,
+            data.net_amount,
+            data.payout_type,
+            task?.title
+          );
+        }
+      }).catch(() => {});
+    }
+
+    return data;
+  },
+
   /**
    * Fetches a payout by ID with relations.
    * @param id - Payout UUID

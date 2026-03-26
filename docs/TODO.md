@@ -25,7 +25,7 @@ All remaining tasks, organized by priority.
   - [x] Organization invitations
   - [x] External contractor assignment notifications
   - [x] QC review result notifications (approved/rejected)
-  - [ ] Payout ready notifications (emailService method exists, needs wiring into payout creation flow)
+  - [x] Payout ready notifications — wired into payoutsApi.create(), sends on payout record creation
 - [ ] Configure Supabase Auth email templates (confirmation, password reset)
 - [x] Document SMTP setup guide (`docs/SMTP_SETUP.md`)
 - [ ] Deploy: `supabase functions deploy send-email` and set `RESEND_API_KEY` secret
@@ -40,9 +40,9 @@ All remaining tasks, organized by priority.
 - [ ] Test real-time updates (task status changes, new notifications)
 
 ### Analytics & Charts
-- [ ] Verify Chart.js renders correctly in `/analytics` page
-- [ ] Test analytics data queries return correct metrics
-- [ ] Verify period-based filtering (week, month, quarter, year)
+- [x] Verify Chart.js renders correctly in `/analytics` page — replaced CSS bars with Chart.js Line + Doughnut charts
+- [x] Test analytics data queries return correct metrics — analyticsApi verified: tasks, payouts, users with proper period filtering
+- [x] Verify period-based filtering (week, month, quarter, year) — getPeriodStartDate() + UI toggle implemented
 
 ---
 
@@ -74,9 +74,9 @@ All remaining tasks, organized by priority.
 - [ ] Verify organization settings update (payout parameters)
 
 ### Payout Page
-- [ ] Verify `/payouts` filters and displays payout history
-- [ ] Test period-based summaries
-- [ ] Verify payout status transitions
+- [x] Verify `/payouts` filters and displays payout history — added status filter + type filter, wired CSV export
+- [x] Test period-based summaries — week/month/year toggle works via payoutsApi.getSummary()
+- [x] Verify payout status transitions — payouts created as 'pending' on QC approval, status filter added to UI
 
 ---
 

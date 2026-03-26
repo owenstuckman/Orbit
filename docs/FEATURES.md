@@ -181,9 +181,15 @@ Three actions routed through a single Supabase edge function:
 - PM bonus contribution from unclaimed commission
 
 ### Payout Infrastructure
+- `payoutsApi.create()` — Creates payout record with email notification (fire-and-forget)
+- Auto-creates task payout + QC reviewer payout on QC approval (`qcApi.create()`)
 - `payout-calculator` edge function (called from `api.ts`, source not in repo)
 - Client-side calculation utilities in `payout.ts`
-- Payout tracking page at `/payouts`
+- Payout tracking page at `/payouts` with:
+  - Type filter (task, qc, salary, bonus, commission)
+  - Status filter (pending, approved, paid)
+  - Period-based summaries (week/month/year)
+  - CSV export
 
 ---
 

@@ -6,6 +6,19 @@
   import { toasts } from '$lib/stores/notifications';
   import { exportToCSV } from '$lib/services/export';
   import type { AnalyticsData, TaskMetrics, PayoutMetrics, UserMetrics, TrendData } from '$lib/types';
+  import { Line, Doughnut } from 'svelte-chartjs';
+  import {
+    Chart as ChartJS,
+    CategoryScale,
+    LinearScale,
+    PointElement,
+    LineElement,
+    ArcElement,
+    Title as ChartTitle,
+    Tooltip,
+    Legend,
+    Filler
+  } from 'chart.js';
   import {
     BarChart3,
     TrendingUp,
@@ -155,6 +168,19 @@
     await loadAnalytics();
   }
 
+  // Register Chart.js components
+  ChartJS.register(
+    CategoryScale,
+    LinearScale,
+    PointElement,
+    LineElement,
+    ArcElement,
+    ChartTitle,
+    Tooltip,
+    Legend,
+    Filler
+  );
+
   // Calculate trend percentages (comparing last two data points)
   $: taskTrend = trends.length >= 2
     ? ((trends[trends.length - 1].tasks - trends[trends.length - 2].tasks) / Math.max(trends[trends.length - 2].tasks, 1)) * 100
@@ -162,6 +188,115 @@
   $: payoutTrend = trends.length >= 2
     ? ((trends[trends.length - 1].payouts - trends[trends.length - 2].payouts) / Math.max(trends[trends.length - 2].payouts, 1)) * 100
     : 0;
+
+  // Chart.js trend line data
+  $: trendChartData = {
+    labels: trends.map(t => t.date.slice(5)),
+    datasets: [
+      {
+        label: 'Tasks',
+        data: trends.map(t => t.tasks),
+        borderColor: 'rgb(99, 102, 241)',
+        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+        fill: true,
+        tension: 0.3,
+        pointRadius: 4,
+        pointHoverRadius: 6
+      },
+      {
+        label: 'Payouts ($)',
+        data: trends.map(t => t.payouts),
+        borderColor: 'rgb(34, 197, 94)',
+        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+        fill: true,
+        tension: 0.3,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        yAxisID: 'y1'
+      }
+    ]
+  };
+
+  $: trendChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: {
+      mode: 'index' as const,
+      intersect: false
+    },
+    plugins: {
+      legend: {
+        position: 'bottom' as const,
+        labels: {
+          usePointStyle: true,
+          padding: 16
+        }
+      },
+      tooltip: {
+        backgroundColor: 'rgba(15, 23, 42, 0.9)',
+        padding: 12,
+        cornerRadius: 8
+      }
+    },
+    scales: {
+      y: {
+        type: 'linear' as const,
+        display: true,
+        position: 'left' as const,
+        title: { display: true, text: 'Tasks' },
+        beginAtZero: true,
+        grid: { color: 'rgba(148, 163, 184, 0.1)' }
+      },
+      y1: {
+        type: 'linear' as const,
+        display: true,
+        position: 'right' as const,
+        title: { display: true, text: 'Payouts ($)' },
+        beginAtZero: true,
+        grid: { drawOnChartArea: false }
+      },
+      x: {
+        grid: { color: 'rgba(148, 163, 184, 0.1)' }
+      }
+    }
+  };
+
+  // Doughnut chart for task status distribution
+  const statusColors: Record<string, string> = {
+    open: 'rgb(59, 130, 246)',
+    assigned: 'rgb(234, 179, 8)',
+    in_progress: 'rgb(168, 85, 247)',
+    completed: 'rgb(99, 102, 241)',
+    under_review: 'rgb(249, 115, 22)',
+    approved: 'rgb(34, 197, 94)',
+    rejected: 'rgb(239, 68, 68)',
+    paid: 'rgb(16, 185, 129)'
+  };
+
+  $: statusChartData = {
+    labels: Object.keys(taskMetrics.byStatus).map(s => s.replace('_', ' ')),
+    datasets: [{
+      data: Object.values(taskMetrics.byStatus),
+      backgroundColor: Object.keys(taskMetrics.byStatus).map(s => statusColors[s] || 'rgb(148, 163, 184)'),
+      borderWidth: 2,
+      borderColor: 'rgb(255, 255, 255)'
+    }]
+  };
+
+  $: statusChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'right' as const,
+        labels: {
+          usePointStyle: true,
+          padding: 12,
+          font: { size: 12 }
+        }
+      }
+    }
+  };
 </script>
 
 <svelte:head>
@@ -290,30 +425,15 @@
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <!-- Tasks by Status -->
+      <!-- Tasks by Status (Doughnut Chart) -->
       <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
         <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-4">Tasks by Status</h2>
 
         {#if Object.keys(taskMetrics.byStatus).length === 0}
           <p class="text-slate-500 dark:text-slate-400 text-center py-8">No task data for this period</p>
         {:else}
-          <div class="space-y-3">
-            {#each Object.entries(taskMetrics.byStatus) as [status, count]}
-              {@const total = Object.values(taskMetrics.byStatus).reduce((a, b) => a + b, 0)}
-              {@const percent = total > 0 ? (count / total) * 100 : 0}
-              <div>
-                <div class="flex items-center justify-between text-sm mb-1">
-                  <span class="text-slate-600 dark:text-slate-400 capitalize">{status.replace('_', ' ')}</span>
-                  <span class="font-medium text-slate-900 dark:text-white">{count} ({percent.toFixed(1)}%)</span>
-                </div>
-                <div class="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-2">
-                  <div
-                    class="{getStatusColor(status)} h-2 rounded-full transition-all duration-500"
-                    style="width: {percent}%"
-                  ></div>
-                </div>
-              </div>
-            {/each}
+          <div class="h-64">
+            <Doughnut data={statusChartData} options={statusChartOptions} />
           </div>
         {/if}
       </div>
@@ -361,44 +481,15 @@
       </div>
     </div>
 
-    <!-- Trend Chart -->
+    <!-- Trend Line Chart -->
     {#if trends.length > 0}
       <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
         <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-4">
           {selectedPeriod === 'week' ? 'Daily' : selectedPeriod === 'month' ? 'Weekly' : 'Monthly'} Trend
         </h2>
 
-        <div class="h-64 flex items-end gap-4">
-          {#each trends as point}
-            {@const maxTasks = Math.max(...trends.map(t => t.tasks), 1)}
-            {@const maxPayouts = Math.max(...trends.map(t => t.payouts), 1)}
-            <div class="flex-1 flex flex-col items-center gap-2">
-              <div class="w-full flex gap-1 items-end h-48">
-                <div
-                  class="flex-1 bg-indigo-500 rounded-t-lg transition-all duration-500"
-                  style="height: {(point.tasks / maxTasks) * 100}%"
-                  title="{point.tasks} tasks"
-                ></div>
-                <div
-                  class="flex-1 bg-green-500 rounded-t-lg transition-all duration-500"
-                  style="height: {(point.payouts / maxPayouts) * 100}%"
-                  title="${point.payouts.toLocaleString()}"
-                ></div>
-              </div>
-              <span class="text-xs text-slate-600 dark:text-slate-400">{point.date.slice(5)}</span>
-            </div>
-          {/each}
-        </div>
-
-        <div class="flex items-center justify-center gap-6 mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
-          <div class="flex items-center gap-2">
-            <div class="w-3 h-3 bg-indigo-500 rounded"></div>
-            <span class="text-sm text-slate-600 dark:text-slate-400">Tasks</span>
-          </div>
-          <div class="flex items-center gap-2">
-            <div class="w-3 h-3 bg-green-500 rounded"></div>
-            <span class="text-sm text-slate-600 dark:text-slate-400">Payouts ($)</span>
-          </div>
+        <div class="h-72">
+          <Line data={trendChartData} options={trendChartOptions} />
         </div>
       </div>
     {/if}
