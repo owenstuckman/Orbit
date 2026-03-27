@@ -25,6 +25,7 @@
   import { createEventDispatcher } from 'svelte';
   import { Clock, DollarSign, User, Sparkles, TrendingUp, Trophy, Zap, Hand } from 'lucide-svelte';
   import { user } from '$lib/stores/auth';
+  import { featureFlags } from '$lib/stores/featureFlags';
   import { formatCurrency, calculateTaskPayout } from '$lib/utils/payout';
   import type { Task } from '$lib/types';
 
@@ -118,7 +119,7 @@
     <h4 class="font-medium text-slate-900 dark:text-white line-clamp-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors {compact ? 'text-sm' : ''}">
       {task.title}
     </h4>
-    {#if task.urgency_multiplier > 1}
+    {#if $featureFlags.urgency_multipliers && task.urgency_multiplier > 1}
       <span class="flex-shrink-0 px-1.5 py-0.5 text-xs font-medium rounded
         {isUrgent ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'}">
         +{((task.urgency_multiplier - 1) * 100).toFixed(0)}%
@@ -168,7 +169,7 @@
         <span>{formatDeadline(task.deadline)}</span>
       </div>
     {/if}
-    {#if task.story_points}
+    {#if $featureFlags.story_points && task.story_points}
       <span class="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700 rounded text-xs text-slate-600 dark:text-slate-400">
         {task.story_points} SP
       </span>

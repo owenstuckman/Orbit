@@ -18,6 +18,8 @@
   import NotificationDropdown from '$lib/components/common/NotificationDropdown.svelte';
   import OrganizationSwitcher from '$lib/components/common/OrganizationSwitcher.svelte';
   import Toast from '$lib/components/common/Toast.svelte';
+  import GlobalSearch from '$lib/components/common/GlobalSearch.svelte';
+  import OnboardingGuide from '$lib/components/common/OnboardingGuide.svelte';
   import {
     LayoutDashboard,
     CheckSquare,
@@ -37,7 +39,8 @@
     User,
     Moon,
     Sun,
-    Bell
+    Bell,
+    Search
   } from 'lucide-svelte';
 
   let sidebarOpen = false;
@@ -45,6 +48,8 @@
   let loading = true;
   let loadError = '';
   let errorDetails = '';
+  let showGlobalSearch = false;
+  let showOnboarding = false;
 
   // Redirect loop prevention
   const REDIRECT_KEY = 'orbit_auth_redirect_count';
@@ -101,6 +106,10 @@
 
     if (flags.achievements && ['employee', 'contractor'].includes(role)) {
       items.push({ href: '/achievements', label: 'Achievements', icon: Trophy });
+    }
+
+    if (flags.leaderboard && ['employee', 'contractor'].includes(role)) {
+      items.push({ href: '/leaderboard', label: 'Leaderboard', icon: Trophy });
     }
 
     if (flags.analytics && ['admin', 'pm'].includes(role)) {
@@ -223,6 +232,9 @@
 
       loading = false;
 
+      // Check if onboarding should be shown
+      checkOnboarding();
+
     } catch (err) {
       console.error('[Layout] Initialization error:', err);
       loadError = 'Failed to load application';
@@ -241,6 +253,45 @@
 
   function toggleSidebar() {
     sidebarOpen = !sidebarOpen;
+  }
+
+  function handleGlobalKeydown(e: KeyboardEvent) {
+    const target = e.target as HTMLElement;
+    const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+
+    // Ctrl/Cmd+K for global search
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      e.preventDefault();
+      showGlobalSearch = !showGlobalSearch;
+      return;
+    }
+
+    if (isInput) return;
+
+    // 'g' prefix shortcuts for navigation
+    if (e.key === 'g') {
+      const handleNext = (ev: KeyboardEvent) => {
+        window.removeEventListener('keydown', handleNext);
+        switch (ev.key) {
+          case 'd': goto('/dashboard'); ev.preventDefault(); break;
+          case 't': goto('/tasks'); ev.preventDefault(); break;
+          case 'p': goto('/projects'); ev.preventDefault(); break;
+          case 's': goto('/settings'); ev.preventDefault(); break;
+        }
+      };
+      window.addEventListener('keydown', handleNext, { once: true });
+      setTimeout(() => window.removeEventListener('keydown', handleNext), 1000);
+    }
+  }
+
+  function checkOnboarding() {
+    if (!$user) return;
+    try {
+      const key = `orbit_onboarding_${$user.id}`;
+      if (!localStorage.getItem(key)) {
+        showOnboarding = true;
+      }
+    } catch {}
   }
 
   function getRoleBadgeColor(role: string): string {
@@ -411,7 +462,18 @@ Error: {errorDetails}</pre>
             <Menu size={20} />
           </button>
 
-          <!-- Page title (optional, can be set by child pages) -->
+          <!-- Global search -->
+          <button
+            on:click={() => showGlobalSearch = true}
+            class="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+          >
+            <Search size={14} />
+            <span>Search...</span>
+            <kbd class="hidden md:inline px-1.5 py-0.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded text-xs font-mono">
+              {navigator?.platform?.includes('Mac') ? '⌘' : 'Ctrl'}K
+            </kbd>
+          </button>
+
           <div class="flex-1" />
 
           <!-- Right side actions -->
@@ -498,8 +560,15 @@ Error: {errorDetails}</pre>
 <!-- Toast notifications -->
 <Toast />
 
-<!-- Click outside handlers -->
+<!-- Global Search -->
+<GlobalSearch bind:show={showGlobalSearch} />
+
+<!-- Onboarding Guide -->
+<OnboardingGuide bind:show={showOnboarding} />
+
+<!-- Global handlers -->
 <svelte:window
+  on:keydown={handleGlobalKeydown}
   on:click={() => {
     if (userMenuOpen) {
       userMenuOpen = false;

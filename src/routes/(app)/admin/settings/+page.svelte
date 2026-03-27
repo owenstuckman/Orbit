@@ -15,7 +15,8 @@
     Check,
     Info,
     UserPlus,
-    Sliders
+    Sliders,
+    MessageSquare
   } from 'lucide-svelte';
 
   let org: Organization | null = null;
@@ -33,7 +34,8 @@
     qc_gamma: 0.4,
     pm_x: 0.5,
     pm_overdraft_penalty: 1.5,
-    allow_external_assignment: true
+    allow_external_assignment: true,
+    slack_webhook_url: ''
   };
 
   let originalForm = { ...form };
@@ -63,7 +65,8 @@
           qc_gamma: org.qc_gamma,
           pm_x: org.pm_x,
           pm_overdraft_penalty: org.pm_overdraft_penalty,
-          allow_external_assignment: org.allow_external_assignment ?? true
+          allow_external_assignment: org.allow_external_assignment ?? true,
+          slack_webhook_url: (org.settings as Record<string, unknown>)?.slack_webhook_url as string || ''
         };
         originalForm = { ...form };
       }
@@ -88,7 +91,8 @@
         qc_gamma: form.qc_gamma,
         pm_x: form.pm_x,
         pm_overdraft_penalty: form.pm_overdraft_penalty,
-        allow_external_assignment: form.allow_external_assignment
+        allow_external_assignment: form.allow_external_assignment,
+        settings: { slack_webhook_url: form.slack_webhook_url || null }
       });
       originalForm = { ...form };
       saved = true;
@@ -368,6 +372,38 @@
           />
           <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Penalty multiplier for budget overruns</p>
         </div>
+      </div>
+    </div>
+
+    <!-- Slack Integration -->
+    <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+      <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+        <MessageSquare size={20} class="text-slate-400 dark:text-slate-500" />
+        Slack Integration
+      </h2>
+
+      <div class="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg mb-4">
+        <div class="flex gap-3">
+          <Info class="text-slate-500 dark:text-slate-400 flex-shrink-0 mt-0.5" size={18} />
+          <div class="text-sm text-slate-600 dark:text-slate-300">
+            <p>Add a Slack incoming webhook URL to receive notifications for task events, project updates, and team activity.</p>
+            <p class="mt-1">Create a webhook at <span class="font-mono text-xs">api.slack.com/apps</span> → Incoming Webhooks.</p>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1" for="slack-webhook">
+          Webhook URL
+        </label>
+        <input
+          id="slack-webhook"
+          type="url"
+          bind:value={form.slack_webhook_url}
+          placeholder="https://hooks.slack.com/services/T.../B.../..."
+          class="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+        />
+        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Leave empty to disable Slack notifications</p>
       </div>
     </div>
 

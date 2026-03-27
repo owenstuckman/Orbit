@@ -8,7 +8,10 @@
   import { subscribeToTable } from '$lib/services/supabase';
   import { TaskCard, TaskCreateModal, TaskFilters, DraggableTaskList } from '$lib/components/tasks';
   import { tasksApi } from '$lib/services/api';
+  import { supabase } from '$lib/services/supabase';
   import ExportButton from '$lib/components/common/ExportButton.svelte';
+  import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
+  import LoadingSkeleton from '$lib/components/common/LoadingSkeleton.svelte';
   import { exportTasks, type TaskExport } from '$lib/services/export';
   import {
     Plus,
@@ -26,6 +29,7 @@
     Sparkles
   } from 'lucide-svelte';
   import type { Task, TaskStatus } from '$lib/types';
+  import KeyboardShortcutsHelp from '$lib/components/common/KeyboardShortcutsHelp.svelte';
 
   // View mode
   let viewMode: 'board' | 'list' = 'board';
@@ -35,6 +39,67 @@
   // Modals
   let showCreateModal = false;
   let showFiltersPanel = false;
+  let showShortcutsHelp = false;
+
+  // Keyboard navigation state
+  let selectedColumnIndex = 0;
+  let selectedTaskIndex = -1;
+  let searchInputRef: HTMLInputElement;
+
+  // Bulk operations
+  let bulkMode = false;
+  let selectedTaskIds = new Set<string>();
+
+  function toggleBulkSelect(taskId: string) {
+    if (selectedTaskIds.has(taskId)) {
+      selectedTaskIds.delete(taskId);
+    } else {
+      selectedTaskIds.add(taskId);
+    }
+    selectedTaskIds = selectedTaskIds; // trigger reactivity
+  }
+
+  function selectAllInColumn(status: TaskStatus) {
+    const colTasks = filteredTasks(status);
+    for (const t of colTasks) {
+      selectedTaskIds.add(t.id);
+    }
+    selectedTaskIds = selectedTaskIds;
+  }
+
+  function clearBulkSelection() {
+    selectedTaskIds = new Set();
+    bulkMode = false;
+  }
+
+  async function bulkUpdateStatus(newStatus: TaskStatus) {
+    if (selectedTaskIds.size === 0) return;
+    let success = 0;
+    for (const id of selectedTaskIds) {
+      try {
+        await tasksApi.update(id, { status: newStatus });
+        success++;
+      } catch { /* skip */ }
+    }
+    toasts.success(`Updated ${success} task(s) to ${newStatus.replace('_', ' ')}`);
+    clearBulkSelection();
+    await refreshTasks();
+  }
+
+  async function bulkDelete() {
+    if (selectedTaskIds.size === 0) return;
+    if (!confirm(`Delete ${selectedTaskIds.size} task(s)? This cannot be undone.`)) return;
+    let success = 0;
+    for (const id of selectedTaskIds) {
+      try {
+        const { error } = await supabase.from('tasks').delete().eq('id', id);
+        if (!error) success++;
+      } catch { /* skip */ }
+    }
+    toasts.success(`Deleted ${success} task(s)`);
+    clearBulkSelection();
+    await refreshTasks();
+  }
 
   // Real-time connection status
   let isConnected = false;
@@ -285,7 +350,101 @@
 
   // Determine if reordering should be enabled
   $: canReorder = $capabilities.canCreateTasks || $capabilities.canManageProjects;
+
+  // Get currently selected task for keyboard nav
+  $: selectedTask = (() => {
+    if (selectedTaskIndex < 0 || !visibleColumns[selectedColumnIndex]) return null;
+    const colTasks = filteredTasks(visibleColumns[selectedColumnIndex].status);
+    return colTasks[selectedTaskIndex] || null;
+  })();
+
+  function handleKeyboardNav(e: KeyboardEvent) {
+    // Don't handle if user is typing in an input
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+      // Allow Escape to blur search input
+      if (e.key === 'Escape' && target === searchInputRef) {
+        searchInputRef.blur();
+        e.preventDefault();
+      }
+      return;
+    }
+
+    switch (e.key) {
+      case '?':
+        e.preventDefault();
+        showShortcutsHelp = !showShortcutsHelp;
+        break;
+      case '/':
+        e.preventDefault();
+        searchInputRef?.focus();
+        break;
+      case 'n':
+        if ($capabilities.canCreateTasks) {
+          e.preventDefault();
+          showCreateModal = true;
+        }
+        break;
+      case 'f':
+        e.preventDefault();
+        showFiltersPanel = !showFiltersPanel;
+        break;
+      case 'r':
+        e.preventDefault();
+        refreshTasks();
+        break;
+      case 'b':
+        e.preventDefault();
+        viewMode = viewMode === 'board' ? 'list' : 'board';
+        break;
+      case 'ArrowRight':
+        if (viewMode === 'board') {
+          e.preventDefault();
+          selectedColumnIndex = Math.min(selectedColumnIndex + 1, visibleColumns.length - 1);
+          selectedTaskIndex = 0;
+        }
+        break;
+      case 'ArrowLeft':
+        if (viewMode === 'board') {
+          e.preventDefault();
+          selectedColumnIndex = Math.max(selectedColumnIndex - 1, 0);
+          selectedTaskIndex = 0;
+        }
+        break;
+      case 'ArrowDown': {
+        e.preventDefault();
+        const col = visibleColumns[selectedColumnIndex];
+        if (col) {
+          const maxIdx = filteredTasks(col.status).length - 1;
+          selectedTaskIndex = Math.min(selectedTaskIndex + 1, maxIdx);
+        }
+        break;
+      }
+      case 'ArrowUp':
+        e.preventDefault();
+        selectedTaskIndex = Math.max(selectedTaskIndex - 1, 0);
+        break;
+      case 'Enter':
+        if (selectedTask) {
+          e.preventDefault();
+          handleTaskClick(selectedTask);
+        }
+        break;
+      case 'a':
+        if (selectedTask && $capabilities.canAcceptTasks && selectedTask.status === 'open') {
+          e.preventDefault();
+          handleAcceptTask(selectedTask);
+        }
+        break;
+      case 'Escape':
+        selectedTaskIndex = -1;
+        showShortcutsHelp = false;
+        break;
+    }
+  }
 </script>
+
+<svelte:window on:keydown={handleKeyboardNav} />
 
 <div class="space-y-6">
   <!-- Header with Stats -->
@@ -368,8 +527,9 @@
       <div class="relative">
         <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={18} />
         <input
+          bind:this={searchInputRef}
           type="text"
-          placeholder="Search tasks..."
+          placeholder="Search tasks... ( / )"
           bind:value={searchQuery}
           class="pl-10 pr-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent w-64"
         />
@@ -429,8 +589,29 @@
         </button>
       </div>
 
+      <!-- Bulk operations toggle (PM/Admin only) -->
+      {#if $capabilities.canCreateTasks}
+        <button
+          class="px-3 py-2 rounded-lg text-sm font-medium transition-colors
+            {bulkMode ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'}"
+          on:click={() => { bulkMode = !bulkMode; if (!bulkMode) clearBulkSelection(); }}
+          title="Toggle bulk select"
+        >
+          {bulkMode ? `${selectedTaskIds.size} selected` : 'Bulk'}
+        </button>
+      {/if}
+
       <!-- Export button -->
       <ExportButton onExport={handleExport} disabled={$tasks.items.length === 0} size="sm" />
+
+      <!-- Keyboard shortcuts hint -->
+      <button
+        on:click={() => showShortcutsHelp = true}
+        class="hidden sm:flex items-center gap-1 px-2 py-2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+        title="Keyboard shortcuts (?)"
+      >
+        <kbd class="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded text-xs font-mono">?</kbd>
+      </button>
 
       <!-- Create button for PM -->
       {#if $capabilities.canCreateTasks}
@@ -445,14 +626,47 @@
     </div>
   </div>
 
+  <!-- Bulk Actions Bar -->
+  {#if bulkMode && selectedTaskIds.size > 0}
+    <div class="flex items-center gap-3 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg px-4 py-3">
+      <span class="text-sm font-medium text-indigo-700 dark:text-indigo-400">{selectedTaskIds.size} selected</span>
+      <div class="flex-1" />
+      <button
+        on:click={() => bulkUpdateStatus('assigned')}
+        class="px-3 py-1.5 text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/50"
+      >
+        Mark Assigned
+      </button>
+      <button
+        on:click={() => bulkUpdateStatus('in_progress')}
+        class="px-3 py-1.5 text-xs font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 rounded-lg hover:bg-yellow-200 dark:hover:bg-yellow-900/50"
+      >
+        Mark In Progress
+      </button>
+      <button
+        on:click={() => bulkUpdateStatus('approved')}
+        class="px-3 py-1.5 text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/50"
+      >
+        Approve
+      </button>
+      <button
+        on:click={bulkDelete}
+        class="px-3 py-1.5 text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50"
+      >
+        Delete
+      </button>
+      <button
+        on:click={clearBulkSelection}
+        class="px-3 py-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
+      >
+        Clear
+      </button>
+    </div>
+  {/if}
+
   <!-- Loading state -->
   {#if $tasks.loading}
-    <div class="flex items-center justify-center py-12">
-      <div class="flex flex-col items-center gap-3">
-        <div class="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-        <p class="text-sm text-slate-500 dark:text-slate-400">Loading tasks...</p>
-      </div>
-    </div>
+    <LoadingSkeleton type="card" rows={6} />
   {:else if $tasks.error}
     <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 text-center">
       <p class="text-red-700 dark:text-red-400">{$tasks.error}</p>
@@ -466,9 +680,9 @@
   {:else}
     <!-- Board View -->
     {#if viewMode === 'board'}
-      <div class="flex gap-4 overflow-x-auto pb-4">
-        {#each visibleColumns as column}
-          <div class="flex-shrink-0 w-80">
+      <div class="flex gap-4 overflow-x-auto pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 snap-x snap-mandatory sm:snap-none">
+        {#each visibleColumns as column, colIdx}
+          <div class="flex-shrink-0 w-72 sm:w-80 snap-center">
             <!-- Column header -->
             <div class="flex items-center justify-between mb-4 px-2">
               <div class="flex items-center gap-2">
@@ -481,7 +695,9 @@
             </div>
 
             <!-- Tasks column -->
-            <div class="min-h-[200px] {column.bgColor} dark:bg-slate-800/50 rounded-xl p-3">
+            <div class="min-h-[200px] {column.bgColor} dark:bg-slate-800/50 rounded-xl p-3 transition-shadow
+              {colIdx === selectedColumnIndex && selectedTaskIndex >= 0 ? 'ring-2 ring-indigo-300 dark:ring-indigo-700' : ''}"
+            >
               <DraggableTaskList
                 tasks={filteredTasks(column.status)}
                 status={column.status}
@@ -577,6 +793,9 @@
   bind:show={showCreateModal}
   on:created={() => refreshTasks()}
 />
+
+<!-- Keyboard Shortcuts Help -->
+<KeyboardShortcutsHelp bind:show={showShortcutsHelp} />
 
 <!-- Filters Panel -->
 <TaskFilters

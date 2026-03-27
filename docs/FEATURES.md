@@ -76,6 +76,17 @@ Everything that is built, deployed, and functional.
 - QC review with approve/reject (under_review → approved/rejected)
 - Rejected tasks can be reworked and resubmitted
 
+### Task Board Features
+- Kanban board view with draggable columns
+- List view with sortable table
+- **Drag-and-drop reordering** via `DraggableTaskList` (HTML5 native drag API, `flip` animation, visual insertion indicator, `canReorder` for PM/Admin)
+- **Keyboard navigation** with arrow keys, Enter to open, shortcuts for all actions
+- **Bulk operations** (PM/Admin): multi-select mode, bulk status change, bulk delete
+- Real-time live updates via WebSocket subscription
+- Search with `/` shortcut focus
+- Advanced filters (status, project, urgency, level, deadline)
+- Export to CSV/PDF/JSON
+
 ### Task Properties
 - Dollar value with urgency multiplier
 - Story points (T-shirt sizing: XS/S/M/L/XL/XXL)
@@ -136,6 +147,13 @@ Three actions routed through a single Supabase edge function:
 - "AI Suggest" button for story points (gated by `ai_qc_review` flag)
 - Displays reasoning from ML complexity analysis
 
+### ML Model Deployment Ready
+- FastAPI template with Dockerfile in `docs/ML_MODEL_HOSTING.md`
+- Deployment guides for Railway, Render, Fly.io, Google Cloud Run
+- 3 endpoints: `/api/v1/review/confidence` (required), `/api/v1/task/complexity`, `/api/v1/review/quality/{task_id}`
+- Edge function has graceful fallback: returns p0=0.8 if ML API unavailable
+- Remaining ops: host the ML API externally, then `supabase secrets set ML_API_URL=<url> ML_API_KEY=<key>`
+
 ---
 
 ## QC Review System
@@ -160,6 +178,13 @@ Three actions routed through a single Supabase edge function:
 - AI review: weight=0 (informational only)
 - Peer review: weight=1.0
 - Independent review: weight=2.0
+
+### Auto-Payout on Approval
+- QC approval automatically creates payout records via `payoutsApi.create()`:
+  - **Task payout** for assignee: `dollar_value * urgency_multiplier`
+  - **QC payout** for reviewer: Shapley `d_k` value
+- Both payouts created as `pending` status
+- Email notification sent to payout recipient
 
 ---
 
@@ -218,24 +243,40 @@ Three actions routed through a single Supabase edge function:
 ## Gamification
 
 ### XP & Levels
-- Server-side XP calculation: `award_task_xp`, `calculate_task_xp`, `calculate_level_from_xp` RPCs
+- **Database trigger `award_task_xp`** fires on task status → `approved`:
+  - Calculates XP: `base_xp (story_points * 10) * urgency_multiplier * level_bonus`
+  - Updates `users.xp`, `users.level` via `calculate_level_from_xp()`
+  - Stores `total_xp`, `last_xp_gain` in user metadata
+  - Creates `achievement_earned` notification with XP amount
+  - Creates `level_up` notification when level increases
 - Level-based task access gates (required_level 1-5)
-- XP display on task cards
+- XP display on task cards and dashboard
 
 ### Badges & Achievements
-- 98 badge definitions across 5 requirement types:
-  - `tasks_completed`, `first_pass_approvals`, `current_streak`/`longest_streak`, `level`, `total_earnings`
-- Achievement page at `/achievements`
+- 20 badge definitions across 5 categories (Tasks, Quality, Streaks, Levels, Earnings)
+- Requirement types: `tasks_completed`, `first_pass_approvals`, `current_streak`/`longest_streak`, `level`, `total_earnings`
+- 4 tiers: bronze, silver, gold, platinum
+- `checkAndAwardBadges()` called automatically on QC approval (fire-and-forget)
+- Badge XP rewards on earn (50-2500 XP depending on tier)
+- Achievement page at `/achievements` with progress tracking
 - Badge components: `AchievementBadge`, `AchievementsGrid`
-- `user_badges` and `achievements` tables
+- `user_badges` table for persistence
 
 ### Leaderboard
-- User rankings at `/leaderboard`
+- User rankings at `/leaderboard` sorted by XP
+- Real earnings from `payoutsApi.getSummary()` (not estimates)
+- Period filtering: week/month/all time (reactive)
+- Top 3 podium + full rankings table
+- Current user rank highlight card
 - Gated by `leaderboard` feature flag
 
 ### Streaks
-- Current streak and longest streak tracking
-- Streak-based badge unlocks
+- **Database trigger** increments streak on task approval:
+  - Compares `last_task_completed_at` to current date
+  - If ≤1 day gap: increment `current_streak`
+  - If >1 day: reset to 1
+  - Updates `longest_streak` via `GREATEST()`
+- Streak-based badge unlocks (3, 7, 30, 100 days)
 
 ---
 
@@ -275,10 +316,15 @@ Three actions routed through a single Supabase edge function:
 
 ### Implementation
 - Stored in `organizations.settings.feature_flags` (JSONB)
-- Reactive store: `$features.analytics`, `$featureFlags.salary_mixer`
+- Reactive store: `$featureFlags.salary_mixer`
 - Admin toggle UI: `FeatureFlagsPanel`
 - Registration preset picker: `FeaturePresetSelector`
 - `isFeatureEnabled()` helper for service-layer checks
+
+### Flag Gating Coverage
+**Sidebar-gated** (9): tasks, projects, qc_reviews, contracts, payouts, achievements, leaderboard, analytics, notifications_page
+**Component-gated** (4): ai_qc_review (QC page + TaskCreateModal), story_points (TaskCard), urgency_multipliers (TaskCard), salary_mixer (Settings page)
+**Always-on** (4): file_uploads, external_assignments, realtime_updates, multi_org (gating deferred — these are core infrastructure)
 
 ---
 
@@ -288,7 +334,8 @@ Three actions routed through a single Supabase edge function:
 - Task metrics: completion rates, status breakdown, average time
 - Payout metrics: by type and period
 - User metrics: top performers, activity
-- Trend data for Chart.js visualization
+- Chart.js Line chart for task/payout trends (dual Y-axis)
+- Chart.js Doughnut chart for task status distribution
 - Period-based filtering: week, month, quarter, year
 - Analytics page at `/analytics` (admin/PM only)
 
@@ -314,7 +361,10 @@ Three actions routed through a single Supabase edge function:
 - Invite confirmation modal
 
 ### Audit Log
-- Audit log viewer at `/admin/audit`
+- Audit log viewer at `/admin/audit` with real database queries
+- Search by action/entity, filter by action type and entity type
+- Paginated (50 per page) with working prev/next navigation
+- Diff display showing old_data → new_data changes
 - `log_audit_entry` RPC for server-side logging
 - `audit_log` table with RLS
 
@@ -366,7 +416,7 @@ Three actions routed through a single Supabase edge function:
 | Slug | Purpose | Status |
 |------|---------|--------|
 | `qc-ai-review` | AI confidence, complexity, quality scoring | v6, source in repo |
-| `send-email` | Transactional emails via Resend API | source in repo, needs deploy + secret |
+| `send-email` | Transactional emails via Resend API | v1, deployed. Set `RESEND_API_KEY` secret to activate |
 | `payout-calculator` | Employee/PM payout calculations | called from `api.ts`, source not in repo |
 | `generate-contract` | Server-side contract PDF generation | called from `api.ts`, source not in repo |
 
@@ -377,7 +427,7 @@ Three actions routed through a single Supabase edge function:
 - `emailService.sendPayoutReady()` — Payout notification with amount
 - `emailService.sendContractReady()` — Contract signing link for contractors
 - All methods fire-and-forget (never block the calling flow)
-- Wired into: `usersApi.invite()`, `tasksApi.assignExternal()`, `qcApi.submitReview()`
+- Wired into: `usersApi.invite()`, `tasksApi.assignExternal()`, `qcApi.submitReview()`, `payoutsApi.create()`
 
 ---
 
@@ -391,6 +441,154 @@ Three actions routed through a single Supabase edge function:
 
 ### Helpers & Triggers (16)
 `current_user_id`, `current_user_org_id`, `current_user_role`, `get_current_user_id`, `get_my_org_id`, `get_user_org_id`, `get_user_context`, `get_feature_flag_preset`, `set_default_feature_flags`, `is_org_owner`, `user_can_access_contract`, `user_can_review_task`, `log_audit_entry`, `notify_qc_review`, `notify_task_assigned`, `switch_organization`
+
+---
+
+## Keyboard Shortcuts
+
+### Task Board Shortcuts
+- `←` / `→` — Move between board columns
+- `↑` / `↓` — Move between tasks in a column
+- `Enter` — Open selected task
+- `Escape` — Deselect / close modal
+- `n` — New task (PM/Admin only)
+- `/` — Focus search input
+- `f` — Toggle filters panel
+- `r` — Refresh tasks
+- `b` — Toggle board/list view
+- `a` — Accept selected task (Employee/Contractor)
+- `?` — Show keyboard shortcuts help
+
+### Global Shortcuts
+- `Ctrl+K` / `Cmd+K` — Open global search
+- `g` then `d` — Go to Dashboard
+- `g` then `t` — Go to Tasks
+- `g` then `p` — Go to Projects
+- `g` then `s` — Go to Settings
+
+Shortcuts help modal: `KeyboardShortcutsHelp` component. Visible column highlight on keyboard nav.
+
+---
+
+## Global Search
+
+Command palette-style search across all entities, triggered with `Ctrl+K` / `Cmd+K`.
+
+- Searches: tasks, projects, users, contracts
+- Debounced queries (250ms) to Supabase with `ilike` matching
+- Keyboard navigation: arrow keys to select, Enter to navigate, Escape to close
+- Results show type icon, title, subtitle, and category badge
+- `GlobalSearch` component in `$lib/components/common/`
+- Search button with shortcut hint in top bar
+
+---
+
+## Onboarding
+
+Role-specific onboarding tutorials shown on first login.
+
+### Guide Content by Role
+- **Employee** (4 steps): Pick up tasks → Submit work → Earn payouts → Level up
+- **Contractor** (4 steps): Accept assignments → Sign contract → Submit work → Track earnings
+- **PM** (4 steps): Manage projects → Create tasks → Profit share → Analytics
+- **QC** (4 steps): Review queue → Approve/reject → Shapley payouts → AI insights
+- **Sales** (3 steps): Create projects → Commission → Contracts
+- **Admin** (4 steps): Manage team → Configure org → Analytics → Audit log
+
+### Implementation
+- `OnboardingGuide` component with step carousel
+- Completion stored in `localStorage` per user ID
+- Action buttons link directly to relevant pages
+- Skip/dismiss always available
+- Triggered automatically in app layout after first login
+
+---
+
+## Slack Webhook Integration
+
+### Webhook Service (`src/lib/services/webhooks.ts`)
+- `slackWebhook.notifyTaskCreated()` — New task with value, urgency, level
+- `slackWebhook.notifyTaskSubmitted()` — Task submitted for QC review
+- `slackWebhook.notifyTaskApproved()` — Task approved with AI confidence
+- `slackWebhook.notifyTaskRejected()` — Task rejected with feedback excerpt
+- `slackWebhook.notifyProjectCreated()` — New project with budget
+- `slackWebhook.notifyLevelUp()` — User level-up celebration
+- `slackWebhook.notifyMemberJoined()` — New team member with role
+- `slackWebhook.sendCustom()` — Custom Slack Block Kit messages
+
+### Configuration
+- Webhook URL stored in `organizations.settings.slack_webhook_url`
+- Admin settings UI: Slack Integration section with URL input
+- `slackWebhook.isConfigured()` check before sending
+- Fire-and-forget: never blocks calling flow
+- Rich Slack Block Kit formatting with headers, fields, sections
+
+---
+
+## Bulk Task Operations
+
+### Multi-Select Mode
+- Toggle button in task board toolbar (PM/Admin only)
+- Selection count badge shows number of selected tasks
+- Click tasks to toggle selection while in bulk mode
+
+### Bulk Actions
+- **Mark Assigned** — Set all selected tasks to `assigned` status
+- **Mark In Progress** — Set all selected tasks to `in_progress` status
+- **Approve** — Set all selected tasks to `approved` status
+- **Delete** — Delete all selected tasks (with confirmation dialog)
+- **Clear** — Deselect all tasks
+
+### Implementation
+- Bulk actions bar appears when tasks are selected
+- Each operation iterates through selected IDs with individual API calls
+- Success count toast notification after completion
+- Auto-refreshes task list after bulk operation
+
+---
+
+## Reusable UI Components (`src/lib/components/common/`)
+
+- **LoadingSpinner** — Configurable spinner (sm/md/lg) with optional message
+- **LoadingSkeleton** — Content-aware skeleton loaders in 3 variants: card grid, table rows, list items. Used in tasks, projects, payouts pages
+- **EmptyState** — Icon + title + description + optional CTA button/link. Used for empty data displays
+- **OrganizationSwitcher** — Multi-org context switcher in sidebar
+- **NotificationDropdown** — Header notification bell with real-time badge
+- **ExportButton** — CSV/PDF/JSON export trigger
+- **RoleBadge** — Color-coded role display
+- **TagInput** — Tag entry with autocomplete
+- **GlobalSearch** — Command palette (Ctrl+K) for cross-entity search
+- **KeyboardShortcutsHelp** — Modal showing all available keyboard shortcuts
+- **OnboardingGuide** — Role-specific step-by-step onboarding carousel
+
+---
+
+## Mobile Responsiveness
+
+- **Sidebar**: Collapsible on mobile (< lg breakpoint), slide-in with overlay backdrop
+- **Top bar**: Sticky header with hamburger menu on mobile
+- **Task board**: Snap-scroll horizontally on mobile (72px cards → 80px on sm+)
+- **Dashboard**: Header badges wrap on small screens, stat grids collapse to 2-col on mobile
+- **Payouts**: Summary cards stack to 1-col on mobile, payout rows stack vertically on xs
+- **Tables**: All data tables wrapped in `overflow-x-auto` for horizontal scroll
+- **Modals**: Max-width with `mx-4` margin on mobile for consistent padding
+- **Forms**: Full-width inputs, grid layouts collapse to single column on mobile
+
+---
+
+## Documentation
+
+- `CLAUDE.md` — AI assistant context (architecture, patterns, conventions)
+- `CONTRIBUTING.md` — Setup, conventions, PR guidelines, role-based testing
+- `docs/FORMULAS.md` — Payout calculation formulas for all roles
+- `docs/FEATURES.md` — This file: all completed features
+- `docs/TODO.md` — Remaining tasks
+- `docs/DATA_FLOWS.md` — Multi-step workflow diagrams
+- `docs/ML_INTEGRATION.md` — ML model integration points and API schemas
+- `docs/ML_MODEL_HOSTING.md` — Guide for deploying the QC ML model
+- `docs/SUPABASE_STORAGE.md` — Storage bucket conventions
+- `docs/USER_REGISTRATION_FLOW.md` — Two-stage registration with email verification
+- `docs/SMTP_SETUP.md` — Email provider setup, templates, edge function guide
 
 ---
 

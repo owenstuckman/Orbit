@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { user, currentOrgRole } from '$lib/stores/auth';
+  import { user, currentOrgRole, organization } from '$lib/stores/auth';
+  import { supabase } from '$lib/services/supabase';
   import type { AuditLog } from '$lib/types';
   import {
     Activity,
@@ -35,12 +36,26 @@
     await loadLogs();
   });
 
+  let page = 0;
+  const pageSize = 50;
+  let hasMore = true;
+
   async function loadLogs() {
     loading = true;
     try {
-      // In a real implementation, this would call an audit API
-      // For now, using mock data
-      logs = generateMockLogs();
+      const orgId = $organization?.id;
+      if (!orgId) return;
+
+      const { data, error } = await supabase
+        .from('audit_log')
+        .select('*')
+        .eq('org_id', orgId)
+        .order('created_at', { ascending: false })
+        .range(page * pageSize, (page + 1) * pageSize - 1);
+
+      if (error) throw error;
+      logs = data ?? [];
+      hasMore = logs.length === pageSize;
     } catch (error) {
       console.error('Failed to load audit logs:', error);
     } finally {
@@ -48,26 +63,16 @@
     }
   }
 
-  function generateMockLogs(): AuditLog[] {
-    const mockLogs: AuditLog[] = [];
-    const actions = ['create', 'update', 'delete', 'approve', 'submit'];
-    const entities = ['task', 'project', 'contract', 'payout'];
+  async function nextPage() {
+    page++;
+    await loadLogs();
+  }
 
-    for (let i = 0; i < 20; i++) {
-      mockLogs.push({
-        id: `log-${i}`,
-        org_id: 'org-1',
-        user_id: `user-${i % 5}`,
-        action: actions[i % actions.length],
-        entity_type: entities[i % entities.length],
-        entity_id: `entity-${i}`,
-        old_data: i % 2 === 0 ? { status: 'pending' } : null,
-        new_data: { status: 'completed' },
-        created_at: new Date(Date.now() - i * 3600000).toISOString()
-      });
+  async function prevPage() {
+    if (page > 0) {
+      page--;
+      await loadLogs();
     }
-
-    return mockLogs;
   }
 
   $: filteredLogs = logs.filter(log => {
@@ -220,16 +225,23 @@
         {/each}
       </div>
 
-      <!-- Pagination placeholder -->
       <div class="p-4 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between">
         <p class="text-sm text-slate-500 dark:text-slate-400">
-          Showing {filteredLogs.length} of {logs.length} logs
+          Page {page + 1} &middot; Showing {filteredLogs.length} logs
         </p>
         <div class="flex gap-2">
-          <button class="px-3 py-1 text-sm border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50" disabled>
+          <button
+            class="px-3 py-1 text-sm border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50"
+            disabled={page === 0}
+            on:click={prevPage}
+          >
             Previous
           </button>
-          <button class="px-3 py-1 text-sm border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50" disabled>
+          <button
+            class="px-3 py-1 text-sm border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50"
+            disabled={!hasMore}
+            on:click={nextPage}
+          >
             Next
           </button>
         </div>

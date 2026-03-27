@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { user } from '$lib/stores/auth';
-  import { usersApi } from '$lib/services/api';
+  import { usersApi, payoutsApi } from '$lib/services/api';
   import type { User } from '$lib/types';
   import {
     Trophy,
@@ -34,21 +34,30 @@
     await loadLeaderboard();
   });
 
+  $: selectedPeriod, loadLeaderboard();
+
   async function loadLeaderboard() {
     loading = true;
     try {
-      users = await usersApi.list();
+      const allUsers = await usersApi.list();
 
-      // Calculate leaderboard based on real user data
-      // Uses xp, tasks_completed, and streak_days from user table
-      leaderboard = users
+      // Build earnings map from real payouts
+      const earningsMap: Record<string, number> = {};
+      for (const u of allUsers) {
+        try {
+          const summary = await payoutsApi.getSummary(u.id, selectedPeriod === 'all' ? 'year' : selectedPeriod);
+          earningsMap[u.id] = summary?.total ?? 0;
+        } catch {
+          earningsMap[u.id] = 0;
+        }
+      }
+
+      leaderboard = allUsers
         .map((u) => {
-          // Use actual database fields with sensible defaults
-          const xp = (u as any).xp || (u.metadata?.total_xp as number) || u.level * 50;
-          const tasksCompleted = (u as any).tasks_completed || (u.metadata?.total_tasks_completed as number) || 0;
-          const streak = (u as any).streak_days || (u.metadata?.current_streak as number) || 0;
-          // Earnings would come from payouts - for now use calculated estimate based on tasks
-          const earnings = tasksCompleted * 75; // Average $75 per task estimate
+          const xp = (u as any).xp ?? (u.metadata?.total_xp as number) ?? 0;
+          const tasksCompleted = (u.metadata?.total_tasks_completed as number) ?? 0;
+          const streak = (u as any).streak_days ?? (u.metadata?.current_streak as number) ?? 0;
+          const earnings = earningsMap[u.id] ?? 0;
 
           return {
             user: u,
@@ -59,7 +68,7 @@
             earnings
           };
         })
-        .filter(entry => entry.xp > 0 || entry.tasksCompleted > 0) // Only show users with activity
+        .filter(entry => entry.xp > 0 || entry.tasksCompleted > 0)
         .sort((a, b) => b.xp - a.xp || b.tasksCompleted - a.tasksCompleted)
         .map((entry, index) => ({ ...entry, rank: index + 1 }));
     } catch (error) {

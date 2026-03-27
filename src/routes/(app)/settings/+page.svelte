@@ -1,5 +1,6 @@
 <script lang="ts">
   import { user, organization, userOrganizations, currentOrgRole } from '$lib/stores/auth';
+  import { featureFlags } from '$lib/stores/featureFlags';
   import { formatCurrency, calculateSalaryBreakdown, projectAnnualSalary, validateR } from '$lib/utils/payout';
   import { toasts } from '$lib/stores/notifications';
   import { supabase } from '$lib/services/supabase';
@@ -283,7 +284,7 @@
   </section>
 
   <!-- Salary Mixer Section -->
-  {#if $currentOrgRole === 'employee' || $currentOrgRole === 'contractor'}
+  {#if $featureFlags.salary_mixer && ($currentOrgRole === 'employee' || $currentOrgRole === 'contractor')}
     <section class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
       <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center gap-3">
         <Sliders class="text-slate-400 dark:text-slate-500" size={20} />

@@ -1222,6 +1222,16 @@ export const qcApi = {
               status: 'pending'
             }).catch(err => console.error('Failed to create QC payout:', err));
           }
+
+          // Check and award badges (fire-and-forget, DB trigger handles XP/streak/level)
+          if (task.assignee_id) {
+            const assigneeId = task.assignee_id;
+            import('../stores/gamification').then(({ gamification }) => {
+              gamification.load(assigneeId).then(() => {
+                gamification.checkAndAwardBadges(assigneeId);
+              });
+            }).catch(() => {});
+          }
         }
       }
     }

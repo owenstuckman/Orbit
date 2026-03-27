@@ -2,6 +2,8 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { user, capabilities, currentOrgRole } from '$lib/stores/auth';
+  import LoadingSkeleton from '$lib/components/common/LoadingSkeleton.svelte';
+  import EmptyState from '$lib/components/common/EmptyState.svelte';
   import { projects, projectsByStatus } from '$lib/stores/projects';
   import { toasts } from '$lib/stores/notifications';
   import { formatCurrency, calculatePMPayout } from '$lib/utils/payout';
@@ -234,17 +236,13 @@
 
   <!-- Projects List -->
   {#if $projects.loading}
-    <div class="flex justify-center py-12">
-      <div class="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-    </div>
+    <LoadingSkeleton type="card" rows={4} />
   {:else if filteredProjects.length === 0}
-    <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-12 text-center">
-      <FolderKanban class="mx-auto text-slate-300 dark:text-slate-600 mb-4" size={48} />
-      <p class="text-slate-500 dark:text-slate-400">No projects found</p>
-      {#if viewMode === 'pending' && $currentOrgRole === 'pm'}
-        <p class="text-sm text-slate-400 dark:text-slate-500 mt-1">No projects waiting to be picked up</p>
-      {/if}
-    </div>
+    <EmptyState
+      icon={FolderKanban}
+      title="No projects found"
+      description={viewMode === 'pending' && $currentOrgRole === 'pm' ? 'No projects waiting to be picked up' : ''}
+    />
   {:else}
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {#each filteredProjects as project}

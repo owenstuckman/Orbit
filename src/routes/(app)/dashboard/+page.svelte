@@ -200,12 +200,12 @@
 
 <div class="space-y-6">
   <!-- Header -->
-  <div class="flex items-start justify-between">
+  <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
     <div>
-      <h1 class="text-2xl font-bold text-slate-900 dark:text-white">
+      <h1 class="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
         Welcome back, {$user?.full_name?.split(' ')[0] || 'there'}
       </h1>
-      <p class="mt-1 text-slate-500 dark:text-slate-400">
+      <p class="mt-1 text-sm sm:text-base text-slate-500 dark:text-slate-400">
         {#if $currentOrgRole === 'admin'}
           Organization overview for <span class="font-medium text-slate-700 dark:text-slate-300">{$organization?.name}</span>
         {:else if $currentOrgRole === 'pm'}
@@ -219,7 +219,7 @@
         {/if}
       </p>
     </div>
-    <div class="flex items-center gap-3">
+    <div class="flex flex-wrap items-center gap-2">
       {#if $user?.level}
         <div class="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/20 rounded-full">
           <Star size={14} class="text-indigo-500" />

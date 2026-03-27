@@ -4,6 +4,8 @@
   import { payoutsApi } from '$lib/services/api';
   import { formatCurrency } from '$lib/utils/payout';
   import { exportToCSV } from '$lib/services/export';
+  import LoadingSkeleton from '$lib/components/common/LoadingSkeleton.svelte';
+  import EmptyState from '$lib/components/common/EmptyState.svelte';
   import type { Payout } from '$lib/types';
   import {
     DollarSign,
@@ -146,7 +148,7 @@
   </div>
 
   <!-- Summary Cards -->
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+  <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
     <div class="bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl p-6 text-white">
       <div class="flex items-center justify-between">
         <div>
@@ -240,20 +242,20 @@
     </div>
 
     {#if loading}
-      <div class="p-12 flex justify-center">
-        <div class="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+      <div class="p-6">
+        <LoadingSkeleton type="table" rows={5} />
       </div>
     {:else if filteredPayouts.length === 0}
-      <div class="p-12 text-center">
-        <DollarSign class="mx-auto text-slate-300 dark:text-slate-600 mb-4" size={48} />
-        <p class="text-slate-500 dark:text-slate-400">No payouts yet</p>
-        <p class="text-sm text-slate-400 dark:text-slate-500 mt-1">Complete tasks to start earning!</p>
-      </div>
+      <EmptyState
+        icon={DollarSign}
+        title="No payouts yet"
+        description="Complete tasks to start earning!"
+      />
     {:else}
       <div class="divide-y divide-slate-100 dark:divide-slate-700">
         {#each filteredPayouts as payout}
           {@const statusInfo = getStatusBadge(payout.status)}
-          <div class="px-6 py-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+          <div class="px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
             <div class="flex items-center gap-4">
               <div class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
                 <DollarSign class="text-slate-600 dark:text-slate-400" size={20} />
@@ -279,7 +281,7 @@
                 </div>
               </div>
             </div>
-            <div class="text-right">
+            <div class="text-left sm:text-right">
               <p class="text-lg font-bold text-slate-900 dark:text-white">{formatCurrency(payout.net_amount)}</p>
               {#if payout.deductions > 0}
                 <p class="text-xs text-slate-500 dark:text-slate-400">
