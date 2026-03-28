@@ -40,8 +40,11 @@
     Moon,
     Sun,
     Bell,
-    Search
+    Search,
+    Monitor,
+    Palette
   } from 'lucide-svelte';
+  import { THEMES, resolveTheme } from '$lib/stores/theme';
 
   let sidebarOpen = false;
   let userMenuOpen = false;
@@ -50,6 +53,7 @@
   let errorDetails = '';
   let showGlobalSearch = false;
   let showOnboarding = false;
+  let showThemeMenu = false;
 
   // Redirect loop prevention
   const REDIRECT_KEY = 'orbit_auth_redirect_count';
@@ -478,18 +482,58 @@ Error: {errorDetails}</pre>
 
           <!-- Right side actions -->
           <div class="flex items-center gap-2">
-            <!-- Dark mode toggle -->
-            <button
-              on:click={() => theme.toggle()}
-              class="p-2 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-              title={$theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-            >
-              {#if $theme === 'dark'}
-                <Sun size={20} />
-              {:else}
-                <Moon size={20} />
+            <!-- Theme selector -->
+            <div class="relative">
+              <button
+                on:click|stopPropagation={() => showThemeMenu = !showThemeMenu}
+                class="p-2 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                title="Change theme"
+              >
+                {#if resolveTheme($theme) === 'dracula'}
+                  <Moon size={20} />
+                {:else}
+                  <Sun size={20} />
+                {/if}
+              </button>
+
+              {#if showThemeMenu}
+                <div class="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl py-2 z-50 animate-fade-in">
+                  <div class="px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    Theme
+                  </div>
+                  {#each THEMES as t}
+                    <button
+                      class="w-full flex items-center gap-3 px-3 py-2.5 text-left text-sm transition-colors
+                        {$theme === t.name
+                          ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300'
+                          : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50'}"
+                      on:click|stopPropagation={() => { theme.setTheme(t.name); showThemeMenu = false; }}
+                    >
+                      <span class="w-8 h-8 flex items-center justify-center rounded-lg
+                        {$theme === t.name ? 'bg-indigo-100 dark:bg-indigo-900/30' : 'bg-slate-100 dark:bg-slate-700'}">
+                        {#if t.icon === 'sun'}
+                          <Sun size={16} />
+                        {:else if t.icon === 'moon'}
+                          <Moon size={16} />
+                        {:else}
+                          <Monitor size={16} />
+                        {/if}
+                      </span>
+                      <div>
+                        <div class="font-medium">{t.label}</div>
+                        <div class="text-xs text-slate-500 dark:text-slate-400">{t.description}</div>
+                      </div>
+                      {#if $theme === t.name}
+                        <span class="ml-auto w-2 h-2 rounded-full bg-indigo-500" />
+                      {/if}
+                    </button>
+                  {/each}
+                  <div class="border-t border-slate-200 dark:border-slate-700 mt-2 pt-2 px-3 py-2">
+                    <p class="text-xs text-slate-400 dark:text-slate-500">More themes coming soon</p>
+                  </div>
+                </div>
               {/if}
-            </button>
+            </div>
 
             <!-- Notifications -->
             <NotificationDropdown />
@@ -570,8 +614,7 @@ Error: {errorDetails}</pre>
 <svelte:window
   on:keydown={handleGlobalKeydown}
   on:click={() => {
-    if (userMenuOpen) {
-      userMenuOpen = false;
-    }
+    if (userMenuOpen) userMenuOpen = false;
+    if (showThemeMenu) showThemeMenu = false;
   }}
 />

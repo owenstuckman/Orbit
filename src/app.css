@@ -2,7 +2,317 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom base styles */
+/* ============================================================
+   THEME COLOR DEFINITIONS
+   All color scales are defined as CSS custom properties.
+   Light mode uses standard Tailwind defaults.
+   Dark mode uses Dracula-inspired palette.
+   Additional themes can be added via [data-theme="name"] selectors.
+   ============================================================ */
+
+:root {
+  /* --- Slate (Neutral grays) --- */
+  --color-slate-50: 248 250 252;
+  --color-slate-100: 241 245 249;
+  --color-slate-200: 226 232 240;
+  --color-slate-300: 203 213 225;
+  --color-slate-400: 148 163 184;
+  --color-slate-500: 100 116 139;
+  --color-slate-600: 71 85 105;
+  --color-slate-700: 51 65 85;
+  --color-slate-800: 30 41 59;
+  --color-slate-900: 15 23 42;
+  --color-slate-950: 2 6 23;
+
+  /* --- Indigo (Primary accent) --- */
+  --color-indigo-50: 238 242 255;
+  --color-indigo-100: 224 231 255;
+  --color-indigo-200: 199 210 254;
+  --color-indigo-300: 165 180 252;
+  --color-indigo-400: 129 140 248;
+  --color-indigo-500: 99 102 241;
+  --color-indigo-600: 79 70 229;
+  --color-indigo-700: 67 56 202;
+  --color-indigo-800: 55 48 163;
+  --color-indigo-900: 49 46 129;
+  --color-indigo-950: 30 27 75;
+
+  /* --- Green (Success) --- */
+  --color-green-50: 240 253 244;
+  --color-green-100: 220 252 231;
+  --color-green-200: 187 247 208;
+  --color-green-300: 134 239 172;
+  --color-green-400: 74 222 128;
+  --color-green-500: 34 197 94;
+  --color-green-600: 22 163 74;
+  --color-green-700: 21 128 61;
+  --color-green-800: 22 101 52;
+  --color-green-900: 20 83 45;
+  --color-green-950: 5 46 22;
+
+  /* --- Red (Danger) --- */
+  --color-red-50: 254 242 242;
+  --color-red-100: 254 226 226;
+  --color-red-200: 254 202 202;
+  --color-red-300: 252 165 165;
+  --color-red-400: 248 113 113;
+  --color-red-500: 239 68 68;
+  --color-red-600: 220 38 38;
+  --color-red-700: 185 28 28;
+  --color-red-800: 153 27 27;
+  --color-red-900: 127 29 29;
+  --color-red-950: 69 10 10;
+
+  /* --- Amber (Warning) --- */
+  --color-amber-50: 255 251 235;
+  --color-amber-100: 254 243 199;
+  --color-amber-200: 253 230 138;
+  --color-amber-300: 252 211 77;
+  --color-amber-400: 251 191 36;
+  --color-amber-500: 245 158 11;
+  --color-amber-600: 217 119 6;
+  --color-amber-700: 180 83 9;
+  --color-amber-800: 146 64 14;
+  --color-amber-900: 120 53 15;
+  --color-amber-950: 69 26 3;
+
+  /* --- Blue (Info) --- */
+  --color-blue-50: 239 246 255;
+  --color-blue-100: 219 234 254;
+  --color-blue-200: 191 219 254;
+  --color-blue-300: 147 197 253;
+  --color-blue-400: 96 165 250;
+  --color-blue-500: 59 130 246;
+  --color-blue-600: 37 99 235;
+  --color-blue-700: 29 78 216;
+  --color-blue-800: 30 64 175;
+  --color-blue-900: 30 58 138;
+  --color-blue-950: 23 37 84;
+
+  /* --- Purple --- */
+  --color-purple-50: 250 245 255;
+  --color-purple-100: 243 232 255;
+  --color-purple-200: 232 212 255;
+  --color-purple-300: 216 180 254;
+  --color-purple-400: 192 132 252;
+  --color-purple-500: 168 85 247;
+  --color-purple-600: 147 51 234;
+  --color-purple-700: 126 34 206;
+  --color-purple-800: 107 33 168;
+  --color-purple-900: 88 28 135;
+  --color-purple-950: 59 7 100;
+
+  /* --- Orange --- */
+  --color-orange-50: 255 247 237;
+  --color-orange-100: 255 237 213;
+  --color-orange-200: 254 215 170;
+  --color-orange-300: 253 186 116;
+  --color-orange-400: 251 146 60;
+  --color-orange-500: 249 115 22;
+  --color-orange-600: 234 88 12;
+  --color-orange-700: 194 65 12;
+  --color-orange-800: 154 52 18;
+  --color-orange-900: 124 45 18;
+  --color-orange-950: 67 20 7;
+
+  /* --- Emerald --- */
+  --color-emerald-50: 236 253 245;
+  --color-emerald-100: 209 250 229;
+  --color-emerald-200: 167 243 208;
+  --color-emerald-300: 110 231 183;
+  --color-emerald-400: 52 211 153;
+  --color-emerald-500: 16 185 129;
+  --color-emerald-600: 5 150 105;
+  --color-emerald-700: 4 120 87;
+  --color-emerald-800: 6 95 70;
+  --color-emerald-900: 6 78 59;
+  --color-emerald-950: 2 44 34;
+
+  /* --- Yellow --- */
+  --color-yellow-50: 254 252 232;
+  --color-yellow-100: 254 249 195;
+  --color-yellow-200: 254 240 138;
+  --color-yellow-300: 253 224 71;
+  --color-yellow-400: 250 204 21;
+  --color-yellow-500: 234 179 8;
+  --color-yellow-600: 202 138 4;
+  --color-yellow-700: 161 98 7;
+  --color-yellow-800: 133 77 14;
+  --color-yellow-900: 113 63 18;
+  --color-yellow-950: 66 32 6;
+
+  /* --- Pink --- */
+  --color-pink-50: 253 242 248;
+  --color-pink-100: 252 231 243;
+  --color-pink-200: 251 207 232;
+  --color-pink-300: 249 168 212;
+  --color-pink-400: 244 114 182;
+  --color-pink-500: 236 72 153;
+  --color-pink-600: 219 39 119;
+  --color-pink-700: 190 24 93;
+  --color-pink-800: 157 23 77;
+  --color-pink-900: 131 24 67;
+  --color-pink-950: 80 7 36;
+}
+
+/* ============================================================
+   DRACULA DARK THEME
+   Based on Dracula color palette:
+   Background: #282a36  Current Line: #44475a  Comment: #6272a4
+   Foreground: #f8f8f2  Cyan: #8be9fd  Green: #50fa7b
+   Orange: #ffb86c  Pink: #ff79c6  Purple: #bd93f9
+   Red: #ff5555  Yellow: #f1fa8c
+   ============================================================ */
+
+.dark {
+  /* --- Slate → Dracula Neutrals --- */
+  --color-slate-50: 248 248 242;   /* Dracula foreground */
+  --color-slate-100: 235 235 230;
+  --color-slate-200: 215 216 210;
+  --color-slate-300: 180 182 178;
+  --color-slate-400: 135 140 160;
+  --color-slate-500: 98 114 164;   /* Dracula comment */
+  --color-slate-600: 78 82 108;
+  --color-slate-700: 68 71 90;     /* Dracula current line */
+  --color-slate-800: 54 56 72;
+  --color-slate-900: 40 42 54;     /* Dracula background */
+  --color-slate-950: 29 30 40;
+
+  /* --- Indigo → Dracula Purple --- */
+  --color-indigo-50: 248 243 255;
+  --color-indigo-100: 238 225 254;
+  --color-indigo-200: 222 200 253;
+  --color-indigo-300: 205 170 251;
+  --color-indigo-400: 189 147 249;  /* Dracula purple */
+  --color-indigo-500: 172 125 245;
+  --color-indigo-600: 149 100 238;
+  --color-indigo-700: 126 75 218;
+  --color-indigo-800: 102 55 195;
+  --color-indigo-900: 78 40 168;
+  --color-indigo-950: 50 22 110;
+
+  /* --- Green → Dracula Green --- */
+  --color-green-50: 235 255 242;
+  --color-green-100: 210 254 225;
+  --color-green-200: 170 253 198;
+  --color-green-300: 120 252 165;
+  --color-green-400: 80 250 123;    /* Dracula green */
+  --color-green-500: 55 228 98;
+  --color-green-600: 38 200 78;
+  --color-green-700: 30 165 62;
+  --color-green-800: 25 130 50;
+  --color-green-900: 22 100 42;
+  --color-green-950: 12 60 25;
+
+  /* --- Red → Dracula Red --- */
+  --color-red-50: 255 240 240;
+  --color-red-100: 255 222 222;
+  --color-red-200: 255 192 192;
+  --color-red-300: 255 155 155;
+  --color-red-400: 255 85 85;       /* Dracula red */
+  --color-red-500: 240 65 65;
+  --color-red-600: 215 45 45;
+  --color-red-700: 185 32 32;
+  --color-red-800: 150 25 25;
+  --color-red-900: 120 22 22;
+  --color-red-950: 75 10 10;
+
+  /* --- Amber → Dracula Yellow/Orange --- */
+  --color-amber-50: 253 255 238;
+  --color-amber-100: 250 254 210;
+  --color-amber-200: 247 253 180;
+  --color-amber-300: 244 252 150;
+  --color-amber-400: 241 250 140;   /* Dracula yellow */
+  --color-amber-500: 228 238 115;
+  --color-amber-600: 205 215 85;
+  --color-amber-700: 175 182 65;
+  --color-amber-800: 142 148 50;
+  --color-amber-900: 115 120 38;
+  --color-amber-950: 70 72 18;
+
+  /* --- Blue → Dracula Cyan --- */
+  --color-blue-50: 238 251 255;
+  --color-blue-100: 218 246 254;
+  --color-blue-200: 188 240 254;
+  --color-blue-300: 155 235 253;
+  --color-blue-400: 139 233 253;    /* Dracula cyan */
+  --color-blue-500: 112 215 242;
+  --color-blue-600: 85 192 222;
+  --color-blue-700: 62 165 198;
+  --color-blue-800: 48 132 168;
+  --color-blue-900: 38 102 138;
+  --color-blue-950: 22 62 88;
+
+  /* --- Purple → Dracula Purple (brighter) --- */
+  --color-purple-50: 250 242 255;
+  --color-purple-100: 242 228 254;
+  --color-purple-200: 230 205 253;
+  --color-purple-300: 215 175 252;
+  --color-purple-400: 200 150 250;
+  --color-purple-500: 180 110 245;
+  --color-purple-600: 155 75 235;
+  --color-purple-700: 130 48 210;
+  --color-purple-800: 108 35 178;
+  --color-purple-900: 88 28 145;
+  --color-purple-950: 55 10 95;
+
+  /* --- Orange → Dracula Orange --- */
+  --color-orange-50: 255 248 240;
+  --color-orange-100: 255 240 222;
+  --color-orange-200: 255 228 195;
+  --color-orange-300: 255 212 160;
+  --color-orange-400: 255 184 108;   /* Dracula orange */
+  --color-orange-500: 245 162 82;
+  --color-orange-600: 228 138 58;
+  --color-orange-700: 200 110 40;
+  --color-orange-800: 168 85 28;
+  --color-orange-900: 135 68 22;
+  --color-orange-950: 82 38 8;
+
+  /* --- Emerald → Dracula Teal-Green --- */
+  --color-emerald-50: 232 254 244;
+  --color-emerald-100: 205 252 228;
+  --color-emerald-200: 165 248 205;
+  --color-emerald-300: 115 242 178;
+  --color-emerald-400: 65 230 152;
+  --color-emerald-500: 30 205 130;
+  --color-emerald-600: 15 175 108;
+  --color-emerald-700: 10 142 88;
+  --color-emerald-800: 8 112 72;
+  --color-emerald-900: 8 90 58;
+  --color-emerald-950: 4 52 35;
+
+  /* --- Yellow → Dracula Yellow --- */
+  --color-yellow-50: 254 255 235;
+  --color-yellow-100: 252 254 200;
+  --color-yellow-200: 250 253 158;
+  --color-yellow-300: 248 252 115;
+  --color-yellow-400: 245 250 80;
+  --color-yellow-500: 232 238 58;
+  --color-yellow-600: 208 215 32;
+  --color-yellow-700: 172 178 22;
+  --color-yellow-800: 138 142 18;
+  --color-yellow-900: 110 114 16;
+  --color-yellow-950: 68 70 6;
+
+  /* --- Pink → Dracula Pink --- */
+  --color-pink-50: 255 242 250;
+  --color-pink-100: 255 225 242;
+  --color-pink-200: 255 200 230;
+  --color-pink-300: 255 170 212;
+  --color-pink-400: 255 121 198;     /* Dracula pink */
+  --color-pink-500: 242 95 178;
+  --color-pink-600: 222 65 152;
+  --color-pink-700: 195 40 125;
+  --color-pink-800: 162 28 100;
+  --color-pink-900: 132 22 82;
+  --color-pink-950: 82 8 48;
+}
+
+/* ============================================================
+   BASE STYLES
+   ============================================================ */
+
 @layer base {
   html {
     @apply antialiased;
@@ -12,7 +322,6 @@
     @apply bg-slate-50 text-slate-900 transition-colors duration-200;
   }
 
-  /* Dark mode body */
   .dark body {
     @apply bg-slate-900 text-slate-100;
   }
@@ -43,7 +352,10 @@
   }
 }
 
-/* Custom component styles */
+/* ============================================================
+   COMPONENT STYLES
+   ============================================================ */
+
 @layer components {
   /* Card styles */
   .card {
@@ -95,7 +407,7 @@
     @apply text-slate-300 hover:bg-slate-700;
   }
 
-  /* Input styles - WHITE background with BLACK text */
+  /* Input styles */
   .input {
     @apply w-full px-4 py-2.5 bg-white text-slate-900 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-shadow placeholder-slate-400;
   }
@@ -167,7 +479,10 @@
   }
 }
 
-/* Custom utilities */
+/* ============================================================
+   UTILITY STYLES
+   ============================================================ */
+
 @layer utilities {
   /* Text truncation */
   .line-clamp-2 {
@@ -198,43 +513,31 @@
   }
 
   @keyframes fadeIn {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
+    from { opacity: 0; }
+    to { opacity: 1; }
   }
 
   @keyframes slideUp {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 
   @keyframes slideDown {
-    from {
-      opacity: 0;
-      transform: translateY(-10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 
-  /* Gradient text */
+  /* Gradient text - uses Dracula purple→pink in dark mode */
   .text-gradient {
     @apply bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent;
   }
 }
 
-/* Custom range slider styling */
+/* ============================================================
+   FORM ELEMENT STYLES
+   ============================================================ */
+
+/* Custom range slider */
 input[type="range"] {
   -webkit-appearance: none;
   appearance: none;
@@ -283,7 +586,10 @@ textarea:focus-visible {
   @apply outline-none ring-2 ring-indigo-500 ring-offset-2;
 }
 
-/* Toast/notification animations */
+/* ============================================================
+   TOAST/NOTIFICATION ANIMATIONS
+   ============================================================ */
+
 .toast-enter {
   animation: toastEnter 0.3s ease-out;
 }
@@ -293,23 +599,11 @@ textarea:focus-visible {
 }
 
 @keyframes toastEnter {
-  from {
-    opacity: 0;
-    transform: translateY(-20px) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+  from { opacity: 0; transform: translateY(-20px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 @keyframes toastExit {
-  from {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-  to {
-    opacity: 0;
-    transform: translateY(-10px) scale(0.95);
-  }
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(-10px) scale(0.95); }
 }

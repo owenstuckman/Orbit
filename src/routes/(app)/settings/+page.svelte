@@ -23,8 +23,14 @@
     Building2,
     Plus,
     Check,
-    Loader
+    Loader,
+    Palette,
+    Sun,
+    Moon,
+    Monitor
   } from 'lucide-svelte';
+  import { theme, THEMES, resolveTheme } from '$lib/stores/theme';
+  import type { ThemeName } from '$lib/stores/theme';
 
   // Local state for form
   let localR = $user?.r ?? $organization?.default_r ?? 0.7;
@@ -228,6 +234,51 @@
     <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Settings</h1>
     <p class="mt-1 text-slate-600 dark:text-slate-300">Manage your account and compensation preferences</p>
   </div>
+
+  <!-- Appearance Section -->
+  <section class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+    <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center gap-3">
+      <Palette class="text-slate-400 dark:text-slate-500" size={20} />
+      <h2 class="font-semibold text-slate-900 dark:text-white">Appearance</h2>
+    </div>
+    <div class="p-6">
+      <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">Theme</label>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {#each THEMES as t}
+          <button
+            class="flex items-center gap-3 p-4 rounded-xl border-2 transition-all
+              {$theme === t.name
+                ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 shadow-sm'
+                : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700/50'}"
+            on:click={() => theme.setTheme(t.name)}
+          >
+            <span class="w-10 h-10 flex items-center justify-center rounded-lg
+              {$theme === t.name ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}">
+              {#if t.icon === 'sun'}
+                <Sun size={20} />
+              {:else if t.icon === 'moon'}
+                <Moon size={20} />
+              {:else}
+                <Monitor size={20} />
+              {/if}
+            </span>
+            <div class="text-left">
+              <div class="font-medium text-sm text-slate-900 dark:text-white">{t.label}</div>
+              <div class="text-xs text-slate-500 dark:text-slate-400">{t.description}</div>
+            </div>
+            {#if $theme === t.name}
+              <span class="ml-auto">
+                <Check size={16} class="text-indigo-500" />
+              </span>
+            {/if}
+          </button>
+        {/each}
+      </div>
+      <p class="mt-3 text-xs text-slate-400 dark:text-slate-500">
+        More themes will be available in future updates
+      </p>
+    </div>
+  </section>
 
   <!-- Profile Section -->
   <section class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
