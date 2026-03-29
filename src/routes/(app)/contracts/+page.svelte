@@ -15,7 +15,9 @@
     PenTool,
     ExternalLink,
     Plus,
-    Download
+    Download,
+    Eye,
+    X
   } from 'lucide-svelte';
   import { storage } from '$lib/services/supabase';
 
@@ -24,6 +26,12 @@
   let error = '';
   let searchQuery = '';
   let statusFilter: string = 'all';
+
+  // PDF viewer
+  let pdfBlobUrl: string | null = null;
+  let showPdfViewer = false;
+  let loadingPdfId: string | null = null;
+  let pdfViewerContract: Contract | null = null;
 
   // Helper to get party names from terms (handles both party_b_name and contractor_name)
   function getPartyBName(contract: Contract): string | null {
@@ -66,21 +74,53 @@
     loading = true;
     error = '';
     try {
-      // Get contracts where user is party_a or party_b
-      const userContracts = await contractsApi.list({
-        order: { column: 'created_at', ascending: false }
-      });
-      
-      // Filter based on capabilities
-      if ($capabilities.canViewContracts === 'own') {
-        contracts = userContracts.filter(c => 
-          c.party_a_id === $user?.id || c.party_b_id === $user?.id
-        );
-      } else if ($capabilities.canViewContracts === 'team') {
-        contracts = userContracts;
-      } else {
-        contracts = userContracts;
-      }
+      const orgId = $user?.org_id;
+      if (!orgId) { contracts = []; return; }
+
+      // List contract folders under the org's storage path
+      const { data: folders, error: listError } = await storage.listFiles('contracts', orgId);
+      if (listError) throw new Error(listError.message);
+      if (!folders || folders.length === 0) { contracts = []; return; }
+
+      // For each folder (contract_id), find the PDF file and merge with DB record
+      const entries = await Promise.all(
+        folders
+          .filter(f => f.name && f.name !== '.emptyFolderPlaceholder')
+          .map(async (folder) => {
+            const contractId = folder.name;
+            const { data: files } = await storage.listFiles('contracts', `${orgId}/${contractId}`);
+            const pdfFile = files?.find(f => f.name.endsWith('.pdf'));
+            const pdfPath = pdfFile ? `${orgId}/${contractId}/${pdfFile.name}` : null;
+
+            // Try to get full DB record (may be null if RLS blocks)
+            const dbRecord = await contractsApi.getById(contractId);
+            if (dbRecord) {
+              return { ...dbRecord, pdf_path: dbRecord.pdf_path ?? pdfPath };
+            }
+
+            // Storage-only fallback: show what we can from the path
+            return {
+              id: contractId,
+              org_id: orgId,
+              template_type: 'task_assignment',
+              status: 'pending_signature',
+              pdf_path: pdfPath,
+              created_at: pdfFile?.created_at ?? new Date().toISOString(),
+              terms: {},
+              party_a: null,
+              party_b: null,
+              party_a_id: null,
+              party_b_id: null,
+              party_b_email: null,
+              task: null,
+              project: null,
+              party_a_signed_at: null,
+              party_b_signed_at: null,
+            } as unknown as Contract;
+          })
+      );
+
+      contracts = entries.filter(Boolean) as Contract[];
     } catch (err) {
       error = err instanceof Error ? err.message : 'Failed to load contracts';
     } finally {
@@ -99,6 +139,45 @@
     return badges[status] || { bg: 'bg-gray-100 dark:bg-gray-700', text: 'text-gray-800 dark:text-gray-200', icon: FileText };
   }
 
+  async function fetchPdfBlob(contract: Contract): Promise<Blob | null> {
+    if (!contract.pdf_path) return null;
+    const { data, error: downloadError } = await storage.downloadFile('contracts', contract.pdf_path);
+    if (downloadError || !data) {
+      console.error('PDF fetch failed:', downloadError);
+      return null;
+    }
+    return data;
+  }
+
+  async function viewPdf(contract: Contract) {
+    if (!contract.pdf_path) {
+      toasts.error('No PDF available for this contract');
+      return;
+    }
+    loadingPdfId = contract.id;
+    try {
+      const blob = await fetchPdfBlob(contract);
+      if (!blob) { toasts.error('Failed to load PDF'); return; }
+      if (pdfBlobUrl) URL.revokeObjectURL(pdfBlobUrl);
+      pdfBlobUrl = URL.createObjectURL(blob);
+      pdfViewerContract = contract;
+      showPdfViewer = true;
+    } catch (err) {
+      toasts.error('Failed to load PDF');
+    } finally {
+      loadingPdfId = null;
+    }
+  }
+
+  function closePdfViewer() {
+    showPdfViewer = false;
+    pdfViewerContract = null;
+    if (pdfBlobUrl) {
+      URL.revokeObjectURL(pdfBlobUrl);
+      pdfBlobUrl = null;
+    }
+  }
+
   async function downloadPdf(contract: Contract) {
     if (!contract.pdf_path) {
       toasts.error('No PDF available for this contract');
@@ -106,11 +185,10 @@
     }
 
     try {
-      const { data, error: downloadError } = await storage.downloadFile('contracts', contract.pdf_path);
-      if (downloadError) throw downloadError;
-      if (!data) throw new Error('No data received');
+      const blob = await fetchPdfBlob(contract);
+      if (!blob) { toasts.error('Failed to download PDF'); return; }
 
-      const url = URL.createObjectURL(data);
+      const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = `contract-${contract.id.slice(0, 8)}.pdf`;
@@ -339,18 +417,32 @@
                   <div class="flex items-center justify-end gap-2">
                     {#if contract.pdf_path}
                       <button
+                        on:click={() => viewPdf(contract)}
+                        disabled={loadingPdfId === contract.id}
+                        class="p-1.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors disabled:opacity-50"
+                        title="View PDF"
+                      >
+                        {#if loadingPdfId === contract.id}
+                          <div class="w-4 h-4 border-2 border-indigo-400/30 border-t-indigo-500 rounded-full animate-spin"></div>
+                        {:else}
+                          <Eye size={16} />
+                        {/if}
+                      </button>
+                      <button
                         on:click={() => downloadPdf(contract)}
-                        class="p-1.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors"
+                        class="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
                         title="Download PDF"
                       >
                         <Download size={16} />
                       </button>
+                    {:else}
+                      <span class="text-xs text-slate-400 dark:text-slate-500 px-1">No PDF</span>
                     {/if}
                     <a
                       href="/contracts/{contract.id}"
                       class="inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium text-sm"
                     >
-                      View
+                      Details
                       <ExternalLink size={14} />
                     </a>
                   </div>
@@ -363,3 +455,51 @@
     </div>
   {/if}
 </div>
+
+<!-- Full-screen PDF Viewer -->
+{#if showPdfViewer && pdfBlobUrl}
+  <div class="fixed inset-0 z-[100] flex flex-col bg-black/90">
+    <!-- Toolbar -->
+    <div class="flex items-center justify-between px-4 py-3 bg-slate-900 border-b border-slate-700 flex-shrink-0">
+      <div class="flex items-center gap-3">
+        <FileText size={18} class="text-slate-400" />
+        <span class="text-white font-medium text-sm">
+          {pdfViewerContract ? getContractTitle(pdfViewerContract) : 'Contract PDF'}
+        </span>
+      </div>
+      <div class="flex items-center gap-2">
+        {#if pdfViewerContract}
+          <button
+            on:click={() => downloadPdf(pdfViewerContract!)}
+            class="flex items-center gap-2 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-sm transition-colors"
+          >
+            <Download size={14} />
+            Download
+          </button>
+          <a
+            href="/contracts/{pdfViewerContract.id}"
+            class="flex items-center gap-2 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-sm transition-colors"
+            on:click={closePdfViewer}
+          >
+            <ExternalLink size={14} />
+            Details
+          </a>
+        {/if}
+        <button
+          on:click={closePdfViewer}
+          class="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+          title="Close"
+        >
+          <X size={18} />
+        </button>
+      </div>
+    </div>
+
+    <!-- PDF iframe -->
+    <iframe
+      src={pdfBlobUrl}
+      class="flex-1 w-full border-0"
+      title="Contract PDF"
+    />
+  </div>
+{/if}

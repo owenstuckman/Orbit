@@ -126,6 +126,13 @@ export const storage = {
       .from(bucket)
       .remove(paths);
     return { data, error };
+  },
+
+  listFiles: async (bucket: string, prefix: string) => {
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .list(prefix, { sortBy: { column: 'created_at', order: 'desc' } });
+    return { data, error };
   }
 };
 

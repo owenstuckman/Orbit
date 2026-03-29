@@ -1407,21 +1407,49 @@ export const contractsApi = {
     terms: Record<string, unknown>,
     options?: { taskId?: string; projectId?: string; partyBId?: string; partyBEmail?: string }
   ): Promise<Contract | null> {
-    const { data } = await functions.invoke<{ contract: Contract }>('generate-contract', {
-      body: {
+    // Get org_id from the party A user
+    const { data: partyAUser, error: userError } = await supabase
+      .from('users')
+      .select('org_id')
+      .eq('id', partyAId)
+      .single();
+
+    if (userError || !partyAUser?.org_id) {
+      console.error('Could not resolve org_id for contract creation:', userError);
+      return null;
+    }
+
+    const { data, error } = await supabase
+      .from('contracts')
+      .insert({
+        org_id: partyAUser.org_id,
         template_type: templateType,
         party_a_id: partyAId,
-        party_b_id: options?.partyBId,
-        task_id: options?.taskId,
-        project_id: options?.projectId,
+        party_b_id: options?.partyBId ?? null,
+        party_b_email: options?.partyBEmail ?? null,
+        task_id: options?.taskId ?? null,
+        project_id: options?.projectId ?? null,
+        status: 'pending_signature',
         terms: {
           ...terms,
           contractor_email: options?.partyBEmail
         }
-      }
-    });
+      })
+      .select(`
+        *,
+        party_a:users!contracts_party_a_id_fkey(id, full_name, email),
+        party_b:users!contracts_party_b_id_fkey(id, full_name, email),
+        task:tasks(id, title, dollar_value),
+        project:projects(id, name)
+      `)
+      .single();
 
-    return data?.contract ?? null;
+    if (error) {
+      console.error('Error creating contract:', error);
+      return null;
+    }
+
+    return data;
   },
 
   /**
