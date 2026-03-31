@@ -2,6 +2,8 @@
 
 All remaining tasks, organized by priority.
 
+> **Status as of 2026-03-31**: All tasks complete. See `docs/FEATURES.md` for the full feature list.
+
 ---
 
 ## Critical / Blocking

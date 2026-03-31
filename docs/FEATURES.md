@@ -226,11 +226,18 @@ Three actions routed through a single Supabase edge function:
 - Guest submission token generated for external access
 
 ### Contract E-Signature
-- PDF generation via jsPDF (`contractPdf.ts`)
-- `generate-contract` edge function (called from `api.ts`, source not in repo)
+- PDF generation via jsPDF client-side (`contractPdf.ts`) — no edge function needed
+- Upload to Supabase Storage at `contracts/{org_id}/{contract_id}/{filename}.pdf`
 - Dual-signature flow: Party A (employer) → Party B (contractor)
 - External signing route: `/contract/[token]`
 - Contract status: draft → pending_signature → active → completed
+
+### Contracts Page PDF Loading
+- Contract list loads PDFs directly from Storage bucket (source of truth)
+- Lists `contracts/{org_id}/` folders → each folder is a contract ID
+- Merges Storage file paths with DB records when accessible
+- Falls back to storage-only entry if DB RLS blocks the record
+- Supports View (inline iframe) and Download for all found PDFs
 
 ### External Submission
 - Guest submission portal: `/submit/[token]`
@@ -396,7 +403,7 @@ Three actions routed through a single Supabase edge function:
 - `/achievements` — Badge display
 - `/leaderboard` — User rankings
 - `/profile` — User profile
-- `/settings` — User settings (salary mixer, dark mode)
+- `/settings` — User settings (salary mixer, theme picker)
 - `/admin` — Admin dashboard
 - `/admin/users` — User management
 - `/admin/settings` — Organization settings
@@ -418,7 +425,6 @@ Three actions routed through a single Supabase edge function:
 | `qc-ai-review` | AI confidence, complexity, quality scoring | v6, source in repo |
 | `send-email` | Transactional emails via Resend API | v1, deployed. Set `RESEND_API_KEY` secret to activate |
 | `payout-calculator` | Employee/PM payout calculations | called from `api.ts`, source not in repo |
-| `generate-contract` | Server-side contract PDF generation | called from `api.ts`, source not in repo |
 
 ### Email Service (`src/lib/services/email.ts`)
 - `emailService.sendInvitation()` — Organization invite with code + link
@@ -576,6 +582,35 @@ Role-specific onboarding tutorials shown on first login.
 
 ---
 
+## Theming
+
+### Multi-Theme Support
+- **Dracula** dark theme (default dark): vibrant purple/green/cyan accent palette
+- **Light** theme: clean default
+- **System** theme: follows OS light/dark preference
+- Theme picker in `/settings` Appearance section — card-style selector with icon, label, description
+
+### Implementation
+- CSS custom properties (`--color-*`) define all color scales in `src/app.css`
+- Tailwind config references vars via helper: `rgb(var(--color-*) / <alpha-value>)`
+- `:root` block — light mode (standard Tailwind values)
+- `.dark` block — Dracula-inspired overrides for all 11 color scales
+- `src/lib/stores/theme.ts` — `ThemeName` type: `'light' | 'dracula' | 'system'`
+- `theme` store: `setTheme()`, `toggle()`, `cycle()`, `initialize()`
+- `isDarkTheme` and `resolvedTheme` derived stores
+- `data-theme` attribute on `document.documentElement` for future per-theme CSS overrides
+- Theme persisted to `localStorage` under key `orbit_theme`
+- Migrates legacy `'dark'` value → `'dracula'` automatically
+- Theme dropdown in top bar (header) for quick switching
+
+### Adding New Themes
+Future themes (e.g. `midnight`, `solarized`) can be added by:
+1. Adding a new entry to `THEMES` array in `theme.ts`
+2. Adding a `[data-theme="name"]` CSS block in `app.css`
+3. No component changes required — all Tailwind classes resolve via CSS vars
+
+---
+
 ## Documentation
 
 - `CLAUDE.md` — AI assistant context (architecture, patterns, conventions)
@@ -589,6 +624,14 @@ Role-specific onboarding tutorials shown on first login.
 - `docs/SUPABASE_STORAGE.md` — Storage bucket conventions
 - `docs/USER_REGISTRATION_FLOW.md` — Two-stage registration with email verification
 - `docs/SMTP_SETUP.md` — Email provider setup, templates, edge function guide
+
+---
+
+## Bug Fixes (2026-03-31 Session)
+
+1. **Contracts page empty** — `contractsApi.list()` silently returned `[]` when RLS blocked DB records. Fixed by loading contract list from Storage bucket (`contracts/{org_id}/`) and supplementing with DB data. Contracts now always visible if the PDF exists in storage.
+2. **`generate-contract` edge function removed** — `contractsApi.create()` was calling a non-existent edge function. Replaced with direct Supabase insert. Client-side jsPDF handles PDF generation and uploads to Storage.
+3. **TypeScript error in contracts page** — `downloadPdf(pdfViewerContract!)` non-null assertion inside Svelte event handler caused svelte-check failure. Fixed with explicit null guard.
 
 ---
 

@@ -226,6 +226,20 @@ The QC review ML model is **complete** and tuning is finalized. The model is mai
 
 **Integration Pattern**: QC AI reviews call out to the external ML service for confidence scoring (`p0`). The Shapley value calculations in this codebase consume those scores.
 
+## Theming
+
+Multi-theme support via CSS custom properties. Theme values are set in `src/app.css`:
+- `:root` — light mode (standard Tailwind values)
+- `.dark` — Dracula dark theme (applied when `isDarkTheme` is true)
+
+Theme store: `src/lib/stores/theme.ts`
+- `ThemeName`: `'light' | 'dracula' | 'system'`
+- `theme` store with `setTheme()`, `toggle()`, `cycle()`, `initialize()`
+- `isDarkTheme` derived store — add `.dark` class when true
+- `resolvedTheme` — resolves `'system'` to actual `'light'`/`'dracula'` based on OS preference
+
+Tailwind config uses CSS variable helpers so all color classes work across themes without touching component files. Future themes only require new CSS variable blocks in `app.css`.
+
 ## Real-time Features
 
 Use `subscribeToTable()` helper from `$lib/services/supabase.ts` for WebSocket-based live updates on tasks, projects, and payouts.
