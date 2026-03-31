@@ -2083,7 +2083,7 @@ export const guestProjectsApi = {
     const { data, error } = await supabase.rpc('import_guest_project', {
       p_session_id: sessionId,
       p_org_id: orgId,
-      p_pm_id: null // Will be set to current user in the function
+      p_user_id: null
     });
 
     if (error) {

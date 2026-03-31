@@ -617,6 +617,7 @@ Future themes (e.g. `midnight`, `solarized`) can be added by:
 - `docs/FORMULAS.md` — Payout calculation formulas for all roles
 - `docs/FEATURES.md` — This file: all completed features
 - `docs/TODO.md` — Remaining tasks
+- `docs/OPS_RUNBOOK.md` — **Human steps runbook**: SMTP setup, ML model deployment, verification
 - `docs/DATA_FLOWS.md` — Multi-step workflow diagrams
 - `docs/ML_INTEGRATION.md` — ML model integration points and API schemas
 - `docs/ML_MODEL_HOSTING.md` — Guide for deploying the QC ML model
