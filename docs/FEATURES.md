@@ -424,7 +424,6 @@ Three actions routed through a single Supabase edge function:
 |------|---------|--------|
 | `qc-ai-review` | AI confidence, complexity, quality scoring | v6, source in repo |
 | `send-email` | Transactional emails via Resend API | v1, deployed. Set `RESEND_API_KEY` secret to activate |
-| `payout-calculator` | Employee/PM payout calculations | called from `api.ts`, source not in repo |
 
 ### Email Service (`src/lib/services/email.ts`)
 - `emailService.sendInvitation()` — Organization invite with code + link
