@@ -470,7 +470,7 @@
       <div class="flex items-center gap-2">
         {#if pdfViewerContract}
           <button
-            on:click={() => downloadPdf(pdfViewerContract!)}
+            on:click={() => { if (pdfViewerContract) downloadPdf(pdfViewerContract); }}
             class="flex items-center gap-2 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-sm transition-colors"
           >
             <Download size={14} />
