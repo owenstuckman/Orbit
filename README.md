@@ -61,8 +61,8 @@ src/
 │       └── settings/   # User settings, salary mixer
 └── app.css             # Tailwind + custom styles
 supabase/
-├── migrations/         # Database schema
-└── functions/          # Edge functions for payouts
+├── migrations/         # Database schema and RLS policies
+└── functions/          # Edge functions (qc-ai-review, send-email)
 static/                 # Static assets
 docs/                   # Technical documentation
 ```
@@ -102,31 +102,44 @@ npm install
 cp .env.example .env
 ```
 
-Add your Supabase credentials to `.env`:
-```
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key
+Open `.env` and fill in your values. Here is every variable and where to get it:
+
+| Variable | Required | Where to get it |
+|----------|----------|-----------------|
+| `VITE_SUPABASE_URL` | Yes | Supabase Dashboard → **Project Settings → API** → Project URL |
+| `VITE_SUPABASE_ANON_KEY` | Yes | Supabase Dashboard → **Project Settings → API** → `anon` `public` key |
+| `RESEND_API_KEY` | No¹ | [resend.com](https://resend.com) → API Keys → Create API Key |
+| `EMAIL_FROM` | No¹ | Your verified sending address, e.g. `Orbit <noreply@yourdomain.com>` |
+| `ML_API_URL` | No² | The base URL of your deployed ML API, e.g. `https://qc-ml-api.onrender.com` |
+| `ML_API_KEY` | No² | Optional — the `API_KEY` value set in your Render service's environment variables. Not your Render account key (`rnd_…`). |
+| `VITE_ENABLE_AI_QC` | No | `true` to show AI features in the UI (default: `true`) |
+| `VITE_ENABLE_CONTRACTS` | No | `true` to enable the contracts module (default: `true`) |
+
+> ¹ **Email** — without these, the `send-email` edge function silently skips sending. The app still works; users just won't receive email notifications. See `docs/OPS_RUNBOOK.md` §1 for full SMTP setup including DNS records and auth email templates.
+>
+> ² **ML API** — without `ML_API_URL`, the `qc-ai-review` edge function falls back to a fixed confidence score of `p0 = 0.8` for all QC reviews. The QC workflow still functions normally. When hosting on Render, no API key is required — `ML_API_KEY` is optional and only needed if you add auth middleware to your ML API. See `docs/OPS_RUNBOOK.md` §2 and `docs/ML_MODEL_HOSTING.md`.
+
+**For local development**, only `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are needed to run the app.
+
+**For production**, set the edge function secrets via the Supabase CLI rather than `.env` (`.env` is not read by deployed edge functions):
+
+```bash
+supabase secrets set RESEND_API_KEY=re_xxxx
+supabase secrets set EMAIL_FROM="Orbit <noreply@yourdomain.com>"
+supabase secrets set ML_API_URL=https://your-ml-api.com
+supabase secrets set ML_API_KEY=your-ml-api-key
 ```
 
 #### 3. Deploy edge functions (optional)
-
-If you want AI-powered QC reviews, deploy the edge function:
 
 ```bash
 supabase login
 supabase link --project-ref your-project-ref
 supabase functions deploy qc-ai-review
+supabase functions deploy send-email
 ```
 
-For AI QC reviews, set the ML API secrets:
-```bash
-supabase secrets set ML_API_URL=https://your-ml-api.com
-supabase secrets set ML_API_KEY=your-ml-api-key
-```
-
-The edge function falls back to a default confidence score (p0=0.8) if the ML service is not configured.
-
-> **Note**: The app also calls `payout-calculator` and `generate-contract` edge functions. Their source is not in this repo — they need to be created and deployed separately if you want server-side payout calculations and contract generation.
+Both edge functions degrade gracefully if their secrets are not set — the app is fully usable without them.
 
 #### 4. Run locally
 
@@ -173,9 +186,10 @@ npm run format       # Prettier formatting
 
 ## Roadmap
 
-- [ ] Web version (Svelte) - in progress
+- [x] Web version (SvelteKit) — complete
+- [x] AI/ML model for QC confidence scoring — complete (external repo, see `docs/ML_MODEL_HOSTING.md`)
+- [x] Slack webhook integration — complete
+- [x] Team analytics dashboard — complete
 - [ ] Mobile app (Capacitor)
-- [ ] Slack/Teams integrations
-- [x] Advanced ML model for QC - complete (external repo)
-- [ ] Team analytics dashboard
 - [ ] Custom contract templates
+- [ ] Multi-language support

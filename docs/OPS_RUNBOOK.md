@@ -29,9 +29,10 @@ Both need to be configured separately.
 
 **Steps for Resend:**
 1. Sign up at [resend.com](https://resend.com)
-2. Add and verify your sending domain (e.g. `yourdomain.com`) under **Domains**
-3. Resend will give you DNS records to add — do this in your domain registrar (see §1.4)
+2. Go to **Domains** → **Add Domain** → enter your sending domain (e.g. `yourdomain.com`)
+3. **Verify the domain** — Resend will give you DNS records (see §1.4). Email will not send until this step is complete, even with a valid API key.
 4. Go to **API Keys** → **Create API Key** → copy the `re_xxxxx` key
+5. Set `EMAIL_FROM` to an address on your verified domain — e.g. `Orbit <noreply@yourdomain.com>`. Using an unverified domain will cause all sends to fail with a 403 error.
 
 ---
 
@@ -227,9 +228,10 @@ Choose a hosting provider. **Render** is recommended for simplicity.
    - **Environment**: Docker
    - **Region**: Choose closest to your Supabase region
    - **Instance type**: Starter ($7/month) for production; Free for development
-5. Add environment variable:
+5. If you want to protect the API with a key, add an environment variable in Render:
    - Key: `API_KEY`
    - Value: generate a strong random string (e.g. `openssl rand -hex 32`)
+   - **Important**: this `API_KEY` value is what goes in `ML_API_KEY` in your `.env` and Supabase secrets — it is NOT your Render account API key (which starts with `rnd_`)
 6. Click **Create Web Service**
 7. Wait for the build to finish (~3–5 minutes)
 8. Copy the service URL (e.g. `https://qc-ml-api.onrender.com`)
@@ -277,8 +279,14 @@ gcloud run deploy qc-ml-api \
 Once deployed and the URL is confirmed working:
 
 ```bash
-supabase secrets set ML_API_URL=https://your-deployed-ml-api.com
-supabase secrets set ML_API_KEY=your-random-key
+supabase secrets set ML_API_URL=https://your-app.onrender.com
+```
+
+`ML_API_KEY` is not required when hosting on Render — Render services are publicly accessible via their URL. Only set it if you add auth middleware to the ML API:
+
+```bash
+# Optional — only if you add API key auth to main.py
+supabase secrets set ML_API_KEY=your-key
 ```
 
 Redeploy the edge function so it picks up the new secrets:
@@ -289,7 +297,7 @@ supabase functions deploy qc-ai-review
 Verify the secrets are set:
 ```bash
 supabase secrets list
-# Should show ML_API_URL and ML_API_KEY
+# Should show ML_API_URL (and ML_API_KEY if you set it)
 ```
 
 ---
@@ -337,6 +345,6 @@ If confidence is always 0.8, check:
 - [ ] ML API project created and tested locally
 - [ ] `extract_features()` customized to match trained model
 - [ ] API deployed to hosting provider
-- [ ] `ML_API_URL` and `ML_API_KEY` secrets set in Supabase
+- [ ] `ML_API_URL` secret set in Supabase (`ML_API_KEY` optional — only if you add auth to the ML API)
 - [ ] `qc-ai-review` edge function redeployed
 - [ ] Submitted a task and confirmed real confidence score appears in QC page (not flat 0.8)
