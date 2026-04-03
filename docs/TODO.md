@@ -1,46 +1,47 @@
-# Orbit — Project TODO
+# Orbit — Claude TODO
 
-Remaining tasks only. For completed features see `docs/FEATURES.md`.
-
----
-
-## Ops / Configuration (manual, no code changes needed)
-
-> Full step-by-step instructions with commands and screenshots guidance: **`docs/OPS_RUNBOOK.md`**
-
-### SMTP & Email
-- [ ] Set `RESEND_API_KEY` Supabase secret
-- [ ] Set `EMAIL_FROM` Supabase secret
-- [ ] Configure Supabase Auth custom SMTP in Dashboard
-- [ ] Customize Supabase Auth email templates (signup, reset password)
-- [ ] Configure DNS records for sending domain (SPF, DKIM, DMARC)
-
-### ML Model
-- [ ] Host the ML API externally (Render/Railway/Fly/GCP) — see `docs/ML_MODEL_HOSTING.md`
-- [ ] Set `ML_API_URL` and `ML_API_KEY` secrets in Supabase
-- [ ] Redeploy `qc-ai-review` edge function to pick up new secrets
-- [ ] Verify end-to-end: submit a task → confirm real confidence score in QC page (not flat 0.8)
+Tasks Claude can complete programmatically. For completed features see `docs/FEATURES.md`. For tasks requiring human action see `docs/HUMAN_TODO.md`.
 
 ---
 
-## Database / RLS Fixes
+## Nothing remaining.
 
-- [x] Fix `user_can_access_contract` RLS function — added fallback `OR (u.org_id = contract_org_id AND u.role IN ('admin', 'pm', 'sales'))` so users without `user_organization_memberships` entries can still see their org's contracts. Migration applied.
-- [x] Backfill `user_organization_memberships` for users missing rows — ran backfill INSERT; all existing users already had correct membership entries (no rows needed).
-
----
-
-## Verification Needed (code exists, not end-to-end tested)
-
-- [x] **Gamification triggers** — `trigger_award_task_xp` confirmed in DB, fires on `tasks.status → approved`. XP, streak, level, and notifications all calculated in `award_task_xp()`. `checkAndAwardBadges()` correctly inserts into `user_badges`. Fully wired.
-- [x] **Achievements page** — Loads real task + payout + metadata. Badge earned status derived from real user data on every load. `user_badges` table is populated server-side via gamification store.
-- [x] **Analytics charts** — Chart.js properly registered with required scales/elements. `analyticsApi.getFullAnalytics()` queries are correct. Period filter reactive. No issues.
-- [x] **Multi-org switching** — `switch_organization` RPC was broken (referenced `user_org_memberships` instead of `user_organization_memberships`). **Fixed**: migration applied with correct table name. Client-side store reload order (user → org → memberships) is correct.
-- [x] **Real-time subscriptions** — `subscribeToTable()` correctly sets up Supabase postgres_changes channel. Was not gated by `realtime_updates` feature flag. **Fixed**: tasks page now checks `$features.realtime_updates` before calling `setupRealtime()`.
-- [x] **Guest project import** — Full flow verified: `/try` stores to DB via session ID, registration page checks `orbit_import_pending` flag, calls `import_guest_project` RPC after org creation. **Fixed**: parameter name `p_pm_id` → `p_user_id` to match RPC signature.
+All code, infrastructure, and configuration tasks have been completed. See `docs/FEATURES.md` for the full feature list and `docs/OPS_RUNBOOK.md` for the current deployment state.
 
 ---
 
-## Documentation
+## Completed
 
-- [x] Remove `payout-calculator` from edge functions table in `docs/FEATURES.md` — was a stale reference; function never existed and is never called from `api.ts`. Removed.
+### Ops / Configuration
+- [x] Set `RESEND_API_KEY` and `EMAIL_FROM` Supabase secrets
+- [x] Configure Supabase Auth custom SMTP — `smtp.resend.com:465`, user=`resend`
+- [x] Update email subjects to Orbit branding
+- [x] Push Orbit-branded HTML templates for Recovery, Invite, Email Change via `supabase config push`
+- [x] Host ML API externally — live at `https://orbitqcml.onrender.com`
+- [x] Set `ML_API_URL` and `ML_API_KEY` Supabase secrets
+- [x] Redeploy `qc-ai-review` edge function
+
+### Database / RLS
+- [x] Fix `user_can_access_contract` RLS — added org_id fallback for users without membership rows
+- [x] Fix `switch_organization` RPC — corrected table name (`user_organization_memberships`)
+- [x] Backfill `user_organization_memberships` — verified all users had correct entries
+
+### Bug Fixes
+- [x] Contracts page — load from Storage bucket instead of DB-only query
+- [x] Real-time subscriptions — gated by `$features.realtime_updates` flag
+- [x] Guest project import — `p_pm_id` → `p_user_id` parameter name fix
+- [x] External submission — now triggers `qc-ai-review` edge function
+
+### Verification (code-reviewed)
+- [x] Gamification triggers — `trigger_award_task_xp` fires on `tasks.status → approved`
+- [x] Achievements page — badge status from real `user_badges` data
+- [x] Analytics charts — Chart.js registered, queries correct
+- [x] Leaderboard — real data from `usersApi.list()` + `payoutsApi.getSummary()`
+- [x] Salary Mixer — `handleSave()` → `usersApi.updateSalaryMix()` → `users.r` update
+- [x] Audit log — direct `audit_log` query, paginated
+- [x] Contract PDF — `generateContractorAgreement()` (jsPDF) → `contractsApi.uploadPdf()` → Storage
+- [x] Multi-org switching — RPC fixed, store reload order correct
+- [x] Guest project import — RPC parameter fixed, full flow verified
+
+### Documentation
+- [x] All docs updated to reflect production state (`FEATURES.md`, `CLAUDE.md`, `SMTP_SETUP.md`, `OPS_RUNBOOK.md`, `claude-todo.md`)

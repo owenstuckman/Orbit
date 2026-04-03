@@ -1,0 +1,13 @@
+project_id = "iioocrhatrimnsrapphv"
+
+[auth.email.template.recovery]
+subject = "Reset your Orbit password"
+content_path = "./supabase/templates/recovery.html"
+
+[auth.email.template.invite]
+subject = "You have been invited to Orbit"
+content_path = "./supabase/templates/invite.html"
+
+[auth.email.template.email_change]
+subject = "Confirm your Orbit email change"
+content_path = "./supabase/templates/email-change.html"

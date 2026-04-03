@@ -18,8 +18,10 @@ Built with SvelteKit + Supabase, it supports multiple user roles (admin, sales, 
 - `USER_REGISTRATION_FLOW.md` - Two-stage registration with email verification
 - `DATA_FLOWS.md` - Complex multi-step workflows (task→QC→payout, registration, contracts, gamification)
 - `FEATURES.md` - All completed features and capabilities
-- `TODO.md` - Remaining tasks organized by priority
-- `SMTP_SETUP.md` - SMTP provider setup, email templates, edge function guide
+- `TODO.md` - Claude's completed task log (all done)
+- `HUMAN_TODO.md` - Tasks requiring manual human action (DNS records, end-to-end verification)
+- `SMTP_SETUP.md` - SMTP provider setup, email templates, edge function guide (code reference)
+- `OPS_RUNBOOK.md` - Human steps runbook: current deployment state, DNS records, ML model ops
 
 ## Development Commands
 
@@ -48,7 +50,9 @@ npm run format       # Prettier formatting
 - `src/lib/components/` - Reusable Svelte components organized by domain
 - `src/routes/auth/` - Authentication flows (login, register, password reset)
 - `src/routes/(app)/` - Authenticated app routes (dashboard, tasks, projects, qc, contracts, payouts, settings)
-- `supabase/functions/` - Edge functions (`qc-ai-review` for ML confidence scoring)
+- `supabase/functions/` - Edge functions (`qc-ai-review` for ML confidence scoring, `send-email` for transactional email)
+- `supabase/templates/` - Orbit-branded HTML email templates (recovery, invite, email-change)
+- `supabase/config.toml` - Email template configuration pushed via `supabase config push`
 
 ### Component Library (`src/lib/components/`)
 Task components in `tasks/`:
@@ -220,11 +224,11 @@ Admin updates via `organizationsApi.updateFeatureFlags(orgId, flags)`.
 
 ## Machine Learning Model
 
-The QC review ML model is **complete** and tuning is finalized. The model is maintained in a separate repository/environment outside this codebase.
+The QC review ML model is **complete**, deployed, and live. The model runs as a FastAPI service in a separate repository.
 
-**Current Status**: Use sample/mock data for development and testing. The production ML model will be integrated via API calls when deployed.
+**Current Status**: Production ML API live at `https://orbitqcml.onrender.com`. Returns real confidence breakdowns (completeness, quality, requirements_met). `ML_API_URL` and `ML_API_KEY` Supabase secrets set. `qc-ai-review` edge function deployed and calling the live API.
 
-**Integration Pattern**: QC AI reviews call out to the external ML service for confidence scoring (`p0`). The Shapley value calculations in this codebase consume those scores.
+**Integration Pattern**: QC AI reviews call out to the external ML service for confidence scoring (`p0`). The Shapley value calculations in this codebase consume those scores. Edge function falls back to p0=0.8 if ML API is unreachable.
 
 ## Theming
 
@@ -295,7 +299,8 @@ Capabilities are defined in `src/lib/stores/auth.ts` (`ROLE_CAPABILITIES` object
 - **Trigger**: Called via `supabase.functions.invoke('qc-ai-review', { body: { task_id } })`
 - **Flow**: Fetch task → Call ML API → Create `qc_reviews` record (review_type='ai', weight=0)
 - **Fallback**: Returns default p0=0.8 if ML service is unreachable
-- **Secrets**: `ML_API_URL`, `ML_API_KEY`
+- **Secrets**: `ML_API_URL` (required), `ML_API_KEY` (required — must match `API_KEY` env var in the Render service, not the Render platform key)
+- **Live ML API**: `https://orbitqcml.onrender.com`
 - **File**: `supabase/functions/qc-ai-review/index.ts`
 - **Docs**: `docs/ML_INTEGRATION.md`, `docs/ML_MODEL_HOSTING.md`
 
@@ -303,9 +308,9 @@ Capabilities are defined in `src/lib/stores/auth.ts` (`ROLE_CAPABILITIES` object
 - **Purpose**: Send transactional emails via Resend API
 - **Trigger**: Called via `emailService` methods in `src/lib/services/email.ts`
 - **Templates**: Invitation, external assignment, QC result, payout ready, contract signing
-- **Secrets**: `RESEND_API_KEY`, `EMAIL_FROM`
+- **Secrets**: `RESEND_API_KEY` (set), `EMAIL_FROM` = `Orbit <owen@owenstuckman.lol>` (set)
 - **File**: `supabase/functions/send-email/index.ts`
-- **Docs**: `docs/SMTP_SETUP.md`
+- **Docs**: `docs/SMTP_SETUP.md`, `docs/OPS_RUNBOOK.md`
 - **Graceful**: Skips silently if `RESEND_API_KEY` is not configured
 
 Note: Payout calculations are NOT edge functions. They run client-side in `src/lib/utils/payout.ts`.

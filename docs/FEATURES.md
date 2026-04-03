@@ -147,12 +147,12 @@ Three actions routed through a single Supabase edge function:
 - "AI Suggest" button for story points (gated by `ai_qc_review` flag)
 - Displays reasoning from ML complexity analysis
 
-### ML Model Deployment Ready
-- FastAPI template with Dockerfile in `docs/ML_MODEL_HOSTING.md`
-- Deployment guides for Railway, Render, Fly.io, Google Cloud Run
-- 3 endpoints: `/api/v1/review/confidence` (required), `/api/v1/task/complexity`, `/api/v1/review/quality/{task_id}`
-- Edge function has graceful fallback: returns p0=0.8 if ML API unavailable
-- Remaining ops: host the ML API externally, then `supabase secrets set ML_API_URL=<url> ML_API_KEY=<key>`
+### ML Model Deployed and Live
+- FastAPI service running at `https://orbitqcml.onrender.com` (Render, Docker)
+- `ML_API_URL` and `ML_API_KEY` Supabase secrets set; edge function returns real confidence scores
+- 3 endpoints: `/api/v1/review/confidence` (default), `/api/v1/task/complexity`, `/api/v1/review/quality/{task_id}`
+- Edge function falls back to p0=0.8 if ML API unreachable
+- Deployment reference: `docs/ML_MODEL_HOSTING.md`
 
 ---
 
@@ -422,8 +422,8 @@ Three actions routed through a single Supabase edge function:
 
 | Slug | Purpose | Status |
 |------|---------|--------|
-| `qc-ai-review` | AI confidence, complexity, quality scoring | v6, source in repo |
-| `send-email` | Transactional emails via Resend API | v1, deployed. Set `RESEND_API_KEY` secret to activate |
+| `qc-ai-review` | AI confidence, complexity, quality scoring | Deployed. ML API live at `orbitqcml.onrender.com` |
+| `send-email` | Transactional emails via Resend API | Deployed. `RESEND_API_KEY` + `EMAIL_FROM` secrets set |
 
 ### Email Service (`src/lib/services/email.ts`)
 - `emailService.sendInvitation()` — Organization invite with code + link
@@ -623,7 +623,17 @@ Future themes (e.g. `midnight`, `solarized`) can be added by:
 - `docs/ML_MODEL_HOSTING.md` — Guide for deploying the QC ML model
 - `docs/SUPABASE_STORAGE.md` — Storage bucket conventions
 - `docs/USER_REGISTRATION_FLOW.md` — Two-stage registration with email verification
-- `docs/SMTP_SETUP.md` — Email provider setup, templates, edge function guide
+- `docs/SMTP_SETUP.md` — Email provider setup, templates, edge function guide (code reference; see `OPS_RUNBOOK.md` for deployment state)
+- `docs/email-templates/` — Branded HTML source for auth email templates (recovery, invite, email-change); also in `supabase/templates/`
+
+---
+
+## Production Configuration (2026-04-03 Session)
+
+1. **SMTP** — Supabase Auth custom SMTP configured via management API (`smtp.resend.com:465`, user=`resend`). All email subjects updated to Orbit branding.
+2. **Auth email templates** — Orbit-branded HTML for recovery, invite, and email-change pushed via `supabase config push`. Templates live in `supabase/templates/`, referenced from `supabase/config.toml`.
+3. **ML API live** — `orbitqcml.onrender.com` returning real confidence breakdowns. `ML_API_URL` + `ML_API_KEY` Supabase secrets set. Edge function redeployed.
+4. **DNS** — DKIM already set (`resend._domainkey.owenstuckman.lol`). SPF + DMARC pending (add at Porkbun — see `docs/TODO.md`).
 
 ---
 

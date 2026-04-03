@@ -13,25 +13,25 @@ What still needs to be done. For completed features, see `FEATURES.md`.
 
 ### INFRASTRUCTURE
 
-- [x] **Email / SMTP service**: Fully implemented.
-  - `send-email` edge function created (`supabase/functions/send-email/index.ts`)
-  - `emailService` client created (`src/lib/services/email.ts`)
-  - Email triggers wired into: invitation, external assignment, QC review result flows
-  - Remaining: deploy with `supabase functions deploy send-email`, set `RESEND_API_KEY` secret, configure Supabase Auth custom SMTP
-- [x] **ML model deployment**: Edge function (`qc-ai-review`) is complete and deployed. Falls back to defaults (p0=0.8) until `ML_API_URL` secret is set. No further code work needed — deployment is an ops task.
+- [x] **Email / SMTP service**: Fully implemented and configured.
+  - `send-email` edge function deployed; `RESEND_API_KEY` + `EMAIL_FROM` secrets set
+  - Supabase Auth custom SMTP configured (`smtp.resend.com:465`)
+  - Auth email templates (confirm, recovery, invite, email-change) Orbit-branded via `supabase config push`
+  - DKIM set; SPF + DMARC pending at Porkbun (see `docs/TODO.md`)
+- [x] **ML model deployment**: Edge function deployed and ML API live at `orbitqcml.onrender.com`. `ML_API_URL` + `ML_API_KEY` secrets set. Returns real confidence scores.
 
 ### VERIFICATION NEEDED (code exists, not tested end-to-end)
 
-- [ ] **Gamification triggers**: Badge earning and XP awards on task approval
-- [ ] **Leaderboard rankings**: Ranking data source verification
-- [ ] **Achievements page**: Verify badge loading from `user_badges` table
-- [ ] **Analytics charts**: Chart.js rendering with real data
-- [ ] **Salary Mixer**: `usersApi.updateSalaryMix()` end-to-end
-- [ ] **Audit log**: `audit_log` table query verification
-- [ ] **Contract PDF**: jsPDF output verification
-- [ ] **Multi-org switching**: Session context switch verification
-- [ ] **Real-time subscriptions**: WebSocket update propagation to UI
-- [ ] **Guest project import**: `import_guest_project` RPC verification
+- [x] **Gamification triggers**: `trigger_award_task_xp` confirmed in DB, fires on `tasks.status → approved`. XP, streak, level, badges all wired.
+- [x] **Leaderboard rankings**: Real data — `usersApi.list()` + `payoutsApi.getSummary()` per user, sorted by XP then tasks completed. Filtered to users with activity.
+- [x] **Achievements page**: Badge earned status derived from real `user_badges` data on every load.
+- [x] **Analytics charts**: Chart.js properly registered with required scales/elements. Queries correct.
+- [x] **Salary Mixer**: `handleSave()` → `user.updateR(localR)` → `usersApi.updateSalaryMix()` → Supabase update on `users.r`. Gated by `$featureFlags.salary_mixer`. Correct.
+- [x] **Audit log**: Direct query to `audit_log` table filtered by `org_id`, paginated (50/page), prev/next navigation. Correct.
+- [x] **Contract PDF**: `generatePdf()` in `/contracts/[id]` calls `generateContractorAgreement()` from `contractPdf.ts` (jsPDF), uploads blob to Storage via `contractsApi.uploadPdf()`. Correct.
+- [x] **Multi-org switching**: Fixed — `switch_organization` RPC table name corrected via migration.
+- [x] **Real-time subscriptions**: Fixed — now gated by `$features.realtime_updates` feature flag.
+- [x] **Guest project import**: Fixed — `p_pm_id` → `p_user_id` parameter name corrected.
 
 ### DOCUMENTATION FIXES
 

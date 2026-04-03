@@ -1,9 +1,11 @@
 # SMTP & Email Setup Guide
 
+> **Current deployment status**: Fully configured. See `docs/OPS_RUNBOOK.md` for the current state of all secrets, SMTP settings, templates, and DNS records.
+
 Orbit uses two email channels:
 
-1. **Supabase Auth emails** — Confirmation, password reset, magic links (handled by Supabase)
-2. **Application emails** — Invitations, contractor notifications, QC results, payout alerts (handled by a Supabase Edge Function + SMTP provider)
+1. **Supabase Auth emails** — Confirmation, password reset, magic links (handled by Supabase Auth with custom SMTP)
+2. **Application emails** — Invitations, contractor notifications, QC results, payout alerts (handled by the `send-email` Supabase Edge Function via Resend)
 
 ---
 
@@ -44,29 +46,23 @@ Supabase sends auth emails (confirmation, password reset) using its built-in mai
 
 4. Click **Save**
 
-### Custom Email Templates (Optional)
+### Custom Email Templates
 
-In **Authentication > Email Templates**, customize the templates for:
+All auth email templates are Orbit-branded and deployed. Source HTML lives in `supabase/templates/` and is pushed via:
 
-- **Confirm signup** — Email verification on registration
-- **Magic link** — Passwordless login
-- **Change email** — Email change confirmation
-- **Reset password** — Password reset link
+```bash
+npx supabase config push --project-ref iioocrhatrimnsrapphv --yes
+```
+
+**Important**: `supabase/config.toml` only contains `[auth.email.template.*]` sections. Do not add other `[auth]` settings — they will overwrite production values with local dev defaults on next push.
 
 Templates support these variables:
 ```
 {{ .SiteURL }}           — Your app URL
 {{ .ConfirmationURL }}   — One-click confirmation link
-{{ .Token }}             — OTP token (6-digit)
-{{ .TokenHash }}         — Hashed token for URL
-```
-
-Example confirmation template:
-```html
-<h2>Welcome to Orbit</h2>
-<p>Click below to confirm your account:</p>
-<a href="{{ .ConfirmationURL }}">Confirm Email</a>
-<p>Or enter this code: <strong>{{ .Token }}</strong></p>
+{{ .Token }}             — OTP token
+{{ .Email }}             — Current email address
+{{ .NewEmail }}          — New email address (email-change template)
 ```
 
 ---
@@ -180,8 +176,10 @@ Deno.serve(async (req: Request) => {
 ### Deploy
 
 ```bash
-supabase functions deploy send-email
+npx supabase functions deploy send-email
 ```
+
+> Already deployed. `RESEND_API_KEY` and `EMAIL_FROM` secrets are set.
 
 ### Test
 
@@ -356,17 +354,22 @@ TXT  @  v=spf1 include:_spf.resend.com ~all
 ```
 
 ### DKIM Record
-Your provider will give you a DKIM key to add as a DNS TXT record. Example for Resend:
 ```
 TXT  resend._domainkey  (provided by Resend dashboard)
 ```
+> **Already set** for `owenstuckman.lol`.
 
 ### DMARC Record
 ```
 TXT  _dmarc  v=DMARC1; p=none; rua=mailto:dmarc@yourdomain.com
 ```
+> **Pending** — add at Porkbun. See `docs/OPS_RUNBOOK.md §1.4` for exact values.
 
-Check your provider's documentation for exact values.
+### SPF Record
+```
+TXT  @  v=spf1 include:_spf.resend.com ~all
+```
+> **Pending** — add at Porkbun. See `docs/OPS_RUNBOOK.md §1.4` for exact values.
 
 ---
 

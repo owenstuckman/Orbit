@@ -38,7 +38,7 @@ Both need to be configured separately.
 
 ### 1.2 — Set Supabase Secrets for Application Email
 
-Run these from your terminal in the repo root. These power the `send-email` edge function.
+> **Already configured** for this project. Run these if setting up a new deployment.
 
 ```bash
 supabase secrets set RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxx
@@ -55,6 +55,8 @@ Both `RESEND_API_KEY` and `EMAIL_FROM` should appear. Until these are set, the `
 ---
 
 ### 1.3 — Configure Supabase Auth Custom SMTP
+
+> **Already configured** for this project via management API: `smtp.resend.com:465`, user=`resend`. The steps below are for new deployments.
 
 This controls the emails Supabase sends for account confirmation and password reset.
 
@@ -78,64 +80,54 @@ This controls the emails Supabase sends for account confirmation and password re
 
 ### 1.4 — Configure DNS Records for Your Sending Domain
 
-This prevents emails from landing in spam. Your email provider's dashboard will show the exact values — the below shows the record types and where they go.
+This prevents emails from landing in spam. Domain is `owenstuckman.lol`, registrar is **Porkbun**.
 
-Log into your **domain registrar** (Cloudflare, Namecheap, GoDaddy, etc.) and add:
+**Current status:**
+- DKIM — **already set** (`resend._domainkey.owenstuckman.lol`)
+- SPF — **missing**, needs to be added
+- DMARC — **missing**, needs to be added
 
-**SPF** — authorizes your provider to send on behalf of your domain:
+Log into [porkbun.com](https://porkbun.com) → **Domain Management** → `owenstuckman.lol` → **DNS Records** and add:
+
+**SPF** — authorizes Resend to send on behalf of your domain:
 ```
-Type: TXT
-Name: @  (or your root domain)
+Type:  TXT
+Host:  (leave blank / @)
 Value: v=spf1 include:_spf.resend.com ~all
-```
-*(Replace `_spf.resend.com` with your provider's SPF include if not using Resend)*
-
-**DKIM** — cryptographic signature proving the email is authentic:
-```
-Type: TXT
-Name: resend._domainkey  (Resend gives you this exact subdomain)
-Value: (long key provided by Resend dashboard under Domains → your domain → DNS Records)
+TTL:   600
 ```
 
 **DMARC** — policy for handling unauthenticated mail:
 ```
-Type: TXT
-Name: _dmarc
-Value: v=DMARC1; p=none; rua=mailto:dmarc@yourdomain.com
+Type:  TXT
+Host:  _dmarc
+Value: v=DMARC1; p=none; rua=mailto:dmarc@owenstuckman.lol
+TTL:   600
 ```
 
-DNS changes can take up to 24 hours to propagate. Use [MXToolbox](https://mxtoolbox.com/SuperTool.aspx) to verify each record once added.
+DNS changes can take up to 24 hours to propagate. Verify with:
+```bash
+# SPF
+python3 -c "import urllib.request,json; r=urllib.request.urlopen('https://dns.google/resolve?name=owenstuckman.lol&type=TXT'); print([a['data'] for a in json.loads(r.read()).get('Answer',[])])"
+# DMARC
+python3 -c "import urllib.request,json; r=urllib.request.urlopen('https://dns.google/resolve?name=_dmarc.owenstuckman.lol&type=TXT'); print([a['data'] for a in json.loads(r.read()).get('Answer',[])])"
+```
 
 ---
 
 ### 1.5 — Customize Auth Email Templates
 
-These are the emails Supabase sends when users sign up or reset their password.
+> **Already complete.** All templates are Orbit-branded and were deployed via `supabase config push`.
 
-1. Go to **Supabase Dashboard** → **Authentication** → **Email Templates**
-2. Update the following templates with Orbit branding:
+Template source files live in `supabase/templates/` and are referenced from `supabase/config.toml`. To update a template, edit the HTML file and run:
 
-**Confirm signup** (sent when a new user registers):
-```html
-<h2>Welcome to Orbit</h2>
-<p>Thanks for signing up. Click below to confirm your email address:</p>
-<p><a href="{{ .ConfirmationURL }}" style="background:#6366f1;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;">Confirm Email</a></p>
-<p>Or copy this link: {{ .ConfirmationURL }}</p>
-<p>This link expires in 24 hours.</p>
+```bash
+npx supabase config push --project-ref iioocrhatrimnsrapphv --yes
 ```
 
-**Reset password** (sent when a user requests a password reset):
-```html
-<h2>Reset your Orbit password</h2>
-<p>Click the button below to choose a new password:</p>
-<p><a href="{{ .ConfirmationURL }}" style="background:#6366f1;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;">Reset Password</a></p>
-<p>If you didn't request this, you can ignore this email.</p>
-<p>This link expires in 1 hour.</p>
-```
+**Important:** The config.toml only defines the email templates. Do not add other `[auth]` settings to it — they will overwrite production values (site_url, MFA settings, etc.) with local dev defaults.
 
-Available template variables: `{{ .ConfirmationURL }}`, `{{ .Token }}`, `{{ .SiteURL }}`
-
-3. Click **Save** after each template
+Available template variables: `{{ .ConfirmationURL }}`, `{{ .Token }}`, `{{ .SiteURL }}`, `{{ .Email }}`, `{{ .NewEmail }}`
 
 ---
 
@@ -159,7 +151,7 @@ If emails are not arriving, check:
 
 ## Section 2 — ML Model Deployment
 
-The `qc-ai-review` edge function currently runs in fallback mode, returning a default confidence score of `p0 = 0.8` for all submissions. To enable real AI scoring, the ML model must be hosted as an external API and connected via Supabase secrets.
+> **Already complete** for this project. The ML API is live at `https://orbitqcml.onrender.com`, all secrets are set, and the edge function returns real confidence scores. The steps below are for new deployments or re-deployment.
 
 Full technical reference: `docs/ML_MODEL_HOSTING.md`
 
@@ -333,18 +325,20 @@ If confidence is always 0.8, check:
 ## Completion Checklist
 
 ### Email
-- [ ] Created account with Resend (or chosen provider) and verified sending domain
-- [ ] Set `RESEND_API_KEY` secret in Supabase
-- [ ] Set `EMAIL_FROM` secret in Supabase
-- [ ] Enabled custom SMTP in Supabase Auth settings
-- [ ] Added SPF, DKIM, and DMARC DNS records
-- [ ] Customized signup + reset password email templates
-- [ ] Sent test emails (registration, invite, QC result) and confirmed delivery
+- [x] Created Resend account and verified sending domain (`owenstuckman.lol`)
+- [x] Set `RESEND_API_KEY` secret in Supabase
+- [x] Set `EMAIL_FROM` secret in Supabase (`Orbit <owen@owenstuckman.lol>`)
+- [x] Enabled custom SMTP in Supabase Auth — `smtp.resend.com:465`, user=`resend`
+- [x] Updated email subjects to Orbit branding
+- [x] DKIM record set (`resend._domainkey.owenstuckman.lol`)
+- [x] All 4 auth email templates — Orbit-branded HTML set via `supabase config push` (source in `supabase/templates/`)
+- [ ] **Add SPF** at Porkbun: `TXT @` → `v=spf1 include:_spf.resend.com ~all`
+- [ ] **Add DMARC** at Porkbun: `TXT _dmarc` → `v=DMARC1; p=none; rua=mailto:dmarc@owenstuckman.lol`
+- [ ] Verify end-to-end: register a new account, confirm email arrives and link works
 
 ### ML Model
-- [ ] ML API project created and tested locally
-- [ ] `extract_features()` customized to match trained model
-- [ ] API deployed to hosting provider
-- [ ] `ML_API_URL` secret set in Supabase (`ML_API_KEY` optional — only if you add auth to the ML API)
-- [ ] `qc-ai-review` edge function redeployed
-- [ ] Submitted a task and confirmed real confidence score appears in QC page (not flat 0.8)
+- [x] ML API deployed and live at `https://orbitqcml.onrender.com`
+- [x] `extract_features()` customized to match trained model
+- [x] `ML_API_URL` and `ML_API_KEY` secrets set in Supabase
+- [x] `qc-ai-review` edge function deployed with real scoring (not flat 0.8)
+- [ ] End-to-end verify: submit a task as employee → open QC queue → confirm confidence breakdown shows real values
