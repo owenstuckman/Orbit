@@ -37,6 +37,7 @@
   import { mlApi } from '$lib/services/ml';
   import TagInput from '$lib/components/common/TagInput.svelte';
   import type { Task } from '$lib/types';
+  import * as m from '$lib/paraglide/messages.js';
 
   /** Controls modal visibility */
   export let show = false;
@@ -207,7 +208,7 @@
             <div class="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
               <Plus class="text-indigo-600 dark:text-indigo-400" size={20} />
             </div>
-            <h2 class="text-xl font-bold text-slate-900 dark:text-white">Create New Task</h2>
+            <h2 class="text-xl font-bold text-slate-900 dark:text-white">{m.create_task()}</h2>
           </div>
           <button
             on:click={close}
@@ -229,7 +230,7 @@
           <!-- Title -->
           <div>
             <label for="title" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Task Title <span class="text-red-500">*</span>
+              {m.task_title()} <span class="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -244,7 +245,7 @@
           <!-- Project Selection -->
           <div>
             <label for="project" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Project <span class="text-red-500">*</span>
+              {m.project()} <span class="text-red-500">*</span>
             </label>
             <select
               id="project"
@@ -252,7 +253,7 @@
               class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               required
             >
-              <option value="">Select a project...</option>
+              <option value="">{m.select_project()}</option>
               {#each $projects.items.filter(p => p.status === 'active') as project}
                 <option value={project.id}>{project.name}</option>
               {/each}
@@ -262,7 +263,7 @@
           <!-- Description -->
           <div>
             <label for="description" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Description
+              {m.description()}
             </label>
             <textarea
               id="description"
@@ -340,7 +341,7 @@
                     {:else}
                       <Sparkles size={14} />
                     {/if}
-                    AI Suggest
+                    {m.ai_suggest()}
                   </button>
                 {/if}
               </div>
@@ -377,7 +378,7 @@
           <!-- Required Level -->
           <div>
             <label for="requiredLevel" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Required Level
+              {m.required_level()}
             </label>
             <div class="flex items-center gap-4">
               <input
@@ -401,7 +402,7 @@
           <!-- Deadline -->
           <div>
             <label for="deadline" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Deadline
+              {m.deadline()}
             </label>
             <div class="relative">
               <Calendar class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={18} />
@@ -446,7 +447,7 @@
               on:click={close}
               class="px-6 py-2.5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-medium transition-colors"
             >
-              Cancel
+              {m.cancel()}
             </button>
             <button
               type="submit"
@@ -456,7 +457,7 @@
               {#if submitting}
                 <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
               {/if}
-              Create Task
+              {m.create_task_button()}
             </button>
           </div>
         </form>

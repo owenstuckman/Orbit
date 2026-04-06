@@ -45,6 +45,7 @@
     Palette
   } from 'lucide-svelte';
   import { THEMES, resolveTheme } from '$lib/stores/theme';
+  import { initializeLocale } from '$lib/stores/locale';
 
   let sidebarOpen = false;
   let userMenuOpen = false;
@@ -233,6 +234,10 @@
 
       // Load user organization memberships (for org-specific roles)
       await userOrganizations.load();
+
+      // Initialize locale (user pref → org default → browser → 'en')
+      const orgLocale = (loadedOrg.settings as Record<string, unknown>)?.default_locale as string | null;
+      initializeLocale(loadedUser.locale, orgLocale);
 
       loading = false;
 

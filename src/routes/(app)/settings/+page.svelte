@@ -31,6 +31,29 @@
   } from 'lucide-svelte';
   import { theme, THEMES, resolveTheme } from '$lib/stores/theme';
   import type { ThemeName } from '$lib/stores/theme';
+  import { applyLocale, LOCALE_LABELS, SUPPORTED_LOCALES } from '$lib/stores/locale';
+  import { languageTag } from '$lib/paraglide/runtime.js';
+  import * as m from '$lib/paraglide/messages.js';
+
+  let selectedLocale: string = 'en';
+  let savingLocale = false;
+
+  $: selectedLocale = $user?.locale ?? languageTag() ?? 'en';
+
+  async function handleLocaleChange(locale: string) {
+    if (!$user) return;
+    savingLocale = true;
+    try {
+      await usersApi.update($user.id, { locale } as never);
+      applyLocale(locale);
+      selectedLocale = locale;
+      toasts.success(m.saved());
+    } catch {
+      toasts.error('Failed to save language preference');
+    } finally {
+      savingLocale = false;
+    }
+  }
 
   // Local state for form
   let localR = $user?.r ?? $organization?.default_r ?? 0.7;
@@ -277,6 +300,28 @@
       <p class="mt-3 text-xs text-slate-400 dark:text-slate-500">
         More themes will be available in future updates
       </p>
+
+      <!-- Language Picker -->
+      <div class="mt-6 border-t border-slate-200 dark:border-slate-700 pt-6">
+        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">{m.language()}</label>
+        <div class="flex flex-wrap gap-3">
+          {#each SUPPORTED_LOCALES as locale}
+            <button
+              on:click={() => handleLocaleChange(locale)}
+              disabled={savingLocale}
+              class="px-4 py-2.5 rounded-xl border-2 font-medium text-sm transition-all disabled:opacity-50
+                {selectedLocale === locale
+                  ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400'
+                  : 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600'}"
+            >
+              {LOCALE_LABELS[locale] ?? locale}
+              {#if selectedLocale === locale}
+                <Check size={14} class="inline ml-1 text-indigo-500" />
+              {/if}
+            </button>
+          {/each}
+        </div>
+      </div>
     </div>
   </section>
 

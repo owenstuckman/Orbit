@@ -178,13 +178,13 @@
           {:else}
             <Fingerprint size={18} />
           {/if}
-          Enable Biometrics
+          {m.enable_biometrics()}
         </button>
         <button
           on:click={async () => { offerBiometricEnroll = false; await finishLogin(); }}
           class="w-full py-2 text-indigo-300 hover:text-indigo-200 text-sm transition-colors"
         >
-          Skip for now
+          {m.skip_for_now()}
         </button>
       </div>
     {/if}
@@ -203,7 +203,7 @@
         <!-- Email -->
         <div>
           <label class="block text-sm font-medium text-indigo-200 mb-2" for="email">
-            Email address
+            {m.email_address()}
           </label>
           <div class="relative">
             <Mail class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
@@ -221,7 +221,7 @@
         <!-- Password -->
         <div>
           <label class="block text-sm font-medium text-indigo-200 mb-2" for="password">
-            Password
+            {m.password()}
           </label>
           <div class="relative">
             <Lock class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
@@ -239,7 +239,7 @@
         <!-- Forgot password -->
         <div class="flex justify-end">
           <a href="/auth/reset-password" class="text-sm text-indigo-300 hover:text-indigo-200 transition-colors">
-            Forgot password?
+            {m.forgot_password()}
           </a>
         </div>
 
@@ -251,9 +251,9 @@
         >
           {#if loading}
             <div class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-            Signing in...
+            {m.signing_in()}
           {:else}
-            Sign in
+            {m.sign_in()}
             <ArrowRight size={18} />
           {/if}
         </button>
@@ -265,7 +265,7 @@
           <div class="w-full border-t border-white/10"></div>
         </div>
         <div class="relative flex justify-center text-sm">
-          <span class="px-4 bg-transparent text-slate-400">New to Orbit?</span>
+          <span class="px-4 bg-transparent text-slate-400">{m.new_to_orbit()}</span>
         </div>
       </div>
 
@@ -274,16 +274,16 @@
         href="/auth/register"
         class="block w-full py-3 px-4 text-center text-indigo-300 font-medium border border-indigo-500/50 rounded-xl hover:bg-indigo-500/10 transition-colors"
       >
-        Create an account
+        {m.create_account()}
       </a>
     </div>
 
     <!-- Footer -->
     <p class="mt-8 text-center text-sm text-slate-400">
-      By signing in, you agree to our
-      <a href="/terms" class="text-indigo-300 hover:text-indigo-200">Terms of Service</a>
+      {m.by_signing_in()}
+      <a href="/terms" class="text-indigo-300 hover:text-indigo-200">{m.terms_of_service()}</a>
       and
-      <a href="/privacy" class="text-indigo-300 hover:text-indigo-200">Privacy Policy</a>
+      <a href="/privacy" class="text-indigo-300 hover:text-indigo-200">{m.privacy_policy()}</a>
     </p>
   </div>
 </div>

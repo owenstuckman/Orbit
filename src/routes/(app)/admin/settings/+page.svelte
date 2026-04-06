@@ -5,6 +5,8 @@
   import { organizationsApi } from '$lib/services/api';
   import { FeatureFlagsPanel } from '$lib/components/admin';
   import type { Organization } from '$lib/types';
+  import { LOCALE_LABELS, SUPPORTED_LOCALES } from '$lib/stores/locale';
+  import * as m from '$lib/paraglide/messages.js';
   import {
     Settings,
     Save,
@@ -35,7 +37,8 @@
     pm_x: 0.5,
     pm_overdraft_penalty: 1.5,
     allow_external_assignment: true,
-    slack_webhook_url: ''
+    slack_webhook_url: '',
+    default_locale: 'en'
   };
 
   let originalForm = { ...form };
@@ -66,7 +69,8 @@
           pm_x: org.pm_x,
           pm_overdraft_penalty: org.pm_overdraft_penalty,
           allow_external_assignment: org.allow_external_assignment ?? true,
-          slack_webhook_url: (org.settings as Record<string, unknown>)?.slack_webhook_url as string || ''
+          slack_webhook_url: (org.settings as Record<string, unknown>)?.slack_webhook_url as string || '',
+          default_locale: (org.settings as Record<string, unknown>)?.default_locale as string || 'en'
         };
         originalForm = { ...form };
       }
@@ -92,7 +96,10 @@
         pm_x: form.pm_x,
         pm_overdraft_penalty: form.pm_overdraft_penalty,
         allow_external_assignment: form.allow_external_assignment,
-        settings: { slack_webhook_url: form.slack_webhook_url || null }
+        settings: {
+          slack_webhook_url: form.slack_webhook_url || null,
+          default_locale: form.default_locale || 'en'
+        }
       });
       originalForm = { ...form };
       saved = true;
@@ -416,6 +423,29 @@
           Modifying these settings will affect future payout calculations for all users.
           Existing payouts will not be retroactively changed.
         </p>
+      </div>
+    </div>
+
+    <!-- Default Locale Section -->
+    <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+      <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-1 flex items-center gap-2">
+        <Settings size={20} class="text-slate-400 dark:text-slate-500" />
+        {m.default_language()}
+      </h2>
+      <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">{m.org_default_language_desc()}</p>
+      <div class="flex flex-wrap gap-3">
+        {#each SUPPORTED_LOCALES as locale}
+          <button
+            type="button"
+            on:click={() => form.default_locale = locale}
+            class="px-4 py-2.5 rounded-xl border-2 font-medium text-sm transition-all
+              {form.default_locale === locale
+                ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400'
+                : 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600'}"
+          >
+            {LOCALE_LABELS[locale] ?? locale}
+          </button>
+        {/each}
       </div>
     </div>
 

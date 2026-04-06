@@ -254,6 +254,8 @@ export interface User {
   training_level: number;
   /** Extensible metadata for gamification stats */
   metadata: UserMetadata;
+  /** Language preference (BCP 47 tag, e.g. 'en', 'es'). Falls back to org default. */
+  locale: string | null;
   created_at: string;
   updated_at: string;
   // Joined fields (populated by API with select joins)

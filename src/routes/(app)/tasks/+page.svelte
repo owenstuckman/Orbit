@@ -31,6 +31,7 @@
   } from 'lucide-svelte';
   import type { Task, TaskStatus } from '$lib/types';
   import KeyboardShortcutsHelp from '$lib/components/common/KeyboardShortcutsHelp.svelte';
+  import * as m from '$lib/paraglide/messages.js';
 
   // View mode
   let viewMode: 'board' | 'list' = 'board';
@@ -457,9 +458,9 @@
         <div class="flex items-center gap-3">
           <h1 class="text-2xl font-bold text-slate-900 dark:text-white">
             {#if ($currentOrgRole === 'employee' || $currentOrgRole === 'contractor') && showAvailableOnly}
-              Pick Up Tasks
+              {m.pick_up_tasks()}
             {:else}
-              Tasks
+              {m.tasks()}
             {/if}
           </h1>
           <!-- Real-time indicator -->
@@ -467,31 +468,31 @@
             {isConnected ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}">
             {#if isConnected}
               <Wifi size={12} />
-              <span>Live</span>
+              <span>{m.live()}</span>
             {:else}
               <WifiOff size={12} />
-              <span>Offline</span>
+              <span>{m.offline()}</span>
             {/if}
           </div>
           <!-- Level indicator for employees -->
           {#if ($currentOrgRole === 'employee' || $currentOrgRole === 'contractor') && $user?.training_level}
             <div class="flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
               <Sparkles size={12} />
-              <span>Level {$user.training_level}</span>
+              <span>{m.level_indicator({ level: String($user.training_level) })}</span>
             </div>
           {/if}
         </div>
         <p class="mt-1 text-slate-600 dark:text-slate-300">
           {#if $currentOrgRole === 'employee' || $currentOrgRole === 'contractor'}
             {#if showAvailableOnly}
-              Browse available tasks matching your level and pick one to work on
+              {m.browse_available_tasks()}
             {:else}
-              View and manage your assigned tasks
+              {m.view_assigned_tasks()}
             {/if}
           {:else if $currentOrgRole === 'qc'}
-            Tasks pending quality review
+            {m.tasks_pending_review()}
           {:else}
-            Manage and track all tasks
+            {m.manage_all_tasks()}
           {/if}
         </p>
       </div>
@@ -502,21 +503,21 @@
           <div class="text-2xl font-bold text-slate-900 dark:text-white">{stats.open}</div>
           <div class="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1 justify-center">
             <Clock size={12} />
-            Open
+            {m.open()}
           </div>
         </div>
         <div class="text-center">
           <div class="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{stats.inProgress}</div>
           <div class="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1 justify-center">
             <TrendingUp size={12} />
-            In Progress
+            {m.in_progress()}
           </div>
         </div>
         <div class="text-center">
           <div class="text-2xl font-bold text-green-600 dark:text-green-400">{stats.completed}</div>
           <div class="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1 justify-center">
             <CheckCircle size={12} />
-            Completed
+            {m.completed()}
           </div>
         </div>
       </div>
@@ -532,7 +533,7 @@
         <input
           bind:this={searchInputRef}
           type="text"
-          placeholder="Search tasks... ( / )"
+          placeholder={m.search_tasks_placeholder()}
           bind:value={searchQuery}
           class="pl-10 pr-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent w-64"
         />
@@ -545,7 +546,7 @@
           {activeFilterCount > 0 ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'}"
       >
         <Filter size={18} />
-        Filters
+        {m.filters()}
         {#if activeFilterCount > 0}
           <span class="px-1.5 py-0.5 bg-indigo-600 text-white text-xs rounded-full">{activeFilterCount}</span>
         {/if}
@@ -570,7 +571,7 @@
             {showAvailableOnly ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}"
           on:click={toggleViewMode}
         >
-          {showAvailableOnly ? 'Available' : 'My Tasks'}
+          {showAvailableOnly ? m.available() : m.my_tasks()}
         </button>
       {/if}
 
@@ -600,7 +601,7 @@
           on:click={() => { bulkMode = !bulkMode; if (!bulkMode) clearBulkSelection(); }}
           title="Toggle bulk select"
         >
-          {bulkMode ? `${selectedTaskIds.size} selected` : 'Bulk'}
+          {bulkMode ? m.bulk_selected({ count: String(selectedTaskIds.size) }) : m.bulk_mode()}
         </button>
       {/if}
 
@@ -623,7 +624,7 @@
           on:click={() => showCreateModal = true}
         >
           <Plus size={18} />
-          New Task
+          {m.new_task()}
         </button>
       {/if}
     </div>
