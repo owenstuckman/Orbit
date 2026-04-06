@@ -4,13 +4,139 @@ Tasks Claude can complete programmatically. For completed features see `docs/FEA
 
 ---
 
-## Roadmap (not yet built)
+## Roadmap
 
-These are intentional future items from the README roadmap — not started, no code exists:
+### 1. Custom Contract Templates
 
-- [ ] **Mobile app** — Capacitor wrapper for iOS/Android
-- [ ] **Custom contract templates** — Currently only auto-generated contractor agreements via jsPDF. A template editor/system for custom contract types.
-- [ ] **Multi-language support** — i18n infrastructure + translations. All UI currently English-only.
+**Current state**: A single hardcoded `generateContractorAgreement()` function in `src/lib/services/contractPdf.ts`. The `template_type` field on `contracts` is stored as a free string but doesn't drive different PDF layouts — all contracts render the same template. `ContractTerms` has unused `template` and `sections` fields that were scaffolded for this.
+
+**Goal**: Admins can define reusable contract templates with named variable slots. When creating a contract, a template is selected and variables are filled in. PDF is generated from the template.
+
+#### Database
+- [x] Add `contract_templates` table: `id`, `org_id`, `name`, `description`, `template_type` (enum or string), `sections` (JSONB array of `{title, body, order}`), `variables` (JSONB array of `{key, label, required, default}`), `is_default`, `created_at`, `updated_at`
+- [x] RLS: org-scoped read for all roles, write for admin only
+- [x] Migration: seed default templates for existing `template_type` values (`task_assignment`, `project_pm`, `contractor`)
+- [x] Add `template_id` FK to `contracts` table (nullable, for backwards compat)
+
+#### Types & API (`src/lib/types/index.ts`, `src/lib/services/api.ts`)
+- [x] Add `ContractTemplate`, `ContractTemplateSection`, `ContractTemplateVariable` interfaces
+- [x] Add `contractTemplatesApi` with `list()`, `getById()`, `getDefault()`, `create()`, `update()`, `delete()`, `setDefault()`
+- [x] Update `ContractTerms` to add `variable_values: Record<string, string>`; add `template_id` to `Contract`
+
+#### PDF Generation (`src/lib/services/contractPdf.ts`)
+- [x] Add `generateFromTemplate(template: ContractTemplate, values: Record<string, string>, parties: TemplateContractParties): GeneratedContract` — renders each section body through `{{variable}}` substitution, lays out with jsPDF
+- [x] Keep `generateContractorAgreement()` as the legacy path for task-based contracts without a template_id
+- [x] Add `validateTemplateVariables()` — returns array of missing required variable keys
+
+#### Admin UI
+- [x] Add `/admin/contract-templates` route — template list with create/edit/delete/set-default
+- [x] `ContractTemplateEditor` component: name/description/type inputs, variable definition panel, section editor (add/reorder/delete sections with textarea + inline token insert buttons), set-as-default toggle
+- [ ] Preview pane: renders live PDF preview as variable values are typed *(deferred — nice-to-have)*
+- [x] Add "Set as default" toggle per template type
+
+#### Contract Creation Flow (`src/routes/(app)/contracts/+page.svelte`)
+- [x] Added "New Contract" button (visible to admin/pm/sales) that opens a template picker modal
+- [x] Template picker lists all org templates; selecting one shows variable fill-in form
+- [x] Passes `template_id` and filled `variable_values` through `contractsApi.create()`
+
+#### PDF Generation (contracts/[id])
+- [x] `generatePdf()` checks `contract.template_id` first → calls `generateFromTemplate()`; falls back to legacy `generateContractorAgreement()` path
+
+#### Sidebar / Feature Flag
+- [x] Gate template management behind admin role (RLS enforced; nav card added to `/admin`)
+
+---
+
+### 2. Mobile App (Capacitor)
+
+**Current state**: SvelteKit with `adapter-auto` (Vercel/Netlify web deployment). No native code. The app is already mobile-responsive (sidebar collapses, snap-scroll task board, etc.) but runs only in browser.
+
+**Goal**: Package the existing web app as a native iOS/Android app via Capacitor. Minimal native code — Capacitor bridges the existing web UI. Key additions: push notifications, file picker for submission artifacts, and biometric auth.
+
+#### Build Setup
+- [x] Add `@capacitor/core`, `@capacitor/cli` as devDependencies
+- [x] Add `@capacitor/ios`, `@capacitor/android`
+- [ ] Swap `@sveltejs/adapter-auto` → `@sveltejs/adapter-static` in `svelte.config.js` for the mobile build *(requires `npx cap add ios/android` first — see Platform Config)*
+- [ ] Run `npx cap init` (already have `capacitor.config.ts`) and `npx cap add ios` / `npx cap add android` *(human step — generates native project folders)*
+- [x] Add `npm run build:mobile` script: `MOBILE_BUILD=true vite build && npx cap sync`
+- [x] Add `capacitor.config.ts` — appId `com.orbit.app`, webDir `build`, androidScheme `https`, iosScheme `com.orbit.app`, hostname `owenstuckman.lol`
+
+#### Native Plugins
+- [x] **Push notifications** — `@capacitor/push-notifications`
+  - `src/lib/services/capacitor/pushNotifications.ts` — `initializePushNotifications(userId)` requests permission, registers with FCM/APNs, stores token in `users.metadata.push_token`, listens for foreground notifications
+  - `notifyDevice(userId, title, body, data?)` — calls `send-push` edge function
+  - `supabase/functions/send-push/index.ts` deployed — looks up push token, POSTs to FCM HTTP API
+  - Notification types bridged: `task_assigned`, `qc_approved`, `qc_rejected`, `payout_ready` (via data payload routing)
+  - Called from `(app)/+layout.svelte` after user loads
+  - Requires `FCM_SERVER_KEY` Supabase secret (see Platform Config)
+- [x] **File access** — `@capacitor/camera` + `@capacitor/filesystem`
+  - `src/lib/services/capacitor/fileAccess.ts` — `pickFromCamera(source)`, `pickFileNative()`
+  - `FileUploadZone.svelte` updated: detects `isNative()` on mount; shows Camera/Gallery/Files buttons instead of drag-and-drop on native; converts to `File` blobs for existing `tasksApi` upload flow
+- [x] **Biometric auth** — `@aparajita/capacitor-biometric-auth` + `@capacitor/preferences`
+  - `src/lib/services/capacitor/biometrics.ts` — `enrollBiometrics(session)`, `authenticateWithBiometrics()`, `clearBiometricSession()`, `initializeBiometrics(session)`
+  - Login page: auto-attempts biometric on mount if enrolled; prompts Face ID/fingerprint → restores Supabase session; offers enroll after successful password login
+  - Tokens stored in `@capacitor/preferences` (secure native storage, not localStorage)
+- [x] **Deep links** — `@capacitor/app`
+  - `src/lib/services/capacitor/deepLinks.ts` — `initializeDeepLinks()` handles cold-start URL + `appUrlOpen` events; routes `/contract/[token]`, `/submit/[token]`, `/auth/*` to SvelteKit `goto`
+  - Called from `(app)/+layout.svelte` after user loads
+  - `capacitor.config.ts` configured with `androidScheme: https`, `hostname: owenstuckman.lol`
+
+#### Platform Config
+- [x] `android/app/src/main/AndroidManifest.xml` — CAMERA, READ_MEDIA_IMAGES/VIDEO, READ_EXTERNAL_STORAGE (≤API32), POST_NOTIFICATIONS, VIBRATE, RECEIVE_BOOT_COMPLETED, c2dm.RECEIVE, INTERNET; app links intent-filter for `owenstuckman.lol`; custom scheme `com.orbit.app://`
+- [x] App icons + splash screens — `assets/icon.svg` + `assets/splash.svg` created; `npx @capacitor/assets generate --android` run → 87 Android assets generated in `android/app/src/main/res/`
+- [x] Auth redirect URL — `com.orbit.app://login-callback` and `https://orbit-sandy.vercel.app/**` added to Supabase auth allowed list via management API
+- [ ] iOS native project + Info.plist — requires macOS/Xcode; see `docs/ios-plist-additions.xml` for ready-to-apply keys; see `docs/HUMAN_TODO.md`
+- [ ] Firebase setup + `FCM_SERVER_KEY` secret — requires Firebase Console; see `docs/HUMAN_TODO.md`
+
+#### Auth Adjustments
+- [x] `com.orbit.app://login-callback` added to Supabase Auth allowed redirect URLs
+- [x] `src/routes/auth/update-password/+page.svelte` — waits 300ms on native for deep link URL hash to be processed; clears biometric session on password update so user re-enrolls
+
+---
+
+### 3. Multi-Language Support (i18n)
+
+**Current state**: All UI strings are hardcoded English throughout ~40 Svelte components and 20 route pages. No i18n infrastructure.
+
+**Goal**: Extract all user-facing strings into translation files. Support at minimum English + one other language (e.g. Spanish) to prove the system works. Admin can set org-level default locale; users can override in settings.
+
+#### Library Choice
+- [ ] Add `@inlang/paraglide-sveltekit` (recommended for SvelteKit — compile-time, zero runtime overhead, tree-shaken per locale)
+  - Alternative: `svelte-i18n` (simpler but runtime-based)
+- [ ] Run `npx @inlang/paraglide-js init` → creates `project.inlang/` config and `src/lib/paraglide/`
+- [ ] Configure `vite.config.ts` with Paraglide Vite plugin
+- [ ] Add `ParaglideJS` wrapper in `src/routes/+layout.svelte`
+
+#### Message Extraction
+- [ ] Audit all hardcoded strings across `src/routes/(app)/` and `src/lib/components/` — create `messages/en.json` with all keys
+- [ ] Priority pages (highest user-facing string density):
+  - `src/routes/(app)/tasks/+page.svelte` — task board labels, filter labels, status names
+  - `src/routes/(app)/dashboard/+page.svelte` — role-specific dashboard strings
+  - `src/lib/components/tasks/TaskCreateModal.svelte` — form labels and validation messages
+  - `src/lib/components/tasks/QCReviewForm.svelte` — review UI strings
+  - `src/routes/auth/` — all auth page strings
+- [ ] Replace hardcoded strings with `m.key()` calls (Paraglide message functions)
+- [ ] Handle dynamic strings with interpolation: `m.task_assigned({ name: user.full_name })`
+
+#### Locale Data
+- [ ] `messages/en.json` — English (source language)
+- [ ] `messages/es.json` — Spanish (first translation, ~300 keys)
+- [ ] Keep role names / status values (admin, open, approved, etc.) in English as canonical values — only translate display labels
+
+#### Database
+- [ ] Add `locale` column to `users` table (default `'en'`, nullable)
+- [ ] Add `default_locale` to `organizations.settings` JSONB
+- [ ] Migration for both
+
+#### Settings UI
+- [ ] Add locale picker to `/settings` Appearance section (dropdown: English, Español, + future)
+- [ ] On change: call `usersApi.update(id, { locale })`, update Paraglide's `languageTag()` reactively
+- [ ] Admin can set org default locale in `/admin/settings`
+
+#### Locale Persistence
+- [ ] On app load: read `$user.locale` → set Paraglide language tag
+- [ ] Fallback chain: user preference → org default → browser `Accept-Language` → `'en'`
+- [ ] Store in `localStorage` as `orbit_locale` for pre-auth pages (login, register)
 
 ---
 

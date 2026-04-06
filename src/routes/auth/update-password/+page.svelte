@@ -14,6 +14,15 @@
   $: passwordMatch = password === confirmPassword && confirmPassword.length > 0;
 
   onMount(async () => {
+    // On native (Capacitor), the deep link may arrive as com.orbit.app://update-password#access_token=...
+    // Supabase handles URL hash tokens automatically via detectSessionInUrl, but on Capacitor
+    // we may need to pass the URL manually if detectSessionInUrl is false.
+    const { isNative } = await import('$lib/services/capacitor');
+    if (isNative()) {
+      // Give Supabase a moment to process the URL hash delivered via deep link
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
+
     // Check if we have a valid session from the reset link
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
@@ -48,6 +57,11 @@
       }
 
       success = true;
+      // On native, clear stored biometric tokens so user re-enrolls with the new password session
+      const { isNative, clearBiometricSession } = await import('$lib/services/capacitor');
+      if (isNative()) {
+        await clearBiometricSession();
+      }
       setTimeout(() => goto('/dashboard'), 2000);
     } catch (err) {
       error = err instanceof Error ? err.message : 'An error occurred';

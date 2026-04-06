@@ -2,9 +2,9 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { user, capabilities, currentOrgRole } from '$lib/stores/auth';
-  import { contractsApi } from '$lib/services/api';
+  import { contractsApi, contractTemplatesApi } from '$lib/services/api';
   import { toasts } from '$lib/stores/notifications';
-  import type { Contract } from '$lib/types';
+  import type { Contract, ContractTemplate } from '$lib/types';
   import {
     FileText,
     Search,
@@ -32,6 +32,16 @@
   let showPdfViewer = false;
   let loadingPdfId: string | null = null;
   let pdfViewerContract: Contract | null = null;
+
+  // Create contract modal
+  let showCreateModal = false;
+  let availableTemplates: ContractTemplate[] = [];
+  let selectedTemplate: ContractTemplate | null = null;
+  let variableValues: Record<string, string> = {};
+  let partyBEmail = '';
+  let creating = false;
+
+  $: isAdminOrPmOrSales = ['admin', 'pm', 'sales'].includes($currentOrgRole);
 
   // Helper to get party names from terms (handles both party_b_name and contractor_name)
   function getPartyBName(contract: Contract): string | null {
@@ -200,6 +210,59 @@
     }
   }
 
+  async function openCreateModal() {
+    if (!$user?.org_id) return;
+    availableTemplates = await contractTemplatesApi.list($user.org_id);
+    selectedTemplate = availableTemplates[0] ?? null;
+    variableValues = {};
+    partyBEmail = '';
+    showCreateModal = true;
+  }
+
+  function selectTemplate(t: ContractTemplate) {
+    selectedTemplate = t;
+    variableValues = {};
+  }
+
+  async function submitCreateContract() {
+    if (!selectedTemplate || !$user) return;
+    if (!partyBEmail.trim()) { toasts.error('Counterparty email is required.'); return; }
+
+    // Validate required variables
+    const missing = selectedTemplate.variables
+      .filter(v => v.required && !variableValues[v.key]?.trim())
+      .map(v => v.label || v.key);
+    if (missing.length) {
+      toasts.error(`Fill in required fields: ${missing.join(', ')}`);
+      return;
+    }
+
+    creating = true;
+    const contract = await contractsApi.create(
+      selectedTemplate.template_type,
+      $user.id,
+      {
+        variable_values: variableValues,
+        party_a_name: $user.full_name || $user.email,
+        contractor_email: partyBEmail.trim()
+      },
+      {
+        partyBEmail: partyBEmail.trim(),
+        templateId: selectedTemplate.id
+      }
+    );
+    creating = false;
+
+    if (!contract) {
+      toasts.error('Failed to create contract.');
+      return;
+    }
+
+    toasts.success('Contract created.');
+    showCreateModal = false;
+    await loadContracts();
+  }
+
   function formatDate(date: string | null) {
     if (!date) return '—';
     return new Date(date).toLocaleDateString('en-US', {
@@ -243,6 +306,15 @@
       <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Contracts</h1>
       <p class="text-slate-600 dark:text-slate-400 mt-1">Manage your contracts and agreements</p>
     </div>
+    {#if isAdminOrPmOrSales}
+      <button
+        on:click={openCreateModal}
+        class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors"
+      >
+        <Plus size={16} />
+        New Contract
+      </button>
+    {/if}
   </div>
 
   <!-- Stats -->
@@ -455,6 +527,105 @@
     </div>
   {/if}
 </div>
+
+<!-- Create Contract Modal -->
+{#if showCreateModal}
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
+      <div class="flex items-center justify-between p-5 border-b border-slate-200 dark:border-slate-700">
+        <h2 class="text-lg font-semibold text-slate-900 dark:text-white">New Contract</h2>
+        <button on:click={() => showCreateModal = false} class="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+          <X size={18} />
+        </button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto p-5 space-y-5">
+        <!-- Template picker -->
+        <div>
+          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Template</label>
+          {#if availableTemplates.length === 0}
+            <p class="text-sm text-slate-500 dark:text-slate-400">
+              No templates found.
+              {#if $currentOrgRole === 'admin'}
+                <a href="/admin/contract-templates" class="text-indigo-600 dark:text-indigo-400 underline">Create one first.</a>
+              {/if}
+            </p>
+          {:else}
+            <div class="grid gap-2">
+              {#each availableTemplates as t (t.id)}
+                <button
+                  on:click={() => selectTemplate(t)}
+                  class="text-left px-4 py-3 rounded-lg border-2 transition-colors {selectedTemplate?.id === t.id ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500'}"
+                >
+                  <div class="flex items-center gap-2">
+                    <span class="font-medium text-slate-900 dark:text-white text-sm">{t.name}</span>
+                    {#if t.is_default}
+                      <span class="px-1.5 py-0.5 text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded">Default</span>
+                    {/if}
+                  </div>
+                  {#if t.description}
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t.description}</p>
+                  {/if}
+                </button>
+              {/each}
+            </div>
+          {/if}
+        </div>
+
+        {#if selectedTemplate}
+          <!-- Counterparty email -->
+          <div>
+            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              Counterparty Email <span class="text-red-500">*</span>
+            </label>
+            <input
+              bind:value={partyBEmail}
+              type="email"
+              placeholder="contractor@example.com"
+              class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
+          <!-- Variable inputs -->
+          {#if selectedTemplate.variables.length > 0}
+            <div class="space-y-3">
+              <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Fill in Variables</p>
+              {#each selectedTemplate.variables as v (v.key)}
+                <div>
+                  <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
+                    {v.label || v.key}{v.required ? ' *' : ''}
+                  </label>
+                  <input
+                    bind:value={variableValues[v.key]}
+                    type="text"
+                    placeholder={v.default ?? ''}
+                    class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+              {/each}
+            </div>
+          {/if}
+        {/if}
+      </div>
+
+      <div class="flex items-center justify-end gap-3 p-5 border-t border-slate-200 dark:border-slate-700">
+        <button
+          on:click={() => showCreateModal = false}
+          class="px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          on:click={submitCreateContract}
+          disabled={creating || !selectedTemplate}
+          class="inline-flex items-center gap-2 px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-lg font-medium text-sm transition-colors"
+        >
+          {creating ? 'Creating…' : 'Create Contract'}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
 
 <!-- Full-screen PDF Viewer -->
 {#if showPdfViewer && pdfBlobUrl}

@@ -34,6 +34,36 @@ python3 -c "import urllib.request,json; r=urllib.request.urlopen('https://dns.go
 
 ---
 
+## Mobile App — Remaining Setup
+
+### iOS Native Project (requires macOS + Xcode)
+Run on a Mac:
+```bash
+cd /path/to/Orbit
+npx cap add ios
+npx cap open ios
+```
+Then in Xcode:
+- **Signing & Capabilities** → add "Push Notifications" capability
+- **Signing & Capabilities** → add "Associated Domains" → `applinks:owenstuckman.lol`
+- Merge `docs/ios-plist-additions.xml` into `ios/App/App/Info.plist`
+- Run `npx @capacitor/assets generate --ios` to generate icons/splash
+
+### Firebase Cloud Messaging (push notifications)
+1. Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com)
+2. Add an Android app with package name `com.orbit.app` → download `google-services.json` → place at `android/app/google-services.json`
+3. Add an iOS app with bundle ID `com.orbit.app` → download `GoogleService-Info.plist` → place in `ios/App/App/`
+4. Get the **Server Key** from Project Settings → Cloud Messaging:
+   ```bash
+   supabase secrets set FCM_SERVER_KEY=<your-server-key>
+   npx supabase functions deploy send-push
+   ```
+
+### Supabase Auth — Redirect URL *(already set)*
+`com.orbit.app://login-callback` and `https://orbit-sandy.vercel.app/**` are configured.
+
+---
+
 ## End-to-End Verification
 
 - [ ] **Email flow** — Register a new account at `/auth/register`, confirm the signup email arrives, click the link, land at `/auth/complete-registration`

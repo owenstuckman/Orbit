@@ -39,6 +39,7 @@ import type {
   Task,
   QCReview,
   Contract,
+  ContractTemplate,
   Payout,
   Organization,
   OrganizationSettings,
@@ -1303,6 +1304,99 @@ export const qcApi = {
 };
 
 // ============================================================================
+// Contract Templates API
+// ============================================================================
+
+export const contractTemplatesApi = {
+  async list(orgId: string): Promise<ContractTemplate[]> {
+    const { data, error } = await supabase
+      .from('contract_templates')
+      .select('*')
+      .eq('org_id', orgId)
+      .order('template_type')
+      .order('name');
+    if (error) { console.error('Error fetching contract templates:', error); return []; }
+    return data ?? [];
+  },
+
+  async getById(id: string): Promise<ContractTemplate | null> {
+    const { data, error } = await supabase
+      .from('contract_templates')
+      .select('*')
+      .eq('id', id)
+      .single();
+    if (error) { console.error('Error fetching contract template:', error); return null; }
+    return data;
+  },
+
+  async getDefault(orgId: string, templateType: string): Promise<ContractTemplate | null> {
+    const { data, error } = await supabase
+      .from('contract_templates')
+      .select('*')
+      .eq('org_id', orgId)
+      .eq('template_type', templateType)
+      .eq('is_default', true)
+      .single();
+    if (error) return null;
+    return data;
+  },
+
+  async create(
+    orgId: string,
+    payload: Omit<ContractTemplate, 'id' | 'org_id' | 'created_at' | 'updated_at'>
+  ): Promise<ContractTemplate | null> {
+    const { data, error } = await supabase
+      .from('contract_templates')
+      .insert({ ...payload, org_id: orgId })
+      .select()
+      .single();
+    if (error) { console.error('Error creating contract template:', error); return null; }
+    return data;
+  },
+
+  async update(
+    id: string,
+    payload: Partial<Omit<ContractTemplate, 'id' | 'org_id' | 'created_at' | 'updated_at'>>
+  ): Promise<ContractTemplate | null> {
+    const { data, error } = await supabase
+      .from('contract_templates')
+      .update(payload)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) { console.error('Error updating contract template:', error); return null; }
+    return data;
+  },
+
+  async delete(id: string): Promise<boolean> {
+    const { error } = await supabase
+      .from('contract_templates')
+      .delete()
+      .eq('id', id);
+    if (error) { console.error('Error deleting contract template:', error); return false; }
+    return true;
+  },
+
+  /** Atomically sets a template as default, clearing any previous default for that type. */
+  async setDefault(id: string, orgId: string, templateType: string): Promise<boolean> {
+    // Clear existing default for this type
+    await supabase
+      .from('contract_templates')
+      .update({ is_default: false })
+      .eq('org_id', orgId)
+      .eq('template_type', templateType)
+      .eq('is_default', true);
+    // Set new default
+    const { error } = await supabase
+      .from('contract_templates')
+      .update({ is_default: true })
+      .eq('id', id);
+    if (error) { console.error('Error setting default template:', error); return false; }
+    return true;
+  }
+};
+
+// ============================================================================
 // Contracts API
 // ============================================================================
 
@@ -1405,7 +1499,7 @@ export const contractsApi = {
     templateType: string,
     partyAId: string,
     terms: Record<string, unknown>,
-    options?: { taskId?: string; projectId?: string; partyBId?: string; partyBEmail?: string }
+    options?: { taskId?: string; projectId?: string; partyBId?: string; partyBEmail?: string; templateId?: string }
   ): Promise<Contract | null> {
     // Get org_id from the party A user
     const { data: partyAUser, error: userError } = await supabase
@@ -1424,6 +1518,7 @@ export const contractsApi = {
       .insert({
         org_id: partyAUser.org_id,
         template_type: templateType,
+        template_id: options?.templateId ?? null,
         party_a_id: partyAId,
         party_b_id: options?.partyBId ?? null,
         party_b_email: options?.partyBEmail ?? null,

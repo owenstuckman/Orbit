@@ -236,6 +236,15 @@
 
       loading = false;
 
+      // Initialize native plugins (no-op on web)
+      const loadedUserVal = get(user);
+      if (loadedUserVal) {
+        import('$lib/services/capacitor').then(({ initializePushNotifications, initializeDeepLinks }) => {
+          initializePushNotifications(loadedUserVal.id);
+          initializeDeepLinks();
+        });
+      }
+
       // Check if onboarding should be shown
       checkOnboarding();
 
@@ -248,6 +257,8 @@
   }
 
   async function handleSignOut() {
+    // Clear biometric tokens so next login requires password (then re-enroll)
+    import('$lib/services/capacitor').then(({ clearBiometricSession }) => clearBiometricSession());
     await auth.signOut();
     user.clear();
     organization.clear();

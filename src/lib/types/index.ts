@@ -439,11 +439,38 @@ export interface QCReview {
   reviewer?: User;
 }
 
+export interface ContractTemplateSection {
+  title: string;
+  body: string;
+  order: number;
+}
+
+export interface ContractTemplateVariable {
+  key: string;
+  label: string;
+  required: boolean;
+  default: string | null;
+}
+
+export interface ContractTemplate {
+  id: string;
+  org_id: string;
+  name: string;
+  description: string | null;
+  template_type: string;
+  sections: ContractTemplateSection[];
+  variables: ContractTemplateVariable[];
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Contract {
   id: string;
   org_id: string;
   task_id: string | null;
   project_id: string | null;
+  template_id: string | null;
   template_type: string;
   status: ContractStatus;
   party_a_id: string;
@@ -460,6 +487,7 @@ export interface Contract {
   party_b?: User;
   task?: Task;
   project?: Project;
+  template?: ContractTemplate;
 }
 
 export interface ContractTerms {
@@ -472,6 +500,7 @@ export interface ContractTerms {
   task_description?: string;
   compensation?: number;
   timeline?: string;
+  variable_values?: Record<string, string>;
   [key: string]: unknown;
 }
 

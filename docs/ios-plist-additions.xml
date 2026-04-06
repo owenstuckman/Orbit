@@ -1,0 +1,37 @@
+<!--
+  Add these keys to ios/App/App/Info.plist after running: npx cap add ios
+  Insert them inside the top-level <dict> element.
+-->
+
+<!-- Camera usage descriptions (required by App Store) -->
+<key>NSCameraUsageDescription</key>
+<string>Orbit uses your camera to capture photos for task submissions.</string>
+
+<key>NSPhotoLibraryUsageDescription</key>
+<string>Orbit accesses your photo library to attach images to task submissions.</string>
+
+<key>NSPhotoLibraryAddUsageDescription</key>
+<string>Orbit may save captured photos to your library.</string>
+
+<!-- Push notifications: no extra plist keys needed — handled by Capacitor entitlements -->
+
+<!-- Associated Domains for Universal Links (owenstuckman.lol)
+     Also add applinks:owenstuckman.lol in Xcode → Signing & Capabilities → Associated Domains
+-->
+
+<!-- Deep link custom URL scheme -->
+<key>CFBundleURLTypes</key>
+<array>
+  <dict>
+    <key>CFBundleURLName</key>
+    <string>com.orbit.app</string>
+    <key>CFBundleURLSchemes</key>
+    <array>
+      <string>com.orbit.app</string>
+    </array>
+  </dict>
+</array>
+
+<!-- Biometric authentication description -->
+<key>NSFaceIDUsageDescription</key>
+<string>Orbit uses Face ID to sign you in quickly and securely.</string>

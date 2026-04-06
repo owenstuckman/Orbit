@@ -80,6 +80,13 @@
       color: 'bg-purple-500'
     },
     {
+      title: 'Contract Templates',
+      description: 'Define reusable contract templates with variable slots',
+      href: '/admin/contract-templates',
+      icon: FileText,
+      color: 'bg-green-500'
+    },
+    {
       title: 'Audit Log',
       description: 'View system activity and changes',
       href: '/admin/audit',

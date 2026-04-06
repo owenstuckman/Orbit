@@ -7,7 +7,8 @@
   import { storage } from '$lib/services/supabase';
   import { toasts } from '$lib/stores/notifications';
   import type { Contract } from '$lib/types';
-  import { generateContractorAgreement } from '$lib/services/contractPdf';
+  import { generateContractorAgreement, generateFromTemplate } from '$lib/services/contractPdf';
+  import { contractTemplatesApi } from '$lib/services/api';
   import {
     ArrowLeft,
     FileText,
@@ -159,10 +160,35 @@
         || contract.party_b?.email
         || '';
 
-      // If contract has a task, use the contractor agreement template
-      const task = (contract as any).task;
-      if (task) {
-        const generated = generateContractorAgreement({
+      let generated;
+
+      // If contract has a template_id, use generateFromTemplate
+      if (contract.template_id) {
+        const template = await contractTemplatesApi.getById(contract.template_id);
+        if (!template) {
+          toasts.error('Contract template not found');
+          generatingPdf = false;
+          return;
+        }
+        const variableValues = (contract.terms?.variable_values as Record<string, string>) ?? {};
+        generated = generateFromTemplate(template, variableValues, {
+          contractId: contract.id,
+          partyAName: $user.full_name || $user.email,
+          partyAEmail: $user.email,
+          orgName: $organization.name,
+          partyBName: contractorName,
+          partyBEmail: contractorEmail,
+          createdAt: new Date(contract.created_at)
+        });
+      } else {
+        // Legacy path: task-based hardcoded template
+        const task = (contract as any).task;
+        if (!task) {
+          toasts.error('PDF generation requires a task-based contract or a template');
+          generatingPdf = false;
+          return;
+        }
+        generated = generateContractorAgreement({
           contractId: contract.id,
           contractorName,
           contractorEmail,
@@ -171,16 +197,14 @@
           assignedBy: $user,
           createdAt: new Date(contract.created_at)
         });
+      }
 
-        const pdfPath = await contractsApi.uploadPdf(contract.id, generated.pdf, generated.filename);
-        if (pdfPath) {
-          contract = { ...contract, pdf_path: pdfPath };
-          toasts.success('PDF generated successfully');
-        } else {
-          toasts.error('Failed to save PDF');
-        }
+      const pdfPath = await contractsApi.uploadPdf(contract.id, generated.pdf, generated.filename);
+      if (pdfPath) {
+        contract = { ...contract, pdf_path: pdfPath };
+        toasts.success('PDF generated successfully');
       } else {
-        toasts.error('PDF generation requires a task-based contract');
+        toasts.error('Failed to save PDF');
       }
     } catch (err) {
       console.error('PDF generation failed:', err);

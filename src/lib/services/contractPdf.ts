@@ -40,7 +40,7 @@
  */
 
 import { jsPDF } from 'jspdf';
-import type { Task, Organization, User } from '$lib/types';
+import type { Task, Organization, User, ContractTemplate } from '$lib/types';
 
 /**
  * Input data required for generating contract PDFs.
@@ -494,6 +494,202 @@ export function generateWorkOrder(data: ContractData): GeneratedContract {
     pdf: pdfBlob,
     filename
   };
+}
+
+export interface TemplateContractParties {
+  contractId: string;
+  partyAName: string;
+  partyAEmail: string;
+  orgName: string;
+  partyBName: string;
+  partyBEmail: string;
+  createdAt: Date;
+}
+
+/**
+ * Validates that all required variables in a template are present in the values map.
+ * @returns Array of missing variable keys, or empty array if all required vars are present.
+ */
+export function validateTemplateVariables(
+  template: ContractTemplate,
+  values: Record<string, string>
+): string[] {
+  return template.variables
+    .filter(v => v.required && !values[v.key])
+    .map(v => v.key);
+}
+
+/**
+ * Substitutes `{{variable}}` placeholders in a string with values from the map.
+ * Falls back to the variable's default or leaves the placeholder blank.
+ */
+function substituteVariables(
+  text: string,
+  values: Record<string, string>,
+  defaults: Record<string, string | null>
+): string {
+  return text.replace(/\{\{(\w+)\}\}/g, (_match, key) => {
+    return values[key] ?? defaults[key] ?? '';
+  });
+}
+
+/**
+ * Generates a PDF from a ContractTemplate with variable substitution.
+ *
+ * @param template - The ContractTemplate to render
+ * @param values - Variable key→value map (from user input)
+ * @param parties - Party names, emails, org name, contractId, date
+ * @returns Generated PDF blob and filename
+ */
+export function generateFromTemplate(
+  template: ContractTemplate,
+  values: Record<string, string>,
+  parties: TemplateContractParties
+): GeneratedContract {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 20;
+  const contentWidth = pageWidth - margin * 2;
+  let y = margin;
+
+  const formatDate = (date: Date) =>
+    date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  const checkPageBreak = (needed: number) => {
+    if (y + needed > pageHeight - margin) { doc.addPage(); y = margin; }
+  };
+
+  const addWrappedText = (text: string, fontSize: number, style: 'normal' | 'bold' = 'normal') => {
+    doc.setFontSize(fontSize);
+    doc.setFont('helvetica', style);
+    const lines = doc.splitTextToSize(text, contentWidth);
+    doc.text(lines, margin, y);
+    return (lines.length as number) * (fontSize * 0.4);
+  };
+
+  const addLine = () => {
+    doc.setDrawColor(200, 200, 200);
+    doc.line(margin, y, pageWidth - margin, y);
+    y += 5;
+  };
+
+  // Build defaults map for substitution
+  const defaults: Record<string, string | null> = {};
+  for (const v of template.variables) defaults[v.key] = v.default;
+  // Also inject party/org values automatically
+  const allValues = {
+    org_name: parties.orgName,
+    party_a_name: parties.partyAName,
+    party_b_name: parties.partyBName,
+    contractor_name: parties.partyBName,
+    contractor_email: parties.partyBEmail,
+    ...values
+  };
+
+  // ── Header ──
+  doc.setFillColor(79, 70, 229);
+  doc.rect(0, 0, pageWidth, 40, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(22);
+  doc.setFont('helvetica', 'bold');
+  doc.text(template.name.toUpperCase(), pageWidth / 2, 18, { align: 'center' });
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Contract ID: ${parties.contractId.slice(0, 8).toUpperCase()}`, pageWidth / 2, 28, { align: 'center' });
+  doc.text(`Generated: ${formatDate(parties.createdAt)}`, pageWidth / 2, 34, { align: 'center' });
+
+  y = 55;
+  doc.setTextColor(0, 0, 0);
+
+  // ── Parties ──
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('PARTIES TO THIS AGREEMENT', margin, y);
+  y += 10;
+
+  doc.setFillColor(249, 250, 251);
+  doc.rect(margin, y - 5, contentWidth, 22, 'F');
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('PARTY A (Client)', margin, y);
+  y += 6;
+  doc.setFont('helvetica', 'normal');
+  doc.text(`${parties.partyAName} — ${parties.orgName}`, margin, y);
+  y += 5;
+  doc.text(`Email: ${parties.partyAEmail}`, margin, y);
+  y += 14;
+
+  doc.setFillColor(249, 250, 251);
+  doc.rect(margin, y - 5, contentWidth, 18, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.text('PARTY B (Contractor)', margin, y);
+  y += 6;
+  doc.setFont('helvetica', 'normal');
+  doc.text(`${parties.partyBName} — ${parties.partyBEmail}`, margin, y);
+  y += 14;
+
+  addLine();
+
+  // ── Sections ──
+  const sorted = [...template.sections].sort((a, b) => a.order - b.order);
+  for (let i = 0; i < sorted.length; i++) {
+    const section = sorted[i];
+    const body = substituteVariables(section.body, allValues, defaults);
+    checkPageBreak(30);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`${i + 1}. ${section.title.toUpperCase()}`, margin, y);
+    y += 8;
+    const h = addWrappedText(body, 9.5);
+    y += h + 10;
+  }
+
+  // ── Signatures ──
+  checkPageBreak(60);
+  addLine();
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`${sorted.length + 1}. SIGNATURES`, margin, y);
+  y += 10;
+
+  const sigW = (contentWidth - 10) / 2;
+  const drawSig = (x: number, label: string, name: string, email: string) => {
+    doc.setFillColor(249, 250, 251);
+    doc.rect(x, y, sigW, 45, 'F');
+    doc.setDrawColor(200, 200, 200);
+    doc.rect(x, y, sigW, 45, 'S');
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.text(label, x + 5, y + 8);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Name: ${name}`, x + 5, y + 16);
+    doc.text(`Email: ${email}`, x + 5, y + 22);
+    doc.setDrawColor(150, 150, 150);
+    doc.line(x + 5, y + 35, x + sigW - 10, y + 35);
+    doc.setFontSize(8);
+    doc.text('Signature / Date', x + 5, y + 40);
+  };
+  drawSig(margin, 'PARTY A (Client)', parties.partyAName, parties.partyAEmail);
+  drawSig(margin + sigW + 10, 'PARTY B (Contractor)', parties.partyBName, parties.partyBEmail);
+  y += 55;
+
+  // ── Footer ──
+  doc.setFillColor(243, 244, 246);
+  doc.rect(0, pageHeight - 20, pageWidth, 20, 'F');
+  doc.setFontSize(8);
+  doc.setTextColor(100, 100, 100);
+  doc.text(
+    `Generated by ${parties.orgName} via Orbit Platform`,
+    pageWidth / 2, pageHeight - 12, { align: 'center' }
+  );
+  doc.text(
+    `Contract ID: ${parties.contractId} | Template: ${template.name}`,
+    pageWidth / 2, pageHeight - 7, { align: 'center' }
+  );
+
+  const filename = `contract-${parties.contractId.slice(0, 8)}-${parties.partyBName.replace(/\s+/g, '-').toLowerCase()}.pdf`;
+  return { pdf: doc.output('blob'), filename };
 }
 
 /**

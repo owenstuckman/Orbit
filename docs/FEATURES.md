@@ -20,11 +20,12 @@ Everything that is built, deployed, and functional.
 - Multi-tenant isolation via `org_id` foreign keys
 
 ### API Layer (`src/lib/services/api.ts`)
-8 fully typed API objects with CRUD + domain-specific operations:
+9 fully typed API objects with CRUD + domain-specific operations:
 - `usersApi` — User management, invitations, org memberships, role management
 - `projectsApi` — Project CRUD, PM assignment, bonus calculations
 - `tasksApi` — Task lifecycle, assignments, submissions, external work
 - `qcApi` — Quality control reviews, Shapley value calculations
+- `contractTemplatesApi` — Contract template CRUD, default management
 - `contractsApi` — Contract generation, e-signatures, PDF management
 - `payoutsApi` — Payout tracking, summaries by period
 - `organizationsApi` — Organization settings, feature flags
@@ -231,6 +232,19 @@ Three actions routed through a single Supabase edge function:
 - Dual-signature flow: Party A (employer) → Party B (contractor)
 - External signing route: `/contract/[token]`
 - Contract status: draft → pending_signature → active → completed
+
+### Custom Contract Templates
+- `contract_templates` table with RLS: org-scoped read for all roles, admin-only write
+- Templates define sections (`{title, body, order}`) and variables (`{key, label, required, default}`)
+- `{{variable}}` substitution rendered at PDF generation time
+- `generateFromTemplate()` in `contractPdf.ts` — jsPDF layout with variable substitution
+- `validateTemplateVariables()` — validates required variables before generation
+- `contractTemplatesApi` — `list()`, `getById()`, `getDefault()`, `create()`, `update()`, `delete()`, `setDefault()`
+- Admin UI: `/admin/contract-templates` — list view + `ContractTemplateEditor` component (sections, variables, inline token insert, reorder, default toggle)
+- `contracts.template_id` FK — nullable for backwards compat with legacy task-based contracts
+- `contracts/[id]` PDF generation: checks `template_id` first, falls back to legacy `generateContractorAgreement()`
+- "New Contract" button on contracts page (admin/pm/sales) — template picker + variable fill-in form
+- Org-level default template per type (unique partial index: `WHERE is_default = true`)
 
 ### Contracts Page PDF Loading
 - Contract list loads PDFs directly from Storage bucket (source of truth)
@@ -578,6 +592,39 @@ Role-specific onboarding tutorials shown on first login.
 - **Tables**: All data tables wrapped in `overflow-x-auto` for horizontal scroll
 - **Modals**: Max-width with `mx-4` margin on mobile for consistent padding
 - **Forms**: Full-width inputs, grid layouts collapse to single column on mobile
+
+## Capacitor Native App
+
+Native plugin layer at `src/lib/services/capacitor/` — all plugins no-op on web.
+
+### Push Notifications (`@capacitor/push-notifications`)
+- `initializePushNotifications(userId)` — requests permission, registers with FCM/APNs, stores device token in `users.metadata.push_token`
+- `notifyDevice(userId, title, body, data?)` — calls `send-push` edge function → FCM HTTP API
+- `supabase/functions/send-push/index.ts` — looks up push token, fires FCM; skips silently if `FCM_SERVER_KEY` not set
+- Foreground notifications shown as in-app toasts; tapped notifications navigate via `data.route`
+- Initialized from `(app)/+layout.svelte` after user loads
+
+### Biometric Auth (`@aparajita/capacitor-biometric-auth` + `@capacitor/preferences`)
+- `enrollBiometrics(session)` — stores Supabase session tokens in secure native storage after biometric confirmation
+- `authenticateWithBiometrics()` — prompts Face ID / fingerprint; restores session via `supabase.auth.setSession()`; clears enrollment if tokens expired
+- Login page: auto-attempts biometric on mount (if enrolled); offers enroll after successful password login
+- `clearBiometricSession()` — removes tokens (called on sign out)
+
+### File Access (`@capacitor/camera`)
+- `pickFromCamera(source)` — opens camera or photo gallery; returns `File` blob
+- `pickFileNative()` — opens native file picker (via `CameraSource.Files`)
+- `FileUploadZone.svelte` — detects `isNative()` on mount; shows Camera / Gallery / Files buttons on native; drops through to standard drag-and-drop on web
+
+### Deep Links (`@capacitor/app`)
+- `initializeDeepLinks()` — handles cold-start URL and `appUrlOpen` events
+- Routes `/contract/[token]`, `/submit/[token]`, `/auth/*` to SvelteKit `goto`
+- `capacitor.config.ts` — `androidScheme: https`, `hostname: owenstuckman.lol`
+
+### Build
+- `npm run build:mobile` — `MOBILE_BUILD=true vite build && npx cap sync`
+- Packages: `@capacitor/core`, `@capacitor/cli` (dev), `@capacitor/ios`, `@capacitor/android` (dev)
+- `capacitor.config.ts` — appId `com.orbit.app`, webDir `build`
+- **Remaining** (human): `npx cap add ios/android`, platform permissions in Info.plist / AndroidManifest, app icons, FCM server key secret, Supabase auth redirect URL
 
 ---
 
