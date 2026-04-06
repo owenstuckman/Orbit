@@ -4,9 +4,19 @@ Tasks Claude can complete programmatically. For completed features see `docs/FEA
 
 ---
 
-## Nothing remaining.
+## Roadmap (not yet built)
 
-All code, infrastructure, and configuration tasks have been completed. See `docs/FEATURES.md` for the full feature list and `docs/OPS_RUNBOOK.md` for the current deployment state.
+These are intentional future items from the README roadmap — not started, no code exists:
+
+- [ ] **Mobile app** — Capacitor wrapper for iOS/Android
+- [ ] **Custom contract templates** — Currently only auto-generated contractor agreements via jsPDF. A template editor/system for custom contract types.
+- [ ] **Multi-language support** — i18n infrastructure + translations. All UI currently English-only.
+
+---
+
+## Nothing else remaining.
+
+All other code, infrastructure, and configuration tasks are complete. See `docs/FEATURES.md` for the full feature list and `docs/OPS_RUNBOOK.md` for the current deployment state.
 
 ---
 
