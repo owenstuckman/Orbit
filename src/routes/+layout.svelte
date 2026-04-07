@@ -2,8 +2,7 @@
   import '../app.css';
   import { onMount } from 'svelte';
   import { auth } from '$lib/stores/auth';
-  import { ParaglideJS } from '@inlang/paraglide-sveltekit';
-  import { i18n } from '$lib/i18n';
+  import LocaleProvider from '$lib/components/common/LocaleProvider.svelte';
   import { initializeLocale, LOCALE_STORAGE_KEY, SUPPORTED_LOCALES } from '$lib/stores/locale';
 
   let ready = false;
@@ -24,7 +23,7 @@
   });
 </script>
 
-<ParaglideJS {i18n}>
+<LocaleProvider>
   {#if ready}
     <slot />
   {:else}
@@ -35,4 +34,4 @@
       </div>
     </div>
   {/if}
-</ParaglideJS>
+</LocaleProvider>

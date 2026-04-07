@@ -44,7 +44,7 @@
     if (!$user) return;
     savingLocale = true;
     try {
-      await usersApi.update($user.id, { locale } as never);
+      await usersApi.update($user.id, { locale });
       applyLocale(locale);
       selectedLocale = locale;
       toasts.success(m.saved());

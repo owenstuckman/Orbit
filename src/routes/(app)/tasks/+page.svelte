@@ -2,7 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { goto } from '$app/navigation';
   import { user, capabilities, currentOrgRole } from '$lib/stores/auth';
-  import { features } from '$lib/stores/featureFlags';
+  import { features, featureFlags } from '$lib/stores/featureFlags';
   import { tasks, tasksByStatus, taskCounts } from '$lib/stores/tasks';
   import { projects } from '$lib/stores/projects';
   import { toasts } from '$lib/stores/notifications';
@@ -240,7 +240,7 @@
     }
 
     // Setup real-time subscription (gated by feature flag)
-    if ($features.realtime_updates) {
+    if ($featureFlags.realtime_updates) {
       setupRealtime();
     }
   });

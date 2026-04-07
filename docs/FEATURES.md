@@ -628,6 +628,41 @@ Native plugin layer at `src/lib/services/capacitor/` — all plugins no-op on we
 
 ---
 
+## Multi-Language Support (i18n)
+
+### Infrastructure
+- **Library**: `@inlang/paraglide-sveltekit` — compile-time i18n, zero runtime overhead, tree-shaken per locale
+- `project.inlang/settings.json` configures source language (`en`) and supported tags (`en`, `es`)
+- Vite plugin (`@inlang/paraglide-sveltekit/vite`) auto-compiles messages on dev/build
+- Generated runtime in `src/lib/paraglide/` (messages.js, runtime.js)
+- `src/lib/i18n.ts` — `i18n` instance used by `<ParaglideJS>` root layout wrapper
+
+### Translations
+- `messages/en.json` — ~120 English keys (auth, tasks, dashboard, QC, settings, common labels)
+- `messages/es.json` — Full Spanish translation of all keys
+- Interpolated messages for dynamic values: `level_indicator({ level })`, `bulk_selected({ count })`, `welcome_back({ name })`
+
+### Pages Instrumented
+- `src/routes/auth/login/+page.svelte` — all strings including biometric UI
+- `src/routes/(app)/tasks/+page.svelte` — board header, stat labels, filter/bulk controls, status names
+- `src/lib/components/tasks/TaskCreateModal.svelte` — all form labels and action buttons
+
+### Locale Store (`src/lib/stores/locale.ts`)
+- `resolveLocale(userLocale, orgLocale)` — fallback chain: user pref → org default → browser Accept-Language → `'en'`
+- `applyLocale(locale)` — calls Paraglide `setLanguageTag()` + persists to `localStorage` (`orbit_locale`)
+- `initializeLocale()` — called from app layout after auth loads
+- Root layout seeds locale from `localStorage` immediately on mount (for pre-auth pages, no flash)
+
+### Database
+- `users.locale` column (text, default `'en'`) — personal language preference
+- `organizations.settings.default_locale` (JSONB key) — org-level default
+
+### Settings UI
+- Language button-group picker in `/settings` Appearance section — saves to `users.locale` via `usersApi.update()`
+- Org default locale selector in `/admin/settings` — saved alongside other org settings
+
+---
+
 ## Theming
 
 ### Multi-Theme Support

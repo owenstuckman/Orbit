@@ -11,6 +11,6 @@
 
 export { isNative, getPlatform } from './platform';
 export { initializePushNotifications, notifyDevice } from './pushNotifications';
-export { initializeBiometrics, enrollBiometrics, authenticateWithBiometrics, clearBiometricSession } from './biometrics';
+export { initializeBiometrics, enrollBiometrics, authenticateWithBiometrics, clearBiometricSession, checkBiometricAvailability, isBiometricEnrolled } from './biometrics';
 export { initializeDeepLinks } from './deepLinks';
 export { pickFileNative, pickFromCamera } from './fileAccess';
