@@ -35,7 +35,7 @@
  * ```
  */
 
-import { writable, derived } from 'svelte/store';
+import { writable, derived, get } from 'svelte/store';
 import type { Project, ProjectStatus } from '$lib/types';
 import { projectsApi } from '$lib/services/api';
 import { subscribeToTable } from '$lib/services/supabase';
@@ -47,10 +47,14 @@ import { subscribeToTable } from '$lib/services/supabase';
 /**
  * Projects store state interface.
  */
+const CACHE_TTL_MS = 30_000;
+
 interface ProjectsState {
   items: Project[];
   loading: boolean;
   error: string | null;
+  lastLoaded: number | null;
+  lastFilterKey: string | null;
 }
 
 /**
@@ -63,7 +67,9 @@ function createProjectsStore() {
   const { subscribe, set, update } = writable<ProjectsState>({
     items: [],
     loading: false,
-    error: null
+    error: null,
+    lastLoaded: null,
+    lastFilterKey: null
   });
 
   /** Real-time subscription cleanup function */
@@ -76,7 +82,18 @@ function createProjectsStore() {
      * Loads projects with optional filtering.
      * @param filters - Optional filter by status, pmId, or salesId
      */
-    async load(filters?: { status?: ProjectStatus[]; pmId?: string; salesId?: string }) {
+    async load(filters?: { status?: ProjectStatus[]; pmId?: string; salesId?: string }, force = false) {
+      const filterKey = JSON.stringify(filters || {});
+      if (!force) {
+        const state = get({ subscribe });
+        if (
+          state.lastLoaded &&
+          Date.now() - state.lastLoaded < CACHE_TTL_MS &&
+          state.lastFilterKey === filterKey &&
+          state.items.length > 0
+        ) return;
+      }
+
       update(state => ({ ...state, loading: true, error: null }));
 
       try {
@@ -97,12 +114,12 @@ function createProjectsStore() {
         }
 
         const projects = await projectsApi.list(queryFilters);
-        update(state => ({ ...state, items: projects, loading: false }));
+        update(state => ({ ...state, items: projects, loading: false, lastLoaded: Date.now(), lastFilterKey: filterKey }));
       } catch (error) {
-        update(state => ({ 
-          ...state, 
-          loading: false, 
-          error: error instanceof Error ? error.message : 'Failed to load projects' 
+        update(state => ({
+          ...state,
+          loading: false,
+          error: error instanceof Error ? error.message : 'Failed to load projects'
         }));
       }
     },

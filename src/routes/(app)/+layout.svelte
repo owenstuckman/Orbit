@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { page } from '$app/stores';
+  import { page, navigating } from '$app/stores';
   import { get } from 'svelte/store';
   import {
     auth,
@@ -222,8 +222,11 @@
       // User loaded successfully - clear redirect count
       clearRedirectCount();
 
-      // Load organization
-      const loadedOrg = await organization.load();
+      // Load org and user memberships in parallel
+      const [loadedOrg] = await Promise.all([
+        organization.load(),
+        userOrganizations.load()
+      ]);
 
       if (!loadedOrg) {
         loadError = 'Organization not found';
@@ -231,9 +234,6 @@
         loading = false;
         return;
       }
-
-      // Load user organization memberships (for org-specific roles)
-      await userOrganizations.load();
 
       // Initialize locale (user pref → org default → browser → 'en')
       const orgLocale = (loadedOrg.settings as Record<string, unknown>)?.default_locale as string | null;
@@ -471,6 +471,13 @@ Error: {errorDetails}</pre>
 
     <!-- Main content -->
     <div class="lg:pl-64">
+      <!-- Navigation progress bar -->
+      {#if $navigating}
+        <div class="fixed top-0 left-0 right-0 z-50 h-0.5 bg-indigo-200 dark:bg-indigo-900">
+          <div class="h-full bg-indigo-600 animate-progress-bar"></div>
+        </div>
+      {/if}
+
       <!-- Top bar -->
       <header class="sticky top-0 z-30 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 transition-colors">
         <div class="flex items-center justify-between h-16 px-4 lg:px-8">
@@ -610,7 +617,15 @@ Error: {errorDetails}</pre>
       </header>
 
       <!-- Page content -->
-      <main class="p-4 lg:p-8 bg-slate-50 dark:bg-slate-900 min-h-screen transition-colors">
+      <main class="p-4 lg:p-8 bg-slate-50 dark:bg-slate-900 min-h-screen transition-colors relative">
+        {#if $navigating}
+          <div class="absolute inset-0 z-20 flex items-center justify-center bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-sm">
+            <div class="flex flex-col items-center gap-3">
+              <div class="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+              <p class="text-sm font-medium text-slate-600 dark:text-slate-300">Loading...</p>
+            </div>
+          </div>
+        {/if}
         <slot />
       </main>
     </div>

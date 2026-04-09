@@ -50,11 +50,15 @@ import { subscribeToTable } from '$lib/services/supabase';
  * Tasks store state interface.
  * Tracks items, loading state, errors, and active filters.
  */
+const CACHE_TTL_MS = 30_000; // 30 seconds
+
 interface TasksState {
   items: Task[];
   loading: boolean;
   error: string | null;
   filter: TaskFilter;
+  lastLoaded: number | null;
+  lastFilterKey: string | null;
 }
 
 /**
@@ -82,7 +86,9 @@ function createTasksStore() {
     items: [],
     loading: false,
     error: null,
-    filter: {}
+    filter: {},
+    lastLoaded: null,
+    lastFilterKey: null
   });
 
   /** Real-time subscription cleanup function */
@@ -96,7 +102,20 @@ function createTasksStore() {
      * Replaces current items with filtered results.
      * @param filter - Optional filter configuration
      */
-    async load(filter?: TaskFilter) {
+    async load(filter?: TaskFilter, force = false) {
+      const filterKey = JSON.stringify(filter || {});
+
+      // Return cached data if fresh and filter hasn't changed
+      if (!force) {
+        const state = get({ subscribe });
+        if (
+          state.lastLoaded &&
+          Date.now() - state.lastLoaded < CACHE_TTL_MS &&
+          state.lastFilterKey === filterKey &&
+          state.items.length > 0
+        ) return;
+      }
+
       update(state => ({ ...state, loading: true, error: null, filter: filter || {} }));
 
       try {
@@ -117,12 +136,12 @@ function createTasksStore() {
         }
 
         const tasks = await tasksApi.list(filters);
-        update(state => ({ ...state, items: tasks, loading: false }));
+        update(state => ({ ...state, items: tasks, loading: false, lastLoaded: Date.now(), lastFilterKey: filterKey }));
       } catch (error) {
-        update(state => ({ 
-          ...state, 
-          loading: false, 
-          error: error instanceof Error ? error.message : 'Failed to load tasks' 
+        update(state => ({
+          ...state,
+          loading: false,
+          error: error instanceof Error ? error.message : 'Failed to load tasks'
         }));
       }
     },
@@ -142,17 +161,27 @@ function createTasksStore() {
      * Used for the task board showing tasks a user can accept.
      * @param userLevel - User's current level
      */
-    async loadAvailable(userLevel: number) {
+    async loadAvailable(userLevel: number, force = false) {
+      const filterKey = `available:${userLevel}`;
+      if (!force) {
+        const state = get({ subscribe });
+        if (
+          state.lastLoaded &&
+          Date.now() - state.lastLoaded < CACHE_TTL_MS &&
+          state.lastFilterKey === filterKey &&
+          state.items.length > 0
+        ) return;
+      }
+
       update(state => ({ ...state, loading: true, error: null }));
-      
       try {
         const tasks = await tasksApi.listAvailable(userLevel);
-        update(state => ({ ...state, items: tasks, loading: false }));
+        update(state => ({ ...state, items: tasks, loading: false, lastLoaded: Date.now(), lastFilterKey: filterKey }));
       } catch (error) {
-        update(state => ({ 
-          ...state, 
-          loading: false, 
-          error: error instanceof Error ? error.message : 'Failed to load tasks' 
+        update(state => ({
+          ...state,
+          loading: false,
+          error: error instanceof Error ? error.message : 'Failed to load tasks'
         }));
       }
     },

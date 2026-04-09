@@ -116,8 +116,7 @@
       }
 
       if (role === 'pm') {
-        await projects.loadByPM($user.id);
-        await tasks.load();
+        await Promise.all([projects.loadByPM($user.id), tasks.load()]);
         const activeProjects = $projects.items.filter(p => p.status === 'active');
         pmStats.projectsManaged = activeProjects.length;
         pmStats.totalBudget = $projects.items.reduce((s, p) => s + p.total_value, 0);
@@ -146,10 +145,15 @@
       }
 
       if (role === 'admin') {
-        await tasks.load();
-        await projects.load();
+        const [, , members] = await Promise.all([
+          tasks.load(),
+          projects.load(),
+          usersApi.list({ eq: { org_id: $user.org_id } }).catch(() => [] as typeof orgMembers)
+        ]);
         const allTasks = $tasks.items;
         const allProjects = $projects.items;
+        orgMembers = members;
+        adminStats.totalUsers = members.length;
         adminStats.totalTasks = allTasks.length;
         adminStats.activeProjects = allProjects.filter(p => p.status === 'active').length;
         adminStats.totalValue = allProjects.reduce((s, p) => s + p.total_value, 0);
@@ -157,11 +161,6 @@
         adminStats.pendingQC = allTasks.filter(t => t.status === 'under_review').length;
         adminStats.openTasks = allTasks.filter(t => t.status === 'open').length;
         adminStats.completedTasks = allTasks.filter(t => t.status === 'approved' || t.status === 'paid').length;
-        try {
-          const members = await usersApi.list({ eq: { org_id: $user.org_id } });
-          orgMembers = members;
-          adminStats.totalUsers = members.length;
-        } catch { adminStats.totalUsers = 0; }
       }
 
     } catch (error) {
