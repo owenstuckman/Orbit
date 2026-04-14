@@ -87,6 +87,13 @@
       color: 'bg-green-500'
     },
     {
+      title: 'Payout Management',
+      description: 'Review, approve, and mark payouts as paid',
+      href: '/admin/payouts',
+      icon: DollarSign,
+      color: 'bg-green-500'
+    },
+    {
       title: 'Audit Log',
       description: 'View system activity and changes',
       href: '/admin/audit',

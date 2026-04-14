@@ -1179,50 +1179,70 @@ export const qcApi = {
 
       // Create payout for task assignee on approval
       if (data.passed) {
-        const task = await tasksApi.getById(data.task_id);
+        const [task, org] = await Promise.all([
+          tasksApi.getById(data.task_id),
+          organizationsApi.getCurrent()
+        ]);
         if (task?.assignee_id) {
-          payoutsApi.create({
-            org_id: task.org_id,
-            user_id: task.assignee_id,
-            task_id: task.id,
-            project_id: task.project_id,
-            qc_review_id: data.id,
-            payout_type: 'task',
-            gross_amount: task.dollar_value * (task.urgency_multiplier ?? 1),
-            deductions: 0,
-            net_amount: task.dollar_value * (task.urgency_multiplier ?? 1),
-            calculation_details: {
-              formula: 'dollar_value * urgency_multiplier',
-              inputs: {
-                dollar_value: task.dollar_value,
-                urgency_multiplier: task.urgency_multiplier ?? 1
-              }
-            },
-            status: 'pending'
-          }).catch(err => console.error('Failed to create task payout:', err));
+          const autoApprove = (org?.settings as Record<string, unknown>)?.auto_approve_payouts === true;
+          const payoutStatus = autoApprove ? 'paid' : 'pending';
+          const paidAt = autoApprove ? new Date().toISOString() : null;
+
+          const payoutCreates: Promise<unknown>[] = [
+            payoutsApi.create({
+              org_id: task.org_id,
+              user_id: task.assignee_id,
+              task_id: task.id,
+              project_id: task.project_id,
+              qc_review_id: data.id,
+              payout_type: 'task',
+              gross_amount: task.dollar_value * (task.urgency_multiplier ?? 1),
+              deductions: 0,
+              net_amount: task.dollar_value * (task.urgency_multiplier ?? 1),
+              calculation_details: {
+                formula: 'dollar_value * urgency_multiplier',
+                inputs: {
+                  dollar_value: task.dollar_value,
+                  urgency_multiplier: task.urgency_multiplier ?? 1
+                }
+              },
+              status: payoutStatus,
+              ...(paidAt ? { paid_at: paidAt } : {})
+            })
+          ];
 
           // Create QC reviewer payout
           if (data.d_k && data.d_k > 0) {
-            payoutsApi.create({
-              org_id: task.org_id,
-              user_id: data.reviewer_id,
-              task_id: task.id,
-              qc_review_id: data.id,
-              payout_type: 'qc',
-              gross_amount: data.d_k,
-              deductions: 0,
-              net_amount: data.d_k,
-              calculation_details: {
-                formula: 'd_k = β * p0 * V * γ^(k-1) * weight',
-                inputs: {
-                  d_k: data.d_k,
-                  pass_number: data.pass_number ?? 1,
-                  weight: data.weight ?? 1
-                }
-              },
-              status: 'pending'
-            }).catch(err => console.error('Failed to create QC payout:', err));
+            payoutCreates.push(
+              payoutsApi.create({
+                org_id: task.org_id,
+                user_id: data.reviewer_id,
+                task_id: task.id,
+                qc_review_id: data.id,
+                payout_type: 'qc',
+                gross_amount: data.d_k,
+                deductions: 0,
+                net_amount: data.d_k,
+                calculation_details: {
+                  formula: 'd_k = β * p0 * V * γ^(k-1) * weight',
+                  inputs: {
+                    d_k: data.d_k,
+                    pass_number: data.pass_number ?? 1,
+                    weight: data.weight ?? 1
+                  }
+                },
+                status: payoutStatus,
+                ...(paidAt ? { paid_at: paidAt } : {})
+              })
+            );
           }
+
+          const payoutResults = await Promise.allSettled(payoutCreates);
+          payoutResults.forEach((result, i) => {
+            if (result.status === 'rejected') {
+              console.error(`Failed to create payout [${i}]:`, result.reason);
+            }
+          });
 
           // Check and award badges (fire-and-forget, DB trigger handles XP/streak/level)
           if (task.assignee_id) {
@@ -1819,6 +1839,50 @@ export const payoutsApi = {
    * @param period - Optional time period filter ('week', 'month', 'year')
    * @returns Summary with total paid, pending, and breakdown by type
    */
+  /**
+   * Lists all payouts for the current org (admin only).
+   * Ordered by created_at descending.
+   */
+  async listAll(filters?: { status?: string; limit?: number }): Promise<Payout[]> {
+    let query = supabase
+      .from('payouts')
+      .select('*, user:users(id, full_name, email, role), task:tasks(id, title)');
+
+    if (filters?.status) {
+      query = query.eq('status', filters.status);
+    }
+
+    query = query.order('created_at', { ascending: false }).limit(filters?.limit ?? 200);
+
+    const { data, error } = await query;
+    if (error) {
+      console.error('Error fetching all payouts:', error);
+      return [];
+    }
+    return data ?? [];
+  },
+
+  /**
+   * Updates a payout record (e.g. mark as paid).
+   * @param id - Payout UUID
+   * @param updates - Fields to update
+   * @returns Updated payout, or null on error
+   */
+  async update(id: string, updates: Partial<Payout>): Promise<Payout | null> {
+    const { data, error } = await supabase
+      .from('payouts')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating payout:', error);
+      return null;
+    }
+    return data;
+  },
+
   async getSummary(userId: string, period?: 'week' | 'month' | 'year'): Promise<{
     total: number;
     pending: number;

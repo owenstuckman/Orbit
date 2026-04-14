@@ -29,21 +29,47 @@ Employee submits work (submission_data + artifacts)
                          ↓                 ↓
                   qc_reviews record   qc_reviews record
                   (passed=true)       (passed=false)
-                  status → approved   status → rejected
+                  Task → approved     Task → rejected
                          ↓            Employee reworks
-                  Payout calculated    and resubmits
-                  status → paid              ↓
-                                      Next QC pass (k+1)
-                                      d_k = d_1 * γ^(k-1)
+                  Two payouts auto-    and resubmits
+                  created (pending):         ↓
+                    • task payout      Next QC pass (k+1)
+                    • qc payout        d_k = d_1 * γ^(k-1)
+                         ↓
+                  Admin reviews in /admin
+                  advances payout status:
+                  pending → approved → paid
 ```
+
+### Payout Status Lifecycle
+
+Payouts have three statuses. Transitions are **manual admin actions** — there is no automatic promotion between states.
+
+| Status | Meaning | Who sets it | When |
+|---|---|---|---|
+| `pending` | Payout record created, awaiting admin review | System (auto on QC approval) | Immediately after QC reviewer approves a task |
+| `approved` | Admin has verified the amount and authorised payment | Admin | After reviewing the payout in `/admin` |
+| `paid` | Money has been transferred to the worker | Admin | After completing the actual bank/payroll transfer; `paid_at` is stamped |
+
+**What is created on QC approval:**
+- **Task payout** — `gross = dollar_value × urgency_multiplier`, for the task assignee
+- **QC payout** — `gross = d_k` (Shapley marginal), for the QC reviewer (only if `d_k > 0`)
+
+Both start as `pending`. The `/payouts` page shows the worker their own payouts. Admins need a payout management UI (not yet built) to advance statuses — currently done via `payoutsApi.update(id, { status: 'approved' })` / `payoutsApi.update(id, { status: 'paid', paid_at: new Date().toISOString() })`.
+
+**Summary card logic in `/payouts`:**
+- **Total Earned** — sum of `net_amount` where `status = 'paid'` in the selected period
+- **Pending** — sum of `net_amount` where `status = 'pending'`
+- `approved` records are not surfaced in either summary card (they show in the history list)
 
 ### Key Files
 - **Task submission UI**: `src/routes/(app)/tasks/[id]/+page.svelte`
 - **QC AI edge function**: `supabase/functions/qc-ai-review/index.ts`
 - **QC review UI**: `src/routes/(app)/qc/+page.svelte`, `src/lib/components/tasks/QCReviewForm.svelte`
+- **Payout page**: `src/routes/(app)/payouts/+page.svelte`
 - **Payout calculations**: `src/lib/utils/payout.ts`
-- **Task API methods**: `tasksApi.submitTask()`, `tasksApi.updateStatus()` in `src/lib/services/api.ts`
-- **QC API methods**: `qcApi.createReview()`, `qcApi.listReviewsForTask()` in `src/lib/services/api.ts`
+- **Payout API**: `payoutsApi.create()`, `payoutsApi.update()`, `payoutsApi.listByUser()`, `payoutsApi.getSummary()` in `src/lib/services/api.ts`
+- **RLS policies**: INSERT allowed for `qc` and `admin` roles; UPDATE allowed for `admin` only
 
 ### Shapley Value Calculation (per QC pass)
 ```
@@ -55,7 +81,7 @@ Where:
   p_0 = ML confidence score (0.0-1.0)
   β   = qc_beta (org default: 0.25)
   γ   = qc_gamma (org default: 0.4)
-  k   = pass number (1-indexed)
+  k   = pass number (1-indexed, AI review is pass 0 and excluded)
 ```
 
 See: `docs/FORMULAS.md` for full mathematical reference.

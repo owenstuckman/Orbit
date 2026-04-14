@@ -194,6 +194,8 @@ export type FeatureFlagPreset = 'all_features' | 'standard' | 'minimal' | 'none'
 
 export interface OrganizationSettings {
   feature_flags?: Partial<FeatureFlags>;
+  /** When true, payouts are automatically set to 'paid' on creation — no manual admin approval step */
+  auto_approve_payouts?: boolean;
   [key: string]: unknown;
 }
 

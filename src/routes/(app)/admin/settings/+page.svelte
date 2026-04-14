@@ -37,6 +37,7 @@
     pm_x: 0.5,
     pm_overdraft_penalty: 1.5,
     allow_external_assignment: true,
+    auto_approve_payouts: false,
     slack_webhook_url: '',
     default_locale: 'en'
   };
@@ -69,6 +70,7 @@
           pm_x: org.pm_x,
           pm_overdraft_penalty: org.pm_overdraft_penalty,
           allow_external_assignment: org.allow_external_assignment ?? true,
+          auto_approve_payouts: (org.settings as Record<string, unknown>)?.auto_approve_payouts as boolean ?? false,
           slack_webhook_url: (org.settings as Record<string, unknown>)?.slack_webhook_url as string || '',
           default_locale: (org.settings as Record<string, unknown>)?.default_locale as string || 'en'
         };
@@ -97,6 +99,7 @@
         pm_overdraft_penalty: form.pm_overdraft_penalty,
         allow_external_assignment: form.allow_external_assignment,
         settings: {
+          auto_approve_payouts: form.auto_approve_payouts,
           slack_webhook_url: form.slack_webhook_url || null,
           default_locale: form.default_locale || 'en'
         }
@@ -206,6 +209,35 @@
         >
           <span
             class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out {form.allow_external_assignment ? 'translate-x-5' : 'translate-x-0'}"
+          />
+        </button>
+      </div>
+    </div>
+
+    <!-- Payout Approval Settings -->
+    <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+      <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+        <DollarSign size={20} class="text-slate-400 dark:text-slate-500" />
+        Payout Approval
+      </h2>
+
+      <div class="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+        <div>
+          <p class="font-medium text-slate-900 dark:text-white">Auto-Approve Payouts</p>
+          <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            When enabled, payouts are marked <span class="font-medium text-green-600 dark:text-green-400">paid</span> immediately on QC approval — no manual review step.
+            When disabled, payouts start as <span class="font-medium text-amber-600 dark:text-amber-400">pending</span> and must be approved in <a href="/admin/payouts" class="underline hover:text-slate-700 dark:hover:text-slate-200">Admin → Payouts</a>.
+          </p>
+        </div>
+        <button
+          type="button"
+          on:click={() => form.auto_approve_payouts = !form.auto_approve_payouts}
+          class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 {form.auto_approve_payouts ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-600'}"
+          role="switch"
+          aria-checked={form.auto_approve_payouts}
+        >
+          <span
+            class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out {form.auto_approve_payouts ? 'translate-x-5' : 'translate-x-0'}"
           />
         </button>
       </div>
