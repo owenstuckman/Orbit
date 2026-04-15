@@ -142,7 +142,21 @@ All other code, infrastructure, and configuration tasks are complete. See `docs/
 
 ---
 
+---
+
 ## Completed
+
+### Payout System (2026-04-14)
+- [x] **Payout RLS fix** — Added `payouts_insert_qc_admin` (INSERT for qc+admin) and `payouts_update_admin` (UPDATE for admin) policies. Root cause: payouts table had only SELECT policies; all `payoutsApi.create()` calls were silently rejected.
+- [x] **`payoutsApi.update(id, updates)`** — New method for updating payout status/paid_at
+- [x] **`payoutsApi.listAll(filters?)`** — Admin-only; fetches all org payouts with joined user + task
+- [x] **Auto-approve payouts toggle** — `organizations.settings.auto_approve_payouts` boolean. When true, `qcApi.create()` sets payout status to `paid` (with `paid_at`) at creation time instead of `pending`. Toggle in `/admin/settings` under Payout Approval section.
+- [x] **Admin payout management page** — `/admin/payouts`: full org payout table, per-row Approve/Mark Paid actions, bulk Approve All / Mark All Paid, summary cards (pending/approved/all-time paid), filter tabs. Linked from admin index.
+- [x] **Payout creation error handling** — Replaced fire-and-forget `.catch()` with `Promise.allSettled()` so task + QC payouts are created in parallel and failures are individually logged.
+
+### Performance & UX (2026-04-14)
+- [x] **Navigation loading screen** — `$navigating` store drives a slim progress bar at top of viewport + frosted-glass spinner overlay on content area during page transitions. Keyframe `progressBar` in `app.css`.
+- [x] **Parallelized dashboard fetches** — Admin dashboard: tasks + projects + users via `Promise.all`. PM dashboard: projects + tasks via `Promise.all`.
 
 ### Ops / Configuration
 - [x] Set `RESEND_API_KEY` and `EMAIL_FROM` Supabase secrets

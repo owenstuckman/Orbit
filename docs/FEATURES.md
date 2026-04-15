@@ -27,7 +27,7 @@ Everything that is built, deployed, and functional.
 - `qcApi` — Quality control reviews, Shapley value calculations
 - `contractTemplatesApi` — Contract template CRUD, default management
 - `contractsApi` — Contract generation, e-signatures, PDF management
-- `payoutsApi` — Payout tracking, summaries by period
+- `payoutsApi` — Payout tracking, summaries by period, admin management (`create`, `update`, `listByUser`, `listAll`, `getSummary`)
 - `organizationsApi` — Organization settings, feature flags
 - `guestProjectsApi` — Trial/demo projects for unauthenticated users
 
@@ -184,8 +184,11 @@ Three actions routed through a single Supabase edge function:
 - QC approval automatically creates payout records via `payoutsApi.create()`:
   - **Task payout** for assignee: `dollar_value * urgency_multiplier`
   - **QC payout** for reviewer: Shapley `d_k` value
-- Both payouts created as `pending` status
-- Email notification sent to payout recipient
+- Both payouts run in parallel via `Promise.allSettled` — one failure doesn't block the other
+- Payout status on creation depends on org setting:
+  - `auto_approve_payouts = true` → status `paid`, `paid_at` stamped immediately
+  - `auto_approve_payouts = false` → status `pending`, requires admin action in `/admin/payouts`
+- Email notification sent to payout recipient (fire-and-forget)
 
 ---
 
@@ -208,14 +211,40 @@ Three actions routed through a single Supabase edge function:
 
 ### Payout Infrastructure
 - `payoutsApi.create()` — Creates payout record with email notification (fire-and-forget)
+- `payoutsApi.update(id, updates)` — Updates payout fields (status, paid_at); used by admin approval flow
+- `payoutsApi.listAll(filters?)` — Admin-only; fetches all org payouts with joined user + task data
+- `payoutsApi.listByUser(userId)` — Per-user payout history
+- `payoutsApi.getSummary(userId, period)` — Aggregated totals by status and type
 - Auto-creates task payout + QC reviewer payout on QC approval (`qcApi.create()`)
-- `payout-calculator` edge function (called from `api.ts`, source not in repo)
 - Client-side calculation utilities in `payout.ts`
-- Payout tracking page at `/payouts` with:
-  - Type filter (task, qc, salary, bonus, commission)
-  - Status filter (pending, approved, paid)
-  - Period-based summaries (week/month/year)
-  - CSV export
+
+### RLS Policies (payouts table)
+- `payouts_self_read` / `payouts_admin_read` — SELECT for owner and admin
+- `payouts_insert_qc_admin` — INSERT for `qc` and `admin` roles within their org
+- `payouts_update_admin` — UPDATE for `admin` role only within their org
+
+### Payout Status Lifecycle
+`pending` → `approved` → `paid` — all transitions are manual admin actions (no auto-promotion)
+- **pending**: auto-set on QC approval
+- **approved**: admin verified the amount
+- **paid**: admin confirms transfer; `paid_at` stamped
+- With `auto_approve_payouts` enabled: skips pending/approved, creates directly as `paid`
+
+### Payout Tracking Page (`/payouts`)
+- Type filter (task, qc, pm_bonus, sales_commission)
+- Status filter (pending, approved, paid)
+- Period-based summaries (week/month/year)
+- Summary cards: Total Earned (paid only), Pending, Avg per Task
+- Earnings by type breakdown with click-to-filter
+- CSV export
+
+### Admin Payout Management (`/admin/payouts`)
+- Full org-wide payout table with recipient, role, task, type, amount, date, status
+- Per-row actions: **Approve** (pending → approved), **Mark Paid** (→ paid, stamps paid_at)
+- Bulk header actions: **Approve all pending**, **Mark all paid** (pending + approved)
+- Summary cards: Pending total, Approved total, All-time paid total
+- Filter tabs: All / Pending / Approved / Paid
+- Auto-refresh button
 
 ---
 
@@ -373,6 +402,7 @@ Three actions routed through a single Supabase edge function:
 ### Organization Management
 - Organization settings page at `/admin/settings`
 - Payout parameter configuration (qc_beta, qc_gamma, pm_x, overdraft_penalty, r_bounds)
+- **Auto-approve payouts toggle** — when ON, QC-approved payouts are immediately `paid`; when OFF, they queue in `/admin/payouts` for manual approval (stored in `organizations.settings.auto_approve_payouts`)
 - Feature flags panel
 
 ### User Management
@@ -380,6 +410,10 @@ Three actions routed through a single Supabase edge function:
 - Invite users with role assignment
 - Role change via `update_user_role` RPC
 - Invite confirmation modal
+
+### Payout Management
+- Admin payout management page at `/admin/payouts` (see Payout System section for full detail)
+- Linked from admin index card
 
 ### Audit Log
 - Audit log viewer at `/admin/audit` with real database queries
@@ -409,7 +443,7 @@ Three actions routed through a single Supabase edge function:
 - `/projects` — Project list
 - `/projects/[id]` — Project management
 - `/qc` — QC review queue
-- `/payouts` — Payout history
+- `/payouts` — Payout history (worker view)
 - `/contracts` — Contract management
 - `/contracts/[id]` — Contract detail
 - `/analytics` — Organization analytics
@@ -421,6 +455,8 @@ Three actions routed through a single Supabase edge function:
 - `/admin` — Admin dashboard
 - `/admin/users` — User management
 - `/admin/settings` — Organization settings
+- `/admin/payouts` — Admin payout management (approve/pay)
+- `/admin/contract-templates` — Contract template management
 - `/admin/audit` — Audit log
 
 ### Public
@@ -582,6 +618,20 @@ Role-specific onboarding tutorials shown on first login.
 
 ---
 
+## Navigation & Performance
+
+### Page Transition Loading Screen
+- **Progress bar** — slim indigo bar at top of viewport during `$navigating` (SvelteKit built-in store); animates 0→95% via CSS keyframe `progressBar`, disappears on page load
+- **Content overlay** — frosted-glass backdrop with spinner over the main content area during navigation; old page dims rather than flashing blank
+- Both gated on `$navigating` — zero cost when idle
+- `animate-progress-bar` keyframe defined in `src/app.css`
+
+### Parallelized Data Fetching
+- Admin dashboard: tasks, projects, and user list fetched via `Promise.all` (was sequential — 3 round trips)
+- PM dashboard: projects and tasks fetched via `Promise.all` (was sequential)
+
+---
+
 ## Mobile Responsiveness
 
 - **Sidebar**: Collapsible on mobile (< lg breakpoint), slide-in with overlay backdrop
@@ -724,6 +774,14 @@ Future themes (e.g. `midnight`, `solarized`) can be added by:
 1. **Contracts page empty** — `contractsApi.list()` silently returned `[]` when RLS blocked DB records. Fixed by loading contract list from Storage bucket (`contracts/{org_id}/`) and supplementing with DB data. Contracts now always visible if the PDF exists in storage.
 2. **`generate-contract` edge function removed** — `contractsApi.create()` was calling a non-existent edge function. Replaced with direct Supabase insert. Client-side jsPDF handles PDF generation and uploads to Storage.
 3. **TypeScript error in contracts page** — `downloadPdf(pdfViewerContract!)` non-null assertion inside Svelte event handler caused svelte-check failure. Fixed with explicit null guard.
+
+---
+
+## Bug Fixes (2026-04-14 Session)
+
+1. **Payouts never written to DB** — `payouts` table had no INSERT or UPDATE RLS policies. Every `payoutsApi.create()` call was silently rejected by Postgres; the `.catch()` in `qcApi.create()` swallowed the error. Added `payouts_insert_qc_admin` (INSERT) and `payouts_update_admin` (UPDATE) policies via migration.
+2. **DATA_FLOWS.md payout diagram wrong** — doc said `status → paid` immediately after QC approval. Corrected to show the real three-state flow (`pending → approved → paid`) with full status lifecycle table.
+3. **Payout creation error swallowing** — Replaced fire-and-forget `.catch()` with `Promise.allSettled()` so both payout creates (task + QC) run in parallel and individual failures are logged with context.
 
 ---
 
