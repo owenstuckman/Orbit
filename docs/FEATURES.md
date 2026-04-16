@@ -765,7 +765,7 @@ Future themes (e.g. `midnight`, `solarized`) can be added by:
 1. **SMTP** — Supabase Auth custom SMTP configured via management API (`smtp.resend.com:465`, user=`resend`). All email subjects updated to Orbit branding.
 2. **Auth email templates** — Orbit-branded HTML for recovery, invite, and email-change pushed via `supabase config push`. Templates live in `supabase/templates/`, referenced from `supabase/config.toml`.
 3. **ML API live** — `orbitqcml.onrender.com` returning real confidence breakdowns. `ML_API_URL` + `ML_API_KEY` Supabase secrets set. Edge function redeployed.
-4. **DNS** — DKIM already set (`resend._domainkey.owenstuckman.lol`). SPF + DMARC pending (add at Porkbun — see `docs/TODO.md`).
+4. **DNS** — DKIM set (`resend._domainkey.owenstuckman.lol`). SPF + DMARC added to Porkbun on 2026-04-15 (propagating — see `docs/HUMAN_TODO.md`).
 
 ---
 
@@ -774,6 +774,13 @@ Future themes (e.g. `midnight`, `solarized`) can be added by:
 1. **Contracts page empty** — `contractsApi.list()` silently returned `[]` when RLS blocked DB records. Fixed by loading contract list from Storage bucket (`contracts/{org_id}/`) and supplementing with DB data. Contracts now always visible if the PDF exists in storage.
 2. **`generate-contract` edge function removed** — `contractsApi.create()` was calling a non-existent edge function. Replaced with direct Supabase insert. Client-side jsPDF handles PDF generation and uploads to Storage.
 3. **TypeScript error in contracts page** — `downloadPdf(pdfViewerContract!)` non-null assertion inside Svelte event handler caused svelte-check failure. Fixed with explicit null guard.
+
+---
+
+## Production Verification (2026-04-16)
+
+1. **QC ML scoring** — End-to-end verified live. QC page shows real confidence breakdowns (completeness, quality, requirements_met) from `orbitqcml.onrender.com`. Confirmed not falling back to the flat 80% default.
+2. **DNS records** — SPF and DMARC added to Porkbun on 2026-04-15, propagating. DKIM was already set. Full email delivery stack in place once propagation completes.
 
 ---
 
