@@ -3,7 +3,7 @@
   import { contractTemplatesApi } from '$lib/services/api';
   import { toasts } from '$lib/stores/notifications';
   import type { ContractTemplate, ContractTemplateSection, ContractTemplateVariable } from '$lib/types';
-  import { Plus, Trash2, GripVertical, ArrowUp, ArrowDown, Save, X } from 'lucide-svelte';
+  import { Plus, Trash2, ArrowUp, ArrowDown, Save, X, Eye, Edit2 } from 'lucide-svelte';
 
   export let template: ContractTemplate | null = null;
   export let orgId: string;
@@ -16,6 +16,7 @@
   let templateType = template?.template_type ?? 'contractor';
   let isDefault = template?.is_default ?? false;
   let saving = false;
+  let activeTab: 'editor' | 'preview' = 'editor';
 
   // Deep-copy sections / variables so we don't mutate the prop
   let sections: ContractTemplateSection[] = template?.sections
@@ -25,6 +26,32 @@
   let variables: ContractTemplateVariable[] = template?.variables
     ? template.variables.map(v => ({ ...v }))
     : [];
+
+  // Preview sample values — seeded from variable defaults
+  let previewValues: Record<string, string> = {};
+  $: {
+    const next: Record<string, string> = {};
+    for (const v of variables) {
+      next[v.key] = previewValues[v.key] ?? v.default ?? '';
+    }
+    previewValues = next;
+  }
+
+  // Built-in tokens always available in preview
+  const builtinPreview: Record<string, string> = {
+    org_name: 'Archimedes Society',
+    party_a_name: 'Archimedes Society',
+    party_b_name: 'Jane Contractor',
+    contractor_name: 'Jane Contractor',
+    contractor_email: 'jane@example.com',
+  };
+
+  function substitutePreview(text: string): string {
+    const merged = { ...builtinPreview, ...previewValues };
+    return text.replace(/\{\{(\w+)\}\}/g, (_m, key) => merged[key] ?? `{{${key}}}`);
+  }
+
+  $: previewDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
   const templateTypes = [
     { value: 'contractor', label: 'Contractor Agreement' },
@@ -123,17 +150,40 @@
 </script>
 
 <div class="space-y-6">
+  <!-- Header -->
   <div class="flex items-center gap-4">
     <div class="flex-1">
       <h2 class="text-xl font-bold text-slate-900 dark:text-white">
         {template ? 'Edit Template' : 'New Contract Template'}
       </h2>
     </div>
+
+    <!-- Tab switcher -->
+    <div class="flex bg-slate-100 dark:bg-slate-700 rounded-lg p-1">
+      <button
+        on:click={() => activeTab = 'editor'}
+        class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors
+          {activeTab === 'editor' ? 'bg-white dark:bg-slate-600 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}"
+      >
+        <Edit2 size={14} />
+        Editor
+      </button>
+      <button
+        on:click={() => activeTab = 'preview'}
+        class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors
+          {activeTab === 'preview' ? 'bg-white dark:bg-slate-600 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}"
+      >
+        <Eye size={14} />
+        Preview
+      </button>
+    </div>
+
     <button on:click={() => dispatch('cancel')} class="p-2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
       <X size={20} />
     </button>
   </div>
 
+  {#if activeTab === 'editor'}
   <!-- Basic info -->
   <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5 space-y-4">
     <h3 class="font-medium text-slate-900 dark:text-white">Basic Info</h3>
@@ -316,6 +366,110 @@
       </div>
     {/if}
   </div>
+
+  {:else}
+  <!-- ── Preview Tab ── -->
+  <div class="space-y-4">
+    <!-- Variable inputs -->
+    {#if variables.length > 0}
+      <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+        <h3 class="font-medium text-slate-900 dark:text-white mb-3 text-sm">Sample Variable Values</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {#each variables as v}
+            {#if v.key.trim()}
+              <div>
+                <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
+                  {v.label || v.key}
+                  {#if v.required}<span class="text-red-400 ml-0.5">*</span>{/if}
+                </label>
+                <input
+                  bind:value={previewValues[v.key]}
+                  type="text"
+                  placeholder={v.default ?? `{{${v.key}}}`}
+                  class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+            {/if}
+          {/each}
+        </div>
+        <p class="mt-3 text-xs text-slate-400 dark:text-slate-500">Built-in tokens (org_name, party_b_name, etc.) are filled with sample values automatically.</p>
+      </div>
+    {/if}
+
+    <!-- Document preview -->
+    <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+      <div class="px-5 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+        <span class="text-sm font-medium text-slate-600 dark:text-slate-400">Document Preview</span>
+        <span class="text-xs text-slate-400 dark:text-slate-500">Updates live as you type</span>
+      </div>
+
+      <!-- Simulated A4 document -->
+      <div class="p-6 bg-slate-50 dark:bg-slate-900/50">
+        <div class="max-w-2xl mx-auto bg-white dark:bg-slate-800 shadow-sm rounded border border-slate-200 dark:border-slate-700">
+          <!-- PDF header band -->
+          <div class="bg-indigo-600 rounded-t px-8 py-6 text-white">
+            <p class="text-xs uppercase tracking-widest opacity-70 mb-1">{builtinPreview.org_name}</p>
+            <h1 class="text-xl font-bold">{name || 'Untitled Template'}</h1>
+            <p class="text-indigo-200 text-sm mt-1">{previewDate}</p>
+          </div>
+
+          <!-- Parties block -->
+          <div class="px-8 py-5 border-b border-slate-100 dark:border-slate-700 grid grid-cols-2 gap-6 text-sm">
+            <div>
+              <p class="text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">Party A</p>
+              <p class="font-semibold text-slate-900 dark:text-white">{builtinPreview.org_name}</p>
+            </div>
+            <div>
+              <p class="text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">Party B</p>
+              <p class="font-semibold text-slate-900 dark:text-white">{builtinPreview.party_b_name}</p>
+              <p class="text-slate-500 dark:text-slate-400">{builtinPreview.contractor_email}</p>
+            </div>
+          </div>
+
+          <!-- Sections -->
+          <div class="px-8 py-6 space-y-6">
+            {#if sections.length === 0}
+              <p class="text-slate-400 dark:text-slate-500 text-sm text-center py-6 italic">No sections defined yet. Add sections in the Editor tab.</p>
+            {:else}
+              {#each sections as section, i}
+                <div>
+                  <h2 class="text-sm font-bold text-slate-900 dark:text-white mb-2">
+                    {i + 1}. {substitutePreview(section.title || 'Untitled Section')}
+                  </h2>
+                  <p class="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
+                    {substitutePreview(section.body || '')}
+                  </p>
+                  {#if !section.body}
+                    <p class="text-xs text-slate-400 dark:text-slate-500 italic">(empty body)</p>
+                  {/if}
+                </div>
+                {#if i < sections.length - 1}
+                  <hr class="border-slate-100 dark:border-slate-700" />
+                {/if}
+              {/each}
+            {/if}
+          </div>
+
+          <!-- Signatures block -->
+          <div class="px-8 py-6 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/30 rounded-b">
+            <div class="grid grid-cols-2 gap-8 text-sm">
+              <div>
+                <p class="text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-3">Party A Signature</p>
+                <div class="h-10 border-b-2 border-slate-300 dark:border-slate-600 mb-1"></div>
+                <p class="text-slate-500 dark:text-slate-400">{builtinPreview.org_name}</p>
+              </div>
+              <div>
+                <p class="text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-3">Party B Signature</p>
+                <div class="h-10 border-b-2 border-slate-300 dark:border-slate-600 mb-1"></div>
+                <p class="text-slate-500 dark:text-slate-400">{builtinPreview.party_b_name}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {/if}
 
   <!-- Actions -->
   <div class="flex items-center justify-end gap-3">

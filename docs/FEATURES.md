@@ -270,6 +270,7 @@ Three actions routed through a single Supabase edge function:
 - `validateTemplateVariables()` — validates required variables before generation
 - `contractTemplatesApi` — `list()`, `getById()`, `getDefault()`, `create()`, `update()`, `delete()`, `setDefault()`
 - Admin UI: `/admin/contract-templates` — list view + `ContractTemplateEditor` component (sections, variables, inline token insert, reorder, default toggle)
+- **Live preview pane** — Editor/Preview tab toggle in `ContractTemplateEditor`; Preview tab shows sample value inputs (seeded from defaults) + a rendered document with live `{{variable}}` substitution; built-in tokens (`org_name`, `party_b_name`, etc.) auto-filled; unresolved tokens shown as `{{key}}`; document layout mirrors the real PDF (header band, parties, numbered sections, signature lines)
 - `contracts.template_id` FK — nullable for backwards compat with legacy task-based contracts
 - `contracts/[id]` PDF generation: checks `template_id` first, falls back to legacy `generateContractorAgreement()`
 - "New Contract" button on contracts page (admin/pm/sales) — template picker + variable fill-in form

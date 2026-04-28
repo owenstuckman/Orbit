@@ -3,11 +3,24 @@
   import { goto } from '$app/navigation';
   import { supabase } from '$lib/services/supabase';
 
-  let checking = true;
-
   onMount(async () => {
+    // Supabase email links land here with tokens in the URL hash.
+    // Intercept before getSession() so the hash is preserved on the target page.
+    const hash = window.location.hash;
+    if (hash.includes('access_token')) {
+      const params = new URLSearchParams(hash.slice(1));
+      const type = params.get('type');
+      if (type === 'signup' || type === 'invite') {
+        await goto(`/auth/complete-registration${hash}`, { replaceState: true });
+        return;
+      }
+      if (type === 'recovery') {
+        await goto(`/auth/update-password${hash}`, { replaceState: true });
+        return;
+      }
+    }
+
     const { data: { session } } = await supabase.auth.getSession();
-    
     if (session) {
       goto('/dashboard');
     } else {

@@ -51,6 +51,7 @@ Then in Xcode:
 - [x] `RESEND_API_KEY` and `EMAIL_FROM` secrets set in Supabase
 - [x] Supabase Auth custom SMTP configured (`smtp.resend.com:465`)
 - [x] All 4 auth email templates Orbit-branded (confirm, recovery, invite, email-change)
+- [x] Confirmation email fixed (2026-04-27) — link now points to `iioocrhatrimnsrapphv.supabase.co/auth/v1/verify` with `redirect_to=/auth/complete-registration`; was incorrectly pointing at `orbit-sandy.vercel.app`
 - [x] DKIM record set (`resend._domainkey.owenstuckman.lol`)
 - [x] SPF record added to Porkbun (2026-04-15) — `v=spf1 include:_spf.resend.com ~all`
 - [x] DMARC record added to Porkbun (2026-04-15) — `v=DMARC1; p=none; rua=mailto:dmarc@owenstuckman.lol`
