@@ -23,6 +23,18 @@
   let selectedPreset: FeatureFlagPreset = 'standard';
 
   onMount(async () => {
+    // If the URL has hash tokens from email confirmation, set the session explicitly
+    // before calling getUser() — the Supabase client may not have processed the hash yet.
+    const hash = window.location.hash;
+    if (hash.includes('access_token')) {
+      const params = new URLSearchParams(hash.slice(1));
+      const accessToken = params.get('access_token');
+      const refreshToken = params.get('refresh_token');
+      if (accessToken && refreshToken) {
+        await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+      }
+    }
+
     // Check if user is authenticated
     const { data: { user } } = await supabase.auth.getUser();
 
